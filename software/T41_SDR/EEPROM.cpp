@@ -1,6 +1,4 @@
-#ifndef BEENHERE
 #include "SDT.h"
-#endif
 
 //DB2OO, 29-AUG-23: Don't use the overall VERSION for the EEPROM structure version information, but use a combination of an EEPROM_VERSION with the size of the EEPROMData variable.
 // The "EEPROM_VERSION" should only be changed, if the structure config_t EEPROMData has changed!

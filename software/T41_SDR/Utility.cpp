@@ -1,6 +1,4 @@
-#ifndef BEENHERE
 #include "SDT.h"
-#endif
 
 /*****
   Purpose: Generate Array with variable sinewave frequency tone AFP 05-17-22

@@ -1,6 +1,4 @@
-#ifndef BEENHERE
 #include "SDT.h"
-#endif
 
 
 #define debug_alternate_NR

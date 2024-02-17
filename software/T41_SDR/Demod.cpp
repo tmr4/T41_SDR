@@ -1,8 +1,4 @@
-#ifndef BEENHERE
 #include "SDT.h"
-#endif
-
-
 
 /*****  AFP 11-03-22
   Purpose: AMDecodeSAM()

@@ -1,6 +1,5 @@
-#ifndef BEENHERE
 #include "SDT.h"
-#endif
+
 /*
   #define SD_CS                       BUILTIN_SDCARD        // Works on T_3.6 and T_4.1 ...
 

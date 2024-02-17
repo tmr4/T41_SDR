@@ -1,7 +1,4 @@
-#ifndef BEENHERE
 #include "SDT.h"
-#endif
-
 
 /*****
   Purpose: ZoomFFTPrep() is used to alter the x axis for the spectrum display, thus narrowing its badwidth.

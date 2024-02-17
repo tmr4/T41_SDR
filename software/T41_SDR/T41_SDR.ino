@@ -17,9 +17,8 @@
 
 // setup() and loop() at the bottom of this file
 
-#ifndef BEENHERE
 #include "SDT.h"
-#endif
+
 /*                                  Presented here so you can see how the members allign
 struct maps {
   char mapNames[50];

@@ -1,10 +1,10 @@
-#ifndef BEENHERE
-#define BEENHERE
+#pragma once
 
 //======================================== User section that might need to be changed ===================================
-#include "MyConfigurationFile.h"                                          // This file name should remain unchanged
-#define VERSION                     "V049.5"                               // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
-#define UPDATE_SWITCH_MATRIX        0                                     // 1 = Yes, redo the switch matrix values, 0 = leave switch matrix values as is from the last change
+#include "MyConfigurationFile.h"  // This file name should remain unchanged
+#define VERSION "T41SDR0.1"       // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
+#define UPDATE_SWITCH_MATRIX 0    // 1 = Yes, redo the switch matrix values, 0 = leave switch matrix values as is from the last change
+
 struct maps {
   char mapNames[50];
   float lat;
@@ -19,9 +19,9 @@ extern struct maps myMapFiles[];
 #include "Fonts/FreeMonoBold18pt7b.h"
 #include "Fonts/FreeMono24pt7b.h"
 #include "Fonts/FreeMono9pt7b.h"
-#include <Audio.h>                                  //https://github.com/chipaudette/OpenAudio_ArduinoLibrary
-#include <OpenAudio_ArduinoLibrary.h>               // AFP 11-01-22
-#include <TimeLib.h>                                // Part of Teensy Time library
+#include <Audio.h>                     //https://github.com/chipaudette/OpenAudio_ArduinoLibrary
+#include <OpenAudio_ArduinoLibrary.h>  // AFP 11-01-22
+#include <TimeLib.h>                   // Part of Teensy Time library
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
@@ -29,25 +29,26 @@ extern struct maps myMapFiles[];
 #include <Bounce.h>
 #include <arm_math.h>
 #include <arm_const_structs.h>
-#include <si5351.h>                                 // https://github.com/etherkit/Si5351Arduino
-#include <RA8875.h>                                 // https://github.com/mjs513/RA8875/tree/RA8875_t4
-#include <Rotary.h>                                 // https://github.com/brianlow/Rotary
+#include <si5351.h>                    // https://github.com/etherkit/Si5351Arduino
+#include <RA8875.h>                    // https://github.com/mjs513/RA8875/tree/RA8875_t4
+#include <Rotary.h>                    // https://github.com/brianlow/Rotary
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <util/crc16.h>                             // mdrhere
-#include <utility/imxrt_hw.h>                       // for setting I2S freq, Thanks, FrankB!
+#include <util/crc16.h>                // mdrhere
+#include <utility/imxrt_hw.h>          // for setting I2S freq, Thanks, FrankB!
 #include <EEPROM.h>
+
 //======================================== Symbolic Constants for the T41 ===================================================
-#define RIGNAME                     "T41-EP SDT"
-#define NUMBER_OF_SWITCHES          18              // Number of push button switches. 16 on older boards
-#define TOP_MENU_COUNT              13              // Menus to process AFP 09-27-22, JJP 7-8-23
-#define RIGNAME_X_OFFSET            570             // Pixel count to rig name field                                       // Says we are using a Teensy 4 or 4.1
-#define RA8875_DISPLAY              1               // Comment out if not using RA8875 display
-#define TEMPMON_ROOMTEMP            25.0f
-//#define SD_CARD_PRESENT             1               // 1 if SD present, 0 otherwise       //   JJP  7/18/23
-#define SD_CS                       BUILTIN_SDCARD  // Works on T_3.6 and T_4.1 ...
-#define MAX_SD_ITEMS                184             // Number of discrete data items written to EEPROM
+#define RIGNAME             "T41-EP SDT"
+#define NUMBER_OF_SWITCHES  18              // Number of push button switches. 16 on older boards
+#define TOP_MENU_COUNT      13              // Menus to process AFP 09-27-22, JJP 7-8-23
+#define RIGNAME_X_OFFSET    570             // Pixel count to rig name field
+#define RA8875_DISPLAY      1               // Comment out if not using RA8875 display
+#define TEMPMON_ROOMTEMP    25.0f
+//#define SD_CARD_PRESENT     1               // 1 if SD present, 0 otherwise       //   JJP  7/18/23
+#define SD_CS               BUILTIN_SDCARD  // Works on T_3.6 and T_4.1 ...
+#define MAX_SD_ITEMS        184             // Number of discrete data items written to EEPROM
 
 //#define STORE_SWITCH_VALUES                       // Uncomment to save the analog switch values for your push button matrix
 
@@ -2295,5 +2296,3 @@ int  Xmit_IQ_Cal(); //AFP 09-21-22
 
 void ZoomFFTPrep();
 void ZoomFFTExe(uint32_t blockSize);
-
-#endif
