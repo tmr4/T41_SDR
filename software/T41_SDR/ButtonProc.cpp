@@ -470,11 +470,11 @@ int ButtonSetNoiseFloor() {
 *****/
 int DrawNewFloor(int floor)
 {
-  static int oldY = SPECTRUM_BOTTOM;
+//  static int oldY = SPECTRUM_BOTTOM;
 
   if (floor < 0) {
     floor = 0;
-    oldY = SPECTRUM_BOTTOM - floor;
+//    oldY = SPECTRUM_BOTTOM - floor;
     return floor;
   }
   return floor;

@@ -251,8 +251,8 @@ int SpectrumOptions() { /*
     int           an index into the band array
 *****/
 int AGCOptions() {
-  const char *AGCChoices[] = { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" }; // G0ORX (Added Long) September 5, 2023
 /*
+  const char *AGCChoices[] = { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" }; // G0ORX (Added Long) September 5, 2023
   AGCMode = SubmenuSelect(AGCChoices, 6, AGCMode); // G0ORX
   if (AGCMode == 5) {
     return AGCMode;  // Nope.
@@ -277,7 +277,7 @@ int AGCOptions() {
 int IQOptions()  //============================== AFP 10-22-22  All new
 {
   calibrateFlag = 1;
-  const char *IQOptions[] = { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" };  //AFP 10-21-22
+//  const char *IQOptions[] = { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" };  //AFP 10-21-22
   //const char *IQOptions[] = {"Rec Cal", "Xmit Cal", "Freq Cal", "SSB PA Cal", "CW PA Cal", "Cancel"}; //AFP 10-21-22
 //  IQChoice = SubmenuSelect(IQOptions, 6, 0);  //AFP 10-21-22
   IQChoice = secondaryMenuIndex;
@@ -445,8 +445,8 @@ void ProcessEqualizerChoices(int EQType, char *title) {
     int           an index into the band array
 *****/
 int EqualizerRecOptions() {
-  const char *RecEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
-  int EQChoice = 0;
+//  const char *RecEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
+//  int EQChoice = 0;
 
 //  EQChoice = SubmenuSelect(RecEQChoices, 4, 0);
 
@@ -481,8 +481,8 @@ int EqualizerRecOptions() {
     int           an index into the band array
 *****/
 int EqualizerXmtOptions() {
-  const char *XmtEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
-  int EQChoice = 0;
+//  const char *XmtEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
+//  int EQChoice = 0;
 
 //  EQChoice = SubmenuSelect(XmtEQChoices, 4, 0);
 
@@ -517,7 +517,7 @@ int EqualizerXmtOptions() {
 *****/
 int MicGainSet() {
   //=====
-  const char *micGainChoices[] = { "Set Mic Gain", "Cancel" };
+//  const char *micGainChoices[] = { "Set Mic Gain", "Cancel" };
 //  micGainChoice = SubmenuSelect(micGainChoices, 2, micGainChoice);
 //  switch (micGainChoice) {
   switch (secondaryMenuIndex) {
@@ -569,7 +569,7 @@ int MicGainSet() {
 *****/
 int MicOptions()  // AFP 09-22-22 All new
 {
-  const char *micChoices[] = { "On", "Off", "Set Threshold", "Set Comp_Ratio", "Set Attack", "Set Decay", "Cancel" };
+//  const char *micChoices[] = { "On", "Off", "Set Threshold", "Set Comp_Ratio", "Set Attack", "Set Decay", "Cancel" };
 
 //  micChoice = SubmenuSelect(micChoices, 7, micChoice);
 //  switch (micChoice) {
@@ -811,8 +811,8 @@ int VFOSelect()
     int           the user's choice
 *****/
 int EEPROMOptions() {
-  const char *EEPROMOpts[] = { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite",
-                               "Copy EEPROM-->SD", "Copy SD-->EEPROM", "SD EEPROM Dump", "Cancel" };
+//  const char *EEPROMOpts[] = { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite",
+//                               "Copy EEPROM-->SD", "Copy SD-->EEPROM", "SD EEPROM Dump", "Cancel" };
   int defaultOpt = 0;
 /*
   defaultOpt = SubmenuSelect(EEPROMOpts, 8, defaultOpt);

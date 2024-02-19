@@ -7,6 +7,65 @@
 static char version_size[10];
 
 /*****
+  Purpose: To save the configuration data (working variables) to EEPROM.
+           Skip 4 bytes to allow for the struct size variable.
+
+  Parameter list:
+    struct EEPROMData       pointer to the EEPROM structure
+
+  Return value;
+    void
+*****/
+//FLASHMEM void EEPROMWrite() {
+void EEPROMWrite() {
+  EEPROM.put(EEPROM_BASE_ADDRESS + 4, EEPROMData);
+}
+
+/*****
+  Purpose: This is nothing more than an alias for EEPROM.get(EEPROM_BASE_ADDRESS + 4, EEPROMData).
+
+  Parameter list:
+  None
+
+  Return value;
+    void
+*****/
+//FLASHMEM void EEPROMRead() {
+void EEPROMRead() {
+  EEPROM.get(EEPROM_BASE_ADDRESS + 4, EEPROMData);  // Read as one large chunk
+}
+
+/*****
+  Purpose: Write the struct size stored to the EEPROM.
+
+  Parameter list:
+  None
+
+  Return value;
+    void
+*****/
+//FLASHMEM void EEPROMWriteSize(int structSize) {
+void EEPROMWriteSize(int structSize) {
+  EEPROM.put(EEPROM_BASE_ADDRESS, structSize);  // Read as one large chunk
+}
+
+/*****
+  Purpose: Read the struct size stored in the EEPROM.
+
+  Parameter list:
+  None
+
+  Return value;
+    void
+*****/
+//FLASHMEM int EEPROMReadSize() {
+int EEPROMReadSize() {
+  int structSize;
+  EEPROM.get(EEPROM_BASE_ADDRESS, structSize);  // Read as one large chunk
+  return structSize;
+}
+
+/*****
   Purpose: void EEPROMSetVersion()
 
   Parameter list:
@@ -27,331 +86,6 @@ static char* EEPROMSetVersion(void)
   }
   return version_size;
 }
-
-/*****
-  Purpose: void EEPROMRead()
-
-  Parameter list:
-    struct config_t e[]       pointer to the EEPROM structure
-
-  Return value;
-    void
-*****/
-void EEPROMRead() {
-  int i;
-  int v049_version=0; //DB2OO, 10-SEP-23
-#define MORSE_STRING_DISPLAY(s)  {size_t j; for (j=0;j<strlen(s);j++) MorseCharacterDisplay(s[j]);}  
-
-  //DB2OO, 25-AUG-23: don't read the EEPROM before you are sure, that it is in T41-SDT format!!
-  //DB2OO, 25-AUG-23: first read only the version string and compare it with the current version. The version string must also be at the beginning of the EEPROMData structure!
-  for (i=0; i<10; i++) { versionSettings[i]= EEPROM.read(EEPROM_BASE_ADDRESS+i); }
-#ifdef DEBUG 
-    //display version in EEPROM in last line of display
-    MORSE_STRING_DISPLAY("EEPROMVersion ");
-    if (strlen(versionSettings) <10) {
-      MORSE_STRING_DISPLAY(versionSettings);
-    }else {
-      MORSE_STRING_DISPLAY("<<INVALID>>");
-    }
-    MyDelay(1000);
-#endif
-  //Do we have V049.1 or V049.2 structure in EEPROM?
-  if (strcmp("V049.1", versionSettings) == 0) v049_version=1;
-  if (strcmp("V049.2", versionSettings) == 0) v049_version=2;
-
-  if (v049_version > 0) {
-     //DB2OO, 29-AUG-23: allow "V049.1" or "V049.2" instead of the Version with size for a migration to the new format
-     strcpy(versionSettings, EEPROMSetVersion());  // set new version format
-    for (i=0; i<10; i++) { EEPROM.write(EEPROM_BASE_ADDRESS+i, versionSettings[i]); }
-  }
-  if (strncmp(EEPROMSetVersion(), versionSettings, 10) != 0) {
-    //Different version in EEPROM: set the EEPROM values for THIS version
-#ifdef DEBUG1 
-    const char *wrong_ver = "EEPROMRead(): different version, calling EEPROMSaveDefaults2()";
-    MORSE_STRING_DISPLAY(wrong_ver);
-    Serial.println(wrong_ver);
-    MyDelay(1000);
-#endif    
-    EEPROMSaveDefaults2();
-    // and write it into the EEPROM
-    EEPROM.put(EEPROM_BASE_ADDRESS, EEPROMData);
-    // after this we will read the default values for this version
-  } else {
-#ifdef DEBUG1  
-    MORSE_STRING_DISPLAY("-->Reading EEPROM content...");
-    MyDelay(1000);
-#endif
-  }
-#ifdef DEBUG
-  //clear the Morse character buffer
-  MorseCharacterClear();
-#endif  
-  
-  EEPROM.get(EEPROM_BASE_ADDRESS, EEPROMData);  // Read as one large chunk
-
-  strncpy(versionSettings, EEPROMData.versionSettings, 10);  // KF5N
-  AGCMode = EEPROMData.AGCMode;
-  audioVolume = EEPROMData.audioVolume;  // 4 bytes
-  rfGainAllBands = EEPROMData.rfGainAllBands;
-  spectrumNoiseFloor = EEPROMData.spectrumNoiseFloor;  // AFP 09-26-22
-  tuneIndex = EEPROMData.tuneIndex;
-  stepFineTune = EEPROMData.stepFineTune;
-  transmitPowerLevel = EEPROMData.powerLevel;
-  xmtMode = EEPROMData.xmtMode;                // AFP 09-26-22
-  nrOptionSelect = EEPROMData.nrOptionSelect;  // 1 byte
-  currentScale = EEPROMData.currentScale;
-  spectrum_zoom = EEPROMData.spectrum_zoom;
-  spectrum_display_scale = EEPROMData.spectrum_display_scale;  // 4 bytes
-
-  CWFilterIndex = EEPROMData.CWFilterIndex;  // Off
-  paddleDit = EEPROMData.paddleDit;
-  paddleDah = EEPROMData.paddleDah;
-  decoderFlag = EEPROMData.decoderFlag;
-  keyType = EEPROMData.keyType;                  // straight key = 0, keyer = 1
-  currentWPM = EEPROMData.currentWPM;            // 4 bytes
-  sidetoneVolume = EEPROMData.sidetoneVolume;    // 4 bytes
-  cwTransmitDelay = EEPROMData.cwTransmitDelay;  // 4 bytes
-
-  activeVFO = EEPROMData.activeVFO;          // 2 bytes
-  freqIncrement = EEPROMData.freqIncrement;  // 4 bytes
-
-  currentBand = EEPROMData.currentBand;                        // 4 bytes
-  currentBandA = EEPROMData.currentBandA;                      // 4 bytes
-  currentBandB = EEPROMData.currentBandB;                      // 4 bytes
-  currentFreqA = EEPROMData.lastFrequencies[currentBandA][0];  // JJP 7/17/23
-  currentFreqB = EEPROMData.lastFrequencies[currentBandB][1];  // JJP 7/17/23
-  freqCorrectionFactor = EEPROMData.freqCorrectionFactor;
-
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
-    recEQ_Level[i] = EEPROMData.equalizerRec[i];  // 4 bytes each
-  }
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
-    xmtEQ_Level[i] = EEPROMData.equalizerXmt[i];
-  }
-
-  currentMicThreshold = EEPROMData.currentMicThreshold;  // AFP 09-22-22
-  currentMicCompRatio = EEPROMData.currentMicCompRatio;
-  currentMicAttack = EEPROMData.currentMicAttack;
-  currentMicRelease = EEPROMData.currentMicRelease;
-  currentMicGain = EEPROMData.currentMicGain;
-
-  //  Note: switch values are read and written to EEPROM only
-  switchThreshholds[0] = EEPROMData.switchValues[0];
-  switchThreshholds[1] = EEPROMData.switchValues[1];
-  switchThreshholds[2] = EEPROMData.switchValues[2];
-  switchThreshholds[3] = EEPROMData.switchValues[3];
-  switchThreshholds[4] = EEPROMData.switchValues[4];
-  switchThreshholds[5] = EEPROMData.switchValues[5];
-  switchThreshholds[6] = EEPROMData.switchValues[6];
-  switchThreshholds[7] = EEPROMData.switchValues[7];
-  switchThreshholds[8] = EEPROMData.switchValues[8];
-  switchThreshholds[9] = EEPROMData.switchValues[9];
-  switchThreshholds[10] = EEPROMData.switchValues[10];
-  switchThreshholds[11] = EEPROMData.switchValues[11];
-  switchThreshholds[12] = EEPROMData.switchValues[12];
-  switchThreshholds[13] = EEPROMData.switchValues[13];
-  switchThreshholds[14] = EEPROMData.switchValues[14];
-  switchThreshholds[15] = EEPROMData.switchValues[15];
-  switchThreshholds[16] = EEPROMData.switchValues[16];
-  switchThreshholds[17] = EEPROMData.switchValues[17];
-
-  LPFcoeff = EEPROMData.LPFcoeff;  // 4 bytes
-  NR_PSI = EEPROMData.NR_PSI;      // 4 bytes
-  NR_alpha = EEPROMData.NR_alpha;  // 4 bytes
-  NR_beta = EEPROMData.NR_beta;    // 4 bytes
-  omegaN = EEPROMData.omegaN;      // 4 bytes
-  pll_fmax = EEPROMData.pll_fmax;  // 4 bytes
-
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    powerOutCW[i] = EEPROMData.powerOutCW[i];
-  }
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    powerOutSSB[i] = EEPROMData.powerOutSSB[i];
-  }
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    CWPowerCalibrationFactor[i] = EEPROMData.CWPowerCalibrationFactor[i];  // 0.019;
-  }
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    SSBPowerCalibrationFactor[i] = EEPROMData.SSBPowerCalibrationFactor[i];  // 0.008
-  }
-
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    IQAmpCorrectionFactor[i] = EEPROMData.IQAmpCorrectionFactor[i];
-  }
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    IQPhaseCorrectionFactor[i] = EEPROMData.IQPhaseCorrectionFactor[i];
-  }
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    IQXAmpCorrectionFactor[i] = EEPROMData.IQXAmpCorrectionFactor[i];
-  }
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    IQXPhaseCorrectionFactor[i] = EEPROMData.IQXPhaseCorrectionFactor[i];
-  }
-  favoriteFrequencies[0] = EEPROMData.favoriteFreqs[0];
-  favoriteFrequencies[1] = EEPROMData.favoriteFreqs[1];
-  favoriteFrequencies[2] = EEPROMData.favoriteFreqs[2];
-  favoriteFrequencies[3] = EEPROMData.favoriteFreqs[3];
-  favoriteFrequencies[4] = EEPROMData.favoriteFreqs[4];
-  favoriteFrequencies[5] = EEPROMData.favoriteFreqs[5];
-  favoriteFrequencies[6] = EEPROMData.favoriteFreqs[6];
-  favoriteFrequencies[7] = EEPROMData.favoriteFreqs[7];
-  favoriteFrequencies[8] = EEPROMData.favoriteFreqs[8];
-  favoriteFrequencies[9] = EEPROMData.favoriteFreqs[9];
-  favoriteFrequencies[10] = EEPROMData.favoriteFreqs[10];
-  favoriteFrequencies[11] = EEPROMData.favoriteFreqs[11];
-  favoriteFrequencies[12] = EEPROMData.favoriteFreqs[12];
-
-  lastFrequencies[0][0] = EEPROMData.lastFrequencies[0][0];
-  lastFrequencies[1][0] = EEPROMData.lastFrequencies[1][0];
-  lastFrequencies[2][0] = EEPROMData.lastFrequencies[2][0];
-  lastFrequencies[3][0] = EEPROMData.lastFrequencies[3][0];
-  lastFrequencies[4][0] = EEPROMData.lastFrequencies[4][0];
-  lastFrequencies[5][0] = EEPROMData.lastFrequencies[5][0];
-  lastFrequencies[6][0] = EEPROMData.lastFrequencies[6][0];
-
-  lastFrequencies[0][1] = EEPROMData.lastFrequencies[0][1];
-  lastFrequencies[1][1] = EEPROMData.lastFrequencies[1][1];
-  lastFrequencies[2][1] = EEPROMData.lastFrequencies[2][1];
-  lastFrequencies[3][1] = EEPROMData.lastFrequencies[3][1];
-  lastFrequencies[4][1] = EEPROMData.lastFrequencies[4][1];
-  lastFrequencies[5][1] = EEPROMData.lastFrequencies[5][1];
-  lastFrequencies[6][1] = EEPROMData.lastFrequencies[6][1];
-
-  centerFreq = EEPROMData.lastFrequencies[currentBand][activeVFO];  // 4 bytes
-  TxRxFreq = centerFreq;  // Need to assign TxRxFreq here or numerous subtle frequency bugs will happen.  KF5N August 7, 2023
-
-  //strncpy(EEPROMData.mapFileName, MAP_FILE_NAME, 50);  KF5N
-  strncpy(mapFileName, EEPROMData.mapFileName, 50);     // KF5N
-  strncpy(myCall, EEPROMData.myCall, 10);               // KF5N
-  strncpy(myTimeZone, EEPROMData.myTimeZone, 10);       // KF5N
-  freqSeparationChar = EEPROMData.separationCharacter;  //   JJP  7/25/23  KF5N
-
-  paddleFlip = EEPROMData.paddleFlip;  //   JJP  7/27/23.  Was setting to symbolic constant PADDLE_FLIP.  KF5N August 8, 2023
-  sdCardPresent = EEPROMData.sdCardPresent = 0;      //   JJP  7/27/23
-
-  myLat = EEPROMData.myLat;
-  myLong = EEPROMData.myLong;
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    currentNoiseFloor[i] = EEPROMData.currentNoiseFloor[i];
-  }
-  //DB2OO, 10-SEP-23: We have V049.1 or V049.2 in EEPROM --> just initialize new/changed EEPROMData structure elements
-  switch (v049_version) {
-    case 1: //V049.1 --> there is no "compressorFlag" yet in the structure --> initalize it, to overwrite junk from EEPROM
-      EEPROMData.compressorFlag = 0;
-      //fall through
-    case 2: //V049.2: compressorFlag is there, but we might have to add other inits (not required yet)
-      break;
-  }
-  compressorFlag = EEPROMData.compressorFlag;             // JJP 8/28/23
-}
-
-
-/*****
-  Purpose: To save the configuration data (working variables) to EEPROM
-
-  Parameter list:
-    struct config_t e[]       pointer to the EEPROM structure
-
-  Return value;
-    void
-*****/
-void EEPROMWrite() {
-  strncpy(EEPROMData.versionSettings, EEPROMSetVersion(), 9);  // KF5N
-
-  EEPROMData.AGCMode = AGCMode;
-  EEPROMData.CWFilterIndex = CWFilterIndex;
-  EEPROMData.nrOptionSelect = nrOptionSelect;
-  EEPROMData.rfGainAllBands = rfGainAllBands;
-
-  EEPROMData.activeVFO = activeVFO;  // 2 bytes
-
-  EEPROMData.audioVolume = audioVolume;  // 4 bytes
-  EEPROMData.currentBand = currentBand;  // 4 bytes
-  EEPROMData.currentBandA = currentBandA;
-  EEPROMData.currentBandB = currentBandB;
-  EEPROMData.currentFreqA = currentFreqA;  // JJP 7/17/23
-  EEPROMData.currentFreqB = currentFreqB;  // JJP 7/17/23
-  EEPROMData.decoderFlag = decoderFlag;
-
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
-    EEPROMData.equalizerRec[i] = recEQ_Level[i];  // 4 bytes each
-    EEPROMData.equalizerXmt[i] = xmtEQ_Level[i];
-  }
-
-  EEPROMData.freqIncrement = freqIncrement;              // 4 bytes
-  EEPROMData.keyType = keyType;                          // straight key = 0, keyer = 1
-  EEPROMData.currentMicThreshold = currentMicThreshold;  // 4 bytes      // AFP 09-22-22
-  EEPROMData.currentMicCompRatio = currentMicCompRatio;
-  EEPROMData.currentMicAttack = currentMicAttack;
-  EEPROMData.currentMicRelease = currentMicRelease;
-  EEPROMData.currentMicGain = currentMicGain;
-
-  EEPROMData.paddleDit = paddleDit;
-  EEPROMData.paddleDah = paddleDah;
-  EEPROMData.spectrumNoiseFloor = spectrumNoiseFloor;  // AFP 09-26-22
-
-  EEPROMData.tuneIndex = tuneIndex;
-  EEPROMData.stepFineTune = stepFineTune;
-
-  EEPROMData.powerLevel = transmitPowerLevel;
-  EEPROMData.currentWPM = currentWPM;  // 4 bytes
-  EEPROMData.xmtMode = xmtMode;        // AFP 09-26-22
-
-  EEPROMData.currentScale = currentScale;
-  EEPROMData.spectrum_zoom = spectrum_zoom;
-  EEPROMData.spectrum_display_scale = spectrum_display_scale;  // 4 bytes
-  EEPROMData.sidetoneVolume = sidetoneVolume;                  // 4 bytes
-  EEPROMData.cwTransmitDelay = cwTransmitDelay;                // 4 bytes
-
-  EEPROMData.LPFcoeff = LPFcoeff;  // 4 bytes
-  EEPROMData.NR_PSI = NR_PSI;      // 4 bytes
-  EEPROMData.NR_alpha = NR_alpha;  // 4 bytes
-  EEPROMData.NR_beta = NR_beta;    // 4 bytes
-  EEPROMData.omegaN = omegaN;      // 4 bytes
-  EEPROMData.pll_fmax = pll_fmax;  // 4 bytes
-
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    EEPROMData.CWPowerCalibrationFactor[i] = CWPowerCalibrationFactor[i];    // 0.019;   //AFP 10-29-22
-    EEPROMData.SSBPowerCalibrationFactor[i] = SSBPowerCalibrationFactor[i];  // 0.008;   //AFP 10-29-22
-    EEPROMData.powerOutCW[i] = powerOutCW[i];                                // 4 bytes //AFP 10-21-22
-    EEPROMData.powerOutSSB[i] = powerOutSSB[i];                              // 4 bytes AFP 10-21-22
-    EEPROMData.IQAmpCorrectionFactor[i] = IQAmpCorrectionFactor[i];
-    EEPROMData.IQPhaseCorrectionFactor[i] = IQPhaseCorrectionFactor[i];
-    EEPROMData.IQXAmpCorrectionFactor[i] = IQXAmpCorrectionFactor[i];
-    EEPROMData.IQXPhaseCorrectionFactor[i] = IQXPhaseCorrectionFactor[i];
-  }
-  //  Note:favoriteFreqs are written as they are saved.
-
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    EEPROMData.lastFrequencies[i][0] = lastFrequencies[i][0];
-    EEPROMData.lastFrequencies[i][1] = lastFrequencies[i][1];
-  }
-
-  EEPROMData.lastFrequencies[currentBand][activeVFO] = currentFreq;  // 4 bytes
-  EEPROMData.lastFrequencies[currentBandA][VFO_A] = currentFreqA;    // 4 bytes
-  EEPROMData.lastFrequencies[currentBandB][VFO_B] = currentFreqB;    // 4 bytes
-  EEPROMData.freqCorrectionFactor = freqCorrectionFactor;
-
-  strncpy(EEPROMData.mapFileName, mapFileName, 49);  // 1 smaller to allow for null
-  strncpy(EEPROMData.myCall, myCall, 9);
-  strncpy(EEPROMData.myTimeZone, myTimeZone, 9);
-  EEPROMData.separationCharacter = (int)freqSeparationChar;
-
-  EEPROMData.paddleFlip = paddleFlip;
-  EEPROMData.sdCardPresent = sdCardPresent;
-
-  EEPROMData.myLat = myLat;
-  EEPROMData.myLong = myLong;
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    EEPROMData.currentNoiseFloor[i] = currentNoiseFloor[i];
-  }
-  EEPROMData.compressorFlag = compressorFlag;                        // JJP 8/28/23
-
-  EEPROM.put(EEPROM_BASE_ADDRESS, EEPROMData);
-  // CopyEEPROMToSD();                                               // JJP 7/26/23
-  syncEEPROM = 0;  // SD EEPROM different that memory EEPROM
-  //UpdateEEPROMSyncIndicator(0);   //  JJP 7/25/23
-}  // end void eeProm SAVE
 
 /*****
   Purpose: To show the current EEPROM values. Used for debugging
@@ -675,8 +409,7 @@ void SetFavoriteFrequency() {
     if (val == MENU_OPTION_SELECT) {  // Make a choice??
       EraseMenus();
       EEPROMData.favoriteFreqs[index] = TxRxFreq;
-      syncEEPROM = 0;  // SD EEPROM different that memory EEPROM
-      //UpdateEEPROMSyncIndicator(0);       //  JJP 7/25/23
+
       if (activeVFO == VFO_A) {
         currentFreqA = TxRxFreq;
       } else {
@@ -1139,14 +872,8 @@ void EEPROMSaveDefaults2() {
   for (int i = 0; i < NUMBER_OF_BANDS; i++) {
     EEPROMData.currentNoiseFloor[i] = 0;
   }
+
   EEPROMData.compressorFlag = 0;                    // Off by default JJP  8/28/23
-/*        //  JJP 7/25/23
-  if (sdCardPresent == 1) {                         // SD card
-    syncEEPROM = 0;                                 // SD EEPROM may be different that memory EEPROM
-    UpdateEEPROMSyncIndicator(0);
-  }
-*/
-  
 }
 
 /*****
@@ -1775,7 +1502,6 @@ int CopySDToEEPROM() {
   //  EEPROM.put(0, EEPROMData);  // This rewrites the entire EEPROM struct as defined in SDT.h
   EEPROM.put(EEPROM_BASE_ADDRESS, EEPROMData);  // KF5N
                                                 //  EEPROMShow();
-                                                //  syncEEPROM = 1;  // SD EEPROM same as memory EEPROM  KF5N
   //UpdateEEPROMSyncIndicator(1);     //  JJP 7/25/23
   RedrawDisplayScreen();
   return 1;
@@ -2264,21 +1990,6 @@ int ValidEEPROMData() {
 }
 
 /*****
-  Purpose: Update the version number only in EEPROM
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateEEPROMVersionNumber() {
-  strcpy(EEPROMData.versionSettings, EEPROMSetVersion());  // Copy the latest version to EEPROM
-}
-
-
-
-/*****
   Purpose: Reads the SD EEPROM data and writes it to the Serial object
 
   Parameter list:
@@ -2335,8 +2046,9 @@ void ClearEEPROM() {
   }
 }
 
+
 /*****
-  Purpose: Read the EEPROM from: a) EEPROM memory, b) SD card memory, or c) defaults
+  Purpose: Manage EEPROM memory at radio start-up.
 
   Parameter list:
     void
@@ -2345,31 +2057,35 @@ void ClearEEPROM() {
     void
 *****/
 void EEPROMStartup() {
-  EEPROMRead();  // Read current stored data
+  int eepromStructSize;
+  int stackStructSize;
+  //  Determine if the struct EEPROMData is compatible (same size) with the one stored in EEPROM.
 
-  if (strcmp(EEPROMData.versionSettings, EEPROMSetVersion()) == 0) {  // Are the versions the same?
-    return;                                                // Yep. Go home and don't mess with the EEPROM
+  eepromStructSize = EEPROMReadSize();
+  stackStructSize = sizeof(EEPROMData);
+
+  // For minor revisions to the code, we don't want to overwrite the EEPROM.
+  // We will assume the switch matrix and other items are calibrated by the user, and not to be lost.
+  // However, if the EEPROMData struct changes, it is necessary to overwrite the EEPROM with the new struct.
+  // This decision is made by using a simple size comparison.  This is not fool-proof, but it will probably
+  // work most of the time.  The users should be instructed to always save the EEPROM to SD for later recovery
+  // of their calibration and custom settings.
+  // If all else fails, then the user should execute a FLASH erase.
+
+  // The case where struct sizes are the same, indicating no changes to the struct.  Nothing more to do, return.
+  if (eepromStructSize == stackStructSize) {
+    EEPROMRead();  // Read the EEPROM data into active memory.
+    return;        // Done, begin radio operation.
   }
-  strcpy(EEPROMData.versionSettings, EEPROMSetVersion());  // Nope, this is a new the version, so copy new version title to EEPROM
-  //                                                                     Check if calibration has not been done and/or switch values are wonky, okay to use defaults
-  //                                                                     If the Teensy is unused, these EEPROM values are 0xFF or perhaps cleared to 0.
 
-  if (switchThreshholds[9] < 440 || switchThreshholds[9] > 480) {
-    EEPROMSaveDefaults2();     // At least give them some starting values
-    switchThreshholds[9] = 0;  // This will force the next code block to set the switch values.
-  }
-  if (switchThreshholds[9] < 440 || switchThreshholds[9] > 480) {  // If the Teensy is unused, these EEPROM values are 0xFF or perhaps cleared to 0.
-    SaveAnalogSwitchValues();                                      // In that case, we need to set the switch values.
-  }
-  //                                                                     If we get here, the switch values have been set, either previously or by the call to
-  //                                                                     SaveAnalogSwitchValues() as has the rest of the EEPROM data. This avoids recalibration.
+  // If the flow proceeds here, it is time to initialize some things.
+  // The rest of the code will require a switch matrix calibration, and will write the EEPROMData struct to EEPROM.
 
-  EEPROM.put(0, EEPROMData);  // This rewrites the entire EEPROM struct as defined in SDT.h
-  EEPROMRead();               // Read the EEPROM data, including new switch values. This also resets working variables
+  SaveAnalogSwitchValues();         // Calibrate the switch matrix.
+  EEPROMWriteSize(stackStructSize); // Write the size of the struct to EEPROM.
 
-//  if (sdCardPresent) {  // If there's an SD card present...
-//    CopyEEPROMToSD();   // ...copy the EEPROM data to the SD card, otherwise we're done  // Don't do this.  It could overwrite an existing file.  KF5N August 9, 2023
-//  }
+  EEPROMWrite();  // Write the EEPROMData struct to non-volatile memory.
+
 #ifdef DEBUG1
   SDEEPROMDump();  // Call this to observe EEPROM struct data
 #endif

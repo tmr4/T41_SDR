@@ -2,8 +2,7 @@
 
 //======================================== User section that might need to be changed ===================================
 #include "MyConfigurationFile.h"  // This file name should remain unchanged
-#define VERSION "T41SDR0.1"       // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
-#define UPDATE_SWITCH_MATRIX 0    // 1 = Yes, redo the switch matrix values, 0 = leave switch matrix values as is from the last change
+#define VERSION "sdr_fb0.1"       // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
 
 struct maps {
   char mapNames[50];
@@ -49,8 +48,6 @@ extern struct maps myMapFiles[];
 //#define SD_CARD_PRESENT     1               // 1 if SD present, 0 otherwise       //   JJP  7/18/23
 #define SD_CS               BUILTIN_SDCARD  // Works on T_3.6 and T_4.1 ...
 #define MAX_SD_ITEMS        184             // Number of discrete data items written to EEPROM
-
-//#define STORE_SWITCH_VALUES                       // Uncomment to save the analog switch values for your push button matrix
 
 #define OFF                         0
 #define ON                          1
@@ -315,10 +312,6 @@ extern struct maps myMapFiles[];
 
 //#define TIMEZONE                    "EST: "     // Set for eastern time
 
-//#define DEFAULTFREQINCREMENT        1000L       //Values 10, 50, 100, 250, 1000, 10000  AFP 09-26-22
-//#define FAST_TUNE_INCREMENT         50L
-#define DEFAULTFREQINDEX            4           //  Index 10Hz=> 0, 50Hz=> 1, 100Hz=> 2, 250Hz=> 3, 
-                                                //  1000Hz=> 4, 10000Hz=> 5, 100000=> 6, 1000000=> 7 
 #define MAX_FREQ_INDEX              8
 #define TEMPMON_ROOMTEMP            25.0f
 #define MAX_WPM                     60
@@ -1005,9 +998,7 @@ void ExciterIQData();
 extern long NCOFreq ; // AFP 04-16-22
 
 //extern double stepFineTune;
-//extern double stepFineTune2;
 extern long stepFineTune;
-extern long stepFineTune2;
 extern float32_t NCO_INC ;  // AFP 04-16-22
 extern double OSC_COS;
 extern double  OSC_SIN;
@@ -1099,14 +1090,14 @@ extern char versionSettings[];
 
 extern struct config_t {
   
-  char versionSettings[10];
+  char versionSettings[10] = VERSION;  // This is required to be the first!  See EEPROMRead() function.
   int AGCMode             = 1;     
-  int audioVolume         = 30;                       // 4 bytes
+  int audioVolume         = 30;
   int rfGainAllBands      = 1;
-  int spectrumNoiseFloor  = SPECTRUM_NOISE_FLOOR;     // AFP 09-26-22
-  int tuneIndex           = DEFAULTFREQINCREMENT;     // JJP 7-3-23
-  long stepFineTune       = FAST_TUNE_INCREMENT;      // JJP 7-3-23
-  int powerLevel          = DEFAULT_POWER_LEVEL;      // JJP 7-3-23
+  int spectrumNoiseFloor  = SPECTRUM_NOISE_FLOOR;
+  int tuneIndex           = DEFAULTFREQINDEX;
+  long stepFineTune       = FAST_TUNE_INCREMENT;
+  int powerLevel          = DEFAULT_POWER_LEVEL;
   int xmtMode             = 0;                        // AFP 09-26-22
   int nrOptionSelect      = 0;                        // 1 byte
   int currentScale        = 1;
@@ -1122,17 +1113,17 @@ extern struct config_t {
   float32_t sidetoneVolume = 20.0;                     // 4 bytes
   long cwTransmitDelay    = 750;                      // 4 bytes
 
-  int activeVFO           = 0;                        // 2 bytes
-  int freqIncrement       = 5;                        // 4 bytes
+  int activeVFO           = 0;
+  int freqIncrement       = 100000;
 
-  int currentBand         = STARTUP_BAND;             // 4 bytes   JJP 7-3-23
-  int currentBandA        = STARTUP_BAND;             // 4 bytes   JJP 7-3-23
-  int currentBandB        = STARTUP_BAND;             // 4 bytes   JJP 7-3-23
-  long currentFreqA       = CURRENT_FREQ_A;           // 4 bytes   JJP 7-3-23
-  long currentFreqB       = CURRENT_FREQ_B;           // 4 bytes   JJP 7-3-23
+  int currentBand         = STARTUP_BAND;
+  int currentBandA        = STARTUP_BAND;
+  int currentBandB        = STARTUP_BAND;
+  long currentFreqA       = CURRENT_FREQ_A;
+  long currentFreqB       = CURRENT_FREQ_B;
   long freqCorrectionFactor = 68000;
 
-  int equalizerRec[EQUALIZER_CELL_COUNT];             // 4 bytes each
+  int equalizerRec[EQUALIZER_CELL_COUNT] = { 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100 };
   int equalizerXmt[EQUALIZER_CELL_COUNT] = {0, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 0, 0};   // Provide equalizer optimized for SSB voice based on Neville's tests.  KF5N November 2, 2023
 
   int currentMicThreshold   = -10;                    // 4 bytes       AFP 09-22-22
@@ -1141,44 +1132,53 @@ extern struct config_t {
   float currentMicRelease   = 2.0;
   int currentMicGain        = -10;
 
-  int switchValues[18];
+  int switchValues[18] = { 924, 870, 817,
+                           769, 713, 669,
+                           616, 565, 513,
+                           459, 407, 356,
+                           298, 242, 183,
+                           131, 67, 10 };
 
-  float LPFcoeff             = 0.0;                   // 4 bytes
-  float NR_PSI               = 0.0;                   // 4 bytes
-  float NR_alpha             = 0.0;                   // 4 bytes
-  float NR_beta              = 0.0;                   // 4 bytes
-  float omegaN               = 0.0;                   // 4 bytes
-  float pll_fmax             = 4000.0;                // 4 bytes
+  float LPFcoeff             = 0.0;
+  float NR_PSI               = 0.0;
+  float NR_alpha             = 0.95;
+  float NR_beta              = 0.85;
+  float omegaN               = 200.0;
+  float pll_fmax             = 4000.0;
 
-  float powerOutCW[NUMBER_OF_BANDS];
-  float powerOutSSB[NUMBER_OF_BANDS];
-  float CWPowerCalibrationFactor[NUMBER_OF_BANDS];    // 0.019;
-  float SSBPowerCalibrationFactor[NUMBER_OF_BANDS];   // 0.008
-  float IQAmpCorrectionFactor[NUMBER_OF_BANDS];
-  float IQPhaseCorrectionFactor[NUMBER_OF_BANDS];
-  float IQXAmpCorrectionFactor[NUMBER_OF_BANDS];
-  float IQXPhaseCorrectionFactor[NUMBER_OF_BANDS];
-  long favoriteFreqs[13];
-  long lastFrequencies[NUMBER_OF_BANDS][2];
+  float powerOutCW[NUMBER_OF_BANDS] = { 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 };
+  float powerOutSSB[NUMBER_OF_BANDS] = { 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03 };
+  float CWPowerCalibrationFactor[NUMBER_OF_BANDS] = { 0.019, 0.019, .0190, .019, .019, .019, .019 };       // 0.019;
+  float SSBPowerCalibrationFactor[NUMBER_OF_BANDS] = { 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008 };  // 0.008
+  float IQAmpCorrectionFactor[NUMBER_OF_BANDS] = { 1, 1, 1, 1, 1, 1, 1 };
+  float IQPhaseCorrectionFactor[NUMBER_OF_BANDS] = { 0, 0, 0, 0, 0, 0, 0 };
+  float IQXAmpCorrectionFactor[NUMBER_OF_BANDS] = { 1, 1, 1, 1, 1, 1, 1 };
+  float IQXPhaseCorrectionFactor[NUMBER_OF_BANDS] = { 0, 0, 0, 0, 0, 0, 0 };
+
+  long favoriteFreqs[13] = { 3560000, 3690000, 7030000, 7200000, 14060000, 14200000, 21060000, 21285000, 28060000, 28365000, 5000000, 10000000, 15000000 };
+  int lastFrequencies[NUMBER_OF_BANDS][2] = { { 3690000, 3560000 }, { 7090000, 7030000 }, { 14285000, 14060000 }, { 18130000, 18096000 }, { 21285000, 21060000 }, { 24950000, 24906000 }, { 28365000, 28060000 } };
 
   long centerFreq               = 7030000L;              // 4 bytes
 
   // New user config data                                JJP 7-3-23
-  char mapFileName[50];
-  char myCall[10];
-  char myTimeZone[10];
+  char mapFileName[50] = MAP_FILE_NAME;
+  char myCall[10] = MY_CALL;
+  char myTimeZone[10] = MY_TIMEZONE;
   int  separationCharacter      = (int) '.';            // JJP 7/25/23
 
   int paddleFlip                = PADDLE_FLIP;          // 0 = right paddle = DAH, 1 = DIT
   int sdCardPresent             = 0;                           //   JJP  7/18/23
 
-  float myLong                  = MY_LON;
-  float myLat                   = MY_LAT;
-  int currentNoiseFloor[NUMBER_OF_BANDS];             // JJP 7/17/23
-  int compressorFlag;                                 // JJP 8/28/23
+  float myLong = MY_LON;
+  float myLat = MY_LAT;
+  int currentNoiseFloor[NUMBER_OF_BANDS] = { 0, 0, 0, 0, 0, 0, 0 };  // JJP 7/17/23
+  int compressorFlag = 0;
 
-} EEPROMData;                                 //  Total:       438 bytes
-
+  int buttonThresholdPressed = 944;   // switchValues[0] + WIGGLE_ROOM
+  int buttonThresholdReleased = 964;  // buttonThresholdPressed + WIGGLE_ROOM
+  int buttonRepeatDelay = 300000;     // Increased to 300000 from 200000 to better handle cheap, wornout buttons.
+} EEPROMData;
+extern config_t defaultConfig;
 
 typedef struct SR_Descriptor
 {
@@ -1454,7 +1454,7 @@ extern int audioVolumeOld;
 extern int audioYPixel[];
 extern int bandswitchPins[];
 extern int button9State;
-extern int buttonRead;
+extern bool buttonInterruptsEnabled;
 extern int calibrateFlag;
 extern int chipSelect;
 extern int countryIndex;
@@ -1508,7 +1508,6 @@ extern int LP_F_help;
 extern int mainTuneEncoder;
 extern int micChoice;
 extern int micGainChoice;
-extern int minPinRead;
 extern int NR_Filter_Value;
 extern int operatingMode;
 extern int n_L;
@@ -1542,10 +1541,8 @@ extern int selectedMapIndex;
 extern int smeterLength;
 extern int spectrumNoiseFloor;
 extern int splitOn;
-extern int stepFineTuneOld;
 extern int switchFilterSideband;    //AFP 1-28-21
 extern int switchThreshholds[];
-extern int syncEEPROM;
 extern int termCursorXpos;
 extern int timerFlag;
 extern float transmitPowerLevel;
@@ -1632,7 +1629,6 @@ extern long currentFreqB;
 extern long currentFreqBOld2;
 extern long currentWPM;
 //extern long frequencyCorrection;
-extern long incrementValues[];
 extern long lastFrequencies[][2];
 extern long notchCenterBin;
 extern long int n_clear;
@@ -2109,6 +2105,7 @@ void EEPROMShow();
 void EEPROMStartup();
 void EEPROMStuffFavorites(unsigned long current[]);
 void EEPROMWrite();
+void EnableButtonInterrupts();
 void EncoderFineTune();
 void EncoderFilter();
 void EncoderCenterTune();
@@ -2271,7 +2268,6 @@ void UpdateAGCField();
 void UpdateCompressionField();
 void UpdateDecoderField();
 void UpdateEEPROMSyncIndicator(int);
-void UpdateEEPROMVersionNumber();
 void UpdateIncrementField();
 void UpdateNoiseField();
 void UpdateNotchField();

@@ -88,7 +88,10 @@ int DrawMenuDisplay()
   menuStatus = 0;                                                       // No primary or secondary menu set
   mainMenuIndex = 0;
   secondaryMenuIndex = 0;
+
+#ifdef DEBUG
   Serial.println("\nInto first function");
+#endif
 
   tft.writeTo(L2);                                                      // Clear layer 2.  KF5N July 31, 2023
   tft.clearMemory();
@@ -129,13 +132,15 @@ int DrawMenuDisplay()
 int SetPrimaryMenuIndex() 
 {
   int i;
-  int resultIndex;
+//  int resultIndex;
   int val;
 
-        Serial.print("Start of SetPrimaryIndex()  mainMenuIndex = ");
-        Serial.print(mainMenuIndex);
-        Serial.print("   secondaryMenuIndex = ");
-        Serial.println(secondaryMenuIndex);
+#ifdef DEBUG
+  Serial.print("Start of SetPrimaryIndex()  mainMenuIndex = ");
+  Serial.print(mainMenuIndex);
+  Serial.print("   secondaryMenuIndex = ");
+  Serial.println(secondaryMenuIndex);
+#endif
 
   while (true) {
 
@@ -156,7 +161,7 @@ int SetPrimaryMenuIndex()
       tft.print(topMenus[mainMenuIndex]);
       tft.fillRect(299, SPECTRUM_TOP_Y + 5, 210, 279, RA8875_BLACK);         // Erase secondary menu list
       tft.setTextColor(DARKGREY);
-      resultIndex = mainMenuIndex;
+//      resultIndex = mainMenuIndex;
       i = 0;
       while (strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {   // Have we read the last entry in secondary menu?
         tft.setTextColor(DARKGREY);                                         // Nope.
@@ -181,15 +186,22 @@ int SetPrimaryMenuIndex()
         MyDelay(50L);
       }
     }
-        Serial.print("End of SetPrimaryIndex()  mainMenuIndex = ");
-        Serial.print(mainMenuIndex);
-        Serial.print("   secondaryMenuIndex = ");
-        Serial.println(secondaryMenuIndex);
+
+#ifdef DEBUG
+  Serial.print("End of SetPrimaryIndex()  mainMenuIndex = ");
+  Serial.print(mainMenuIndex);
+  Serial.print("   secondaryMenuIndex = ");
+  Serial.println(secondaryMenuIndex);
+#endif
 
   }  // End while True
   tft.setTextColor(RA8875_WHITE);
-        Serial.print("Exit SetPrimaryIndex()  mainMenuIndex = ");
-        Serial.println(mainMenuIndex);
+
+#ifdef DEBUG
+  Serial.print("Exit SetPrimaryIndex()  mainMenuIndex = ");
+  Serial.println(mainMenuIndex);
+#endif
+
   return mainMenuIndex;
 }
 

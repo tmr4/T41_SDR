@@ -471,9 +471,7 @@ dispSc displayScale[] =  //r *dbText,dBScale, pixelsPerDB, baseOffset, offsetInc
 //======================================== Global variables declarations for Quad Oscillator 2 ===============================================
 long NCOFreq;
 
-int stepFineTuneOld = 0;
-long stepFineTune = 50UL;
-long stepFineTune2 = 50UL;
+long stepFineTune;
 
 float32_t NCO_INC;
 
@@ -886,7 +884,6 @@ int bandswitchPins[] = {
   0    // 10M
 };
 int button9State;
-int buttonRead = 0;
 int calibrateFlag = 0;
 int calTypeFlag = 0;
 int calOnFlag = 0;
@@ -915,7 +912,7 @@ int filterHiPositionMarkerOld;
 int FLoCutOld;
 int FHiCutOld;
 int freqCalibration = -1000;
-int freqIncrement = DEFAULTFREQINCREMENT;
+int freqIncrement;
 int gapAtom;  // Space between atoms
 int gapChar;  // Space between characters
 int hang_counter = 0;
@@ -937,7 +934,6 @@ int LP_F_help = 3500;
 int mainTuneEncoder;
 int micChoice;
 int micGainChoice;
-int minPinRead = 1024;
 int NR_Index = 0;
 int n_L;
 int n_R;
@@ -965,13 +961,10 @@ int pos_y_smeter = (spectrum_y - 12);
 int rfGainAllBands = 1;
 
 int sdCardPresent = 0;  // Do they have an micro SD card installed?
-int secondaryMenuChoiceMade;
 int smeterLength;
 int spectrumNoiseFloor = SPECTRUM_NOISE_FLOOR;
 int splitOn;
 int switchFilterSideband = 0;
-
-int syncEEPROM;
 
 int termCursorXpos = 0;
 float transmitPowerLevel;
@@ -979,7 +972,7 @@ int x2 = 0;  //AFP
 
 int zoom_sample_ptr = 0;
 int zoomIndex = 1;                 //AFP 9-26-22
-int tuneIndex = DEFAULTFREQINDEX;  //AFP 2-10-21
+int tuneIndex;
 int wtf;
 int updateDisplayFlag = 1;
 int xrState;  // Is the T41 in xmit or rec state? 1 = rec, 0 = xmt
@@ -1045,7 +1038,7 @@ long currentWPM = 15L;
 long favoriteFrequencies[13];
 
 //long frequencyCorrection;
-long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
+extern long incrementValues[];
 long int n_clear;
 long lastFrequencies[NUMBER_OF_BANDS][2];
 long notchPosOld;
@@ -1676,6 +1669,8 @@ void MyDelay(unsigned long millisWait)
   while (millis() - now < millisWait)
     ;  // Twiddle thumbs until delay ends...
 }
+
+
 /*****
   Purpose: to collect array inits in one place
 
@@ -1898,6 +1893,8 @@ void InitializeDataArrays() {
   // this starts the measurements
   TEMPMON_TEMPSENSE0 |= 0x2U;
 }
+
+
 /*****
   Purpose: The initial screen display on startup. Expect this to be customized
 
@@ -1908,33 +1905,221 @@ void InitializeDataArrays() {
     void
 *****/
 void Splash() {
-  int centerCall;
+  int centerTxt;
+  int line1_Y = YPIXELS / 10;
+  int line2_Y = YPIXELS / 3;
+  int line3_Y = line1_Y + 55;
+  int line4_Y = YPIXELS / 4 + 80;
+  int line5_Y = line4_Y + 40;
+  int line6_Y = YPIXELS / 2 + 110;
+  int line7_Y = line6_Y + 50;
+
+  // 50 char max for 800x480 display with font scale = 1:
+  //                     "          1         2         3         4"
+  //                     "01234567890123456789012345678901234567890123456789";
+  const char*line1Txt = "T41-EP Receiver";
+  const char*line2Txt = "By: Terrance Robertson, KN6ZDE";
+  const char*line3Txt = "Version: "; // + VERSION
+  const char*line4Txt = "Based on the T41-EP code by:";
+  const char*line5Txt = "Al Peter, AC8GY and Jack Purdum, W8TEE";
+  const char*line6Txt = "Property of:"; // line 7 MY_CALL
+
   tft.fillWindow(RA8875_BLACK);
+
   tft.setFontScale(3);
   tft.setTextColor(RA8875_GREEN);
-  tft.setCursor(XPIXELS / 3 - 120, YPIXELS / 10);
-  tft.print("T41-EP SDR Radio");
-  tft.setTextColor(RA8875_MAGENTA);
-  tft.setCursor(XPIXELS / 2 - 60, YPIXELS / 10 + 55);
-  tft.setFontScale(2);
-  tft.print(VERSION);
+  centerTxt = (XPIXELS - strlen(line1Txt) * tft.getFontWidth()) / 2;
+  tft.setCursor(centerTxt, line1_Y);
+  tft.print(line1Txt);
+
   tft.setFontScale(1);
   tft.setTextColor(RA8875_YELLOW);
-  tft.setCursor(XPIXELS / 2 - (2 * tft.getFontWidth() / 2), YPIXELS / 3);
-  tft.print("By");
+  centerTxt = (XPIXELS - strlen(line2Txt) * tft.getFontWidth()) / 2;
+  tft.setCursor(centerTxt, line2_Y);
+  tft.print(line2Txt);
+
+  tft.setFontScale(2);
+  tft.setTextColor(RA8875_MAGENTA);
+  centerTxt = (XPIXELS - (strlen(line3Txt) + strlen(VERSION)) * tft.getFontWidth()) / 2;
+  tft.setCursor(centerTxt, line3_Y);
+  tft.print("Version: ");
+  tft.print(VERSION);
+
   tft.setFontScale(1);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor((XPIXELS / 2) - (38 * tft.getFontWidth() / 2) + 15, YPIXELS / 4 + 80);  // 38 = letters in string
-  tft.print("Al Peter, AC8GY     Jack Purdum, W8TEE");
-  tft.setCursor((XPIXELS / 2) - (12 * tft.getFontWidth()) / 2, YPIXELS / 2 + 110);  // 12 = letters in "Property of:"
-  tft.print("Property of:");
+  centerTxt = (XPIXELS - strlen(line4Txt) * tft.getFontWidth()) / 2;
+  tft.setCursor(centerTxt, line4_Y);
+  tft.print(line4Txt);
+  centerTxt = (XPIXELS - strlen(line5Txt) * tft.getFontWidth()) / 2;
+  tft.setCursor(centerTxt, line5_Y);
+  tft.print(line5Txt);
+
+  centerTxt = (XPIXELS - strlen(line6Txt) * tft.getFontWidth()) / 2;
+  tft.setCursor(centerTxt, line6_Y);
+  tft.print(line6Txt);
+
   tft.setFontScale(2);
   tft.setTextColor(RA8875_GREEN);
-  centerCall = (XPIXELS - strlen(MY_CALL) * tft.getFontWidth()) / 2;
-  tft.setCursor(centerCall, YPIXELS / 2 + 160);
+  centerTxt = (XPIXELS - strlen(MY_CALL) * tft.getFontWidth()) / 2;
+  tft.setCursor(centerTxt, line7_Y);
   tft.print(MY_CALL);
+
   MyDelay(SPLASH_DELAY);
   tft.fillWindow(RA8875_BLACK);
+}
+
+// temp function to load EEPROM data into operating variables
+void LoadOpVars() {
+  AGCMode = EEPROMData.AGCMode;
+  audioVolume = EEPROMData.audioVolume;
+  rfGainAllBands = EEPROMData.rfGainAllBands;
+  spectrumNoiseFloor = EEPROMData.spectrumNoiseFloor;
+  tuneIndex = EEPROMData.tuneIndex;
+  stepFineTune = EEPROMData.stepFineTune;
+  transmitPowerLevel = EEPROMData.powerLevel;
+  xmtMode = EEPROMData.xmtMode;
+  nrOptionSelect = EEPROMData.nrOptionSelect;
+  currentScale = EEPROMData.currentScale;
+  spectrum_zoom = EEPROMData.spectrum_zoom;
+  spectrum_display_scale = EEPROMData.spectrum_display_scale;
+
+  CWFilterIndex = EEPROMData.CWFilterIndex;
+  paddleDit = EEPROMData.paddleDit;
+  paddleDah = EEPROMData.paddleDah;
+  decoderFlag = EEPROMData.decoderFlag;
+  keyType = EEPROMData.keyType;
+  currentWPM = EEPROMData.currentWPM;
+  sidetoneVolume = EEPROMData.sidetoneVolume;
+  cwTransmitDelay = EEPROMData.cwTransmitDelay;
+
+  activeVFO = EEPROMData.activeVFO;
+  freqIncrement = EEPROMData.freqIncrement;
+
+  currentBand = EEPROMData.currentBand;
+  currentBandA = EEPROMData.currentBandA;
+  currentBandB = EEPROMData.currentBandB;
+//  currentFreqA = EEPROMData.lastFrequencies[currentBandA][0];
+//  currentFreqB = EEPROMData.lastFrequencies[currentBandB][1];
+  currentFreqA = EEPROMData.currentFreqA;
+  currentFreqB = EEPROMData.currentFreqB;
+  freqCorrectionFactor = EEPROMData.freqCorrectionFactor;
+
+  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+    recEQ_Level[i] = EEPROMData.equalizerRec[i];
+  }
+
+  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+    xmtEQ_Level[i] = EEPROMData.equalizerXmt[i];
+  }
+
+  currentMicThreshold = EEPROMData.currentMicThreshold;
+  currentMicCompRatio = EEPROMData.currentMicCompRatio;
+  currentMicAttack = EEPROMData.currentMicAttack;
+  currentMicRelease = EEPROMData.currentMicRelease;
+  currentMicGain = EEPROMData.currentMicGain;
+
+  //  Note: switch values are read and written to EEPROM only
+  switchThreshholds[0] = EEPROMData.switchValues[0];
+  switchThreshholds[1] = EEPROMData.switchValues[1];
+  switchThreshholds[2] = EEPROMData.switchValues[2];
+  switchThreshholds[3] = EEPROMData.switchValues[3];
+  switchThreshholds[4] = EEPROMData.switchValues[4];
+  switchThreshholds[5] = EEPROMData.switchValues[5];
+  switchThreshholds[6] = EEPROMData.switchValues[6];
+  switchThreshholds[7] = EEPROMData.switchValues[7];
+  switchThreshholds[8] = EEPROMData.switchValues[8];
+  switchThreshholds[9] = EEPROMData.switchValues[9];
+  switchThreshholds[10] = EEPROMData.switchValues[10];
+  switchThreshholds[11] = EEPROMData.switchValues[11];
+  switchThreshholds[12] = EEPROMData.switchValues[12];
+  switchThreshholds[13] = EEPROMData.switchValues[13];
+  switchThreshholds[14] = EEPROMData.switchValues[14];
+  switchThreshholds[15] = EEPROMData.switchValues[15];
+  switchThreshholds[16] = EEPROMData.switchValues[16];
+  switchThreshholds[17] = EEPROMData.switchValues[17];
+
+  LPFcoeff = EEPROMData.LPFcoeff;
+  NR_PSI = EEPROMData.NR_PSI;
+  NR_alpha = EEPROMData.NR_alpha;
+  NR_beta = EEPROMData.NR_beta;
+  omegaN = EEPROMData.omegaN;
+  pll_fmax = EEPROMData.pll_fmax;
+
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    powerOutCW[i] = EEPROMData.powerOutCW[i];
+  }
+
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    powerOutSSB[i] = EEPROMData.powerOutSSB[i];
+  }
+
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    CWPowerCalibrationFactor[i] = EEPROMData.CWPowerCalibrationFactor[i];
+  }
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    SSBPowerCalibrationFactor[i] = EEPROMData.SSBPowerCalibrationFactor[i];
+  }
+
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    IQAmpCorrectionFactor[i] = EEPROMData.IQAmpCorrectionFactor[i];
+  }
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    IQPhaseCorrectionFactor[i] = EEPROMData.IQPhaseCorrectionFactor[i];
+  }
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    IQXAmpCorrectionFactor[i] = EEPROMData.IQXAmpCorrectionFactor[i];
+  }
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    IQXPhaseCorrectionFactor[i] = EEPROMData.IQXPhaseCorrectionFactor[i];
+  }
+  favoriteFrequencies[0] = EEPROMData.favoriteFreqs[0];
+  favoriteFrequencies[1] = EEPROMData.favoriteFreqs[1];
+  favoriteFrequencies[2] = EEPROMData.favoriteFreqs[2];
+  favoriteFrequencies[3] = EEPROMData.favoriteFreqs[3];
+  favoriteFrequencies[4] = EEPROMData.favoriteFreqs[4];
+  favoriteFrequencies[5] = EEPROMData.favoriteFreqs[5];
+  favoriteFrequencies[6] = EEPROMData.favoriteFreqs[6];
+  favoriteFrequencies[7] = EEPROMData.favoriteFreqs[7];
+  favoriteFrequencies[8] = EEPROMData.favoriteFreqs[8];
+  favoriteFrequencies[9] = EEPROMData.favoriteFreqs[9];
+  favoriteFrequencies[10] = EEPROMData.favoriteFreqs[10];
+  favoriteFrequencies[11] = EEPROMData.favoriteFreqs[11];
+  favoriteFrequencies[12] = EEPROMData.favoriteFreqs[12];
+
+  lastFrequencies[0][0] = EEPROMData.lastFrequencies[0][0];
+  lastFrequencies[1][0] = EEPROMData.lastFrequencies[1][0];
+  lastFrequencies[2][0] = EEPROMData.lastFrequencies[2][0];
+  lastFrequencies[3][0] = EEPROMData.lastFrequencies[3][0];
+  lastFrequencies[4][0] = EEPROMData.lastFrequencies[4][0];
+  lastFrequencies[5][0] = EEPROMData.lastFrequencies[5][0];
+  lastFrequencies[6][0] = EEPROMData.lastFrequencies[6][0];
+
+  lastFrequencies[0][1] = EEPROMData.lastFrequencies[0][1];
+  lastFrequencies[1][1] = EEPROMData.lastFrequencies[1][1];
+  lastFrequencies[2][1] = EEPROMData.lastFrequencies[2][1];
+  lastFrequencies[3][1] = EEPROMData.lastFrequencies[3][1];
+  lastFrequencies[4][1] = EEPROMData.lastFrequencies[4][1];
+  lastFrequencies[5][1] = EEPROMData.lastFrequencies[5][1];
+  lastFrequencies[6][1] = EEPROMData.lastFrequencies[6][1];
+
+//  centerFreq = EEPROMData.lastFrequencies[currentBand][activeVFO];
+  centerFreq = EEPROMData.centerFreq;
+//  TxRxFreq = centerFreq;  // Need to assign TxRxFreq here or numerous subtle frequency bugs will happen.  KF5N August 7, 2023
+
+  strncpy(mapFileName, EEPROMData.mapFileName, 50);
+  strncpy(myCall, EEPROMData.myCall, 10);
+  strncpy(myTimeZone, EEPROMData.myTimeZone, 10);
+  freqSeparationChar = EEPROMData.separationCharacter;
+
+  paddleFlip = EEPROMData.paddleFlip;
+  sdCardPresent = EEPROMData.sdCardPresent;
+
+  myLat = EEPROMData.myLat;
+  myLong = EEPROMData.myLong;
+  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+    currentNoiseFloor[i] = EEPROMData.currentNoiseFloor[i];
+  }
+  compressorFlag = EEPROMData.compressorFlag;
 }
 
 //===============================================================================================================================
@@ -1950,6 +2135,7 @@ void Splash() {
 *****/
 void setup() {
   Serial.begin(9600);
+
   setSyncProvider(getTeensy3Time);  // get TIME from real time clock with 3V backup battery
   setTime(now());
   Teensy3Clock.set(now());  // set the RTC
@@ -2037,48 +2223,28 @@ void setup() {
 
   sdCardPresent = InitializeSDCard();  // Is there an SD card that can be initialized?
 
-  // =============== Into EEPROM section =================
-  EEPROMStartup();
+  // =============== EEPROM section =================
 
-  syncEEPROM = 1;  // We've read current EEPROM values
+  EEPROMStartup();
+  LoadOpVars(); // v049.2K did this; T41EEE does not
+
 #ifdef DEBUG
   EEPROMShow();
 #endif
 
-  // Push and hold a button at power up to activate switch matrix calibration.
-  // Uncomment this code block to enable this feature.  Len KD0RC
-  /* Remove this line and the matching block comment line below to activate.
-  minPinRead = analogRead(BUSY_ANALOG_PIN);
-  if (minPinRead < NOTHING_TO_SEE_HERE) {
-    tft.fillWindow(RA8875_BLACK);
-    tft.setFontScale(1);
-    tft.setTextColor(RA8875_GREEN);
-    tft.setCursor(10, 10);
-    tft.print("Release button to start calibration.");
-    MyDelay(2000);
-    SaveAnalogSwitchValues();
-    EEPROMRead();  // Call to reset switch matrix values
-  }                // KD0RC end
-  Remove this line and the matching block comment line above to activate. */
+  // Enable switch matrix button interrupts (from T41EEE.3)
+  EnableButtonInterrupts();
 
   spectrum_x = 10;
   spectrum_y = 150;
   xExpand = 1.4;
   h = 135;
-  nrOptionSelect = 0;
 
   Q_in_L.begin();  //Initialize receive input buffers
   Q_in_R.begin();
   MyDelay(100L);
 
-  freqIncrement = incrementValues[tuneIndex];
   NR_Index = nrOptionSelect;
-  NCOFreq = 0L;
-  activeVFO = EEPROMData.activeVFO;        // 2 bytes
-  audioVolume = EEPROMData.audioVolume;    // 4 bytes
-  currentBand = EEPROMData.currentBand;    // 4 bytes
-  currentBandA = EEPROMData.currentBandA;  // 4 bytes
-  currentBandB = EEPROMData.currentBandB;
 
   // ========================  End set up of Parameters from EEPROM data ===============
   NCOFreq = 0;
@@ -2101,6 +2267,7 @@ void setup() {
   TxRxFreq = centerFreq + NCOFreq;
 
   InitializeDataArrays();
+
   splitOn = 0;  // Split VFO not active
   SetupMode(bands[currentBand].mode);
 

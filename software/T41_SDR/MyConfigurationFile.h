@@ -1,6 +1,6 @@
 //====================== User Specific Preferences =============
 
-#define DEBUG 		                                                        // Uncommented for debugging, comment out for normal use
+//#define DEBUG 		                                                        // Uncommented for debugging, comment out for normal use
 #define DECODER_STATE							0						                              // 0 = off, 1 = on
 #define DEFAULT_KEYER_WPM   			15                                        // Startup value for keyer wpm
 #define FREQ_SEP_CHARACTER  			'.'					                              // Some may prefer period, space, or combo
@@ -31,9 +31,10 @@
 //====================== System specific ===============
 #define CURRENT_FREQ_A            7200000                                   // VFO_A
 #define CURRENT_FREQ_B            7030000                                   // VFO_B
-#define DEFAULTFREQINCREMENT 		  4                                         // Default: (10, 50, 100, 250, 1000, 10000Hz)
+                                                                            //            0   1   2     3     4      5       6        7
+#define DEFAULTFREQINDEX          7                                         // Default: (10, 50, 100, 250, 1000, 10000, 100000, 1000000)
 #define DEFAULT_POWER_LEVEL       10                                        // Startup power level. Probably 20 for most people
-#define FAST_TUNE_INCREMENT    	  1			 		                                // Default from above for fine tune
+#define FAST_TUNE_INCREMENT    	  500			 		                    // Default from above for fine tune
 #define SPLASH_DELAY              4000L                                     // How long to show Splash screen. Use 1000 for testing, 4000 normally
 #define STARTUP_BAND        			1                                         // This is the 40M band. see around line 575 in SDT.h
 

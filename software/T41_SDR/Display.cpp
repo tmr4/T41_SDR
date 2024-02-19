@@ -977,7 +977,6 @@ void UpdateInfoWindow() {
   DisplayIncrementField();
   UpdateCompressionField();
   UpdateDecoderField();
-  UpdateEEPROMSyncIndicator(syncEEPROM);
   UpdateNoiseField();
   UpdateNotchField();
   UpdateSDIndicator(sdCardPresent);
