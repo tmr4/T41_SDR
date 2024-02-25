@@ -66,14 +66,33 @@ struct band bands[NUMBER_OF_BANDS] = {  //AFP Changed 1-30-21 // G0ORX Changed A
 const char *topMenus[] = { "CW Options", "RF Set", "VFO Select",
                            "EEPROM", "AGC", "Spectrum Options",
                            "Noise Floor", "Mic Gain", "Mic Comp",
-                           "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing" };
+                           "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing", "Cancel" };
 
 const char *CWFilter[] = { "0.8kHz", "1.0kHz", "1.3kHz", "1.8kHz", "2.0kHz", " Off " };
 
 int (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
                            &EEPROMOptions, &AGCOptions, &SpectrumOptions,
                            &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
-                           &EqualizerRecOptions, &EqualizerXmtOptions, &IQOptions, &BearingMaps };
+                           &EqualizerRecOptions, &EqualizerXmtOptions, &IQOptions, &BearingMaps, &Cancel };
+
+const char *secondaryChoices[][8] = {
+  { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Vol", "Xmit Delay", "Cancel" },
+  { "Power level", "Gain", "Cancel" },
+  { "VFO A", "VFO B", "Split", "Cancel" },
+  { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite", "EEPROM-->SD", "SD-->EEPROM", "SD Dump", "Cancel" },
+  { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" },
+  { "20 dB/unit", "10 dB/unit", " 5 dB/unit", " 2 dB/unit", " 1 dB/unit", "Cancel" },
+  { "Set floor", "Cancel" },
+  { "Set Mic Gain", "Cancel" },
+  { "On", "Off", "Set Threshold", "Set Ratio", "Set Attack", "Set Decay", "Cancel" },
+  { "On", "Off", "EQSet", "Cancel" },
+  { "On", "Off", "EQSet", "Cancel" },
+  { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" },
+  { "Set Prefix", "Cancel" },
+  {}
+};
+
+const int secondaryMenuCount[] {7, 3, 4, 8, 6, 6, 2, 2, 7, 4, 4, 6, 2};
 
 const char *labels[] = { "Select", "Menu Up", "Band Up",
                          "Zoom", "Menu Dn", "Band Dn",
@@ -993,8 +1012,8 @@ unsigned tcr5;
 unsigned tcr2div;
 
 int32_t FFT_shift = 2048;
-long long freqCorrectionFactor = 68000LL;
-long long freqCorrectionFactorOld = 68000LL;
+long long freqCorrectionFactor; // = 68000LL;
+long long freqCorrectionFactorOld; // = 68000LL;
 int32_t IFFreq = SR[SampleRate].rate / 4;  // IF (intermediate) frequency
 int32_t IF_FREQ1 = 0;
 int32_t mainMenuIndex = START_MENU;  // Done so we show menu[0] at startup

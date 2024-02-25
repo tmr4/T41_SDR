@@ -1,7 +1,7 @@
 #include "SDT.h"
 
 /*****
-  Purpose: To process a menu increase button push
+  Purpose: To process a menu down button push
 
   Parameter list:
     void
@@ -9,24 +9,29 @@
   Return value:
     void
 *****/
-void ButtonMenuIncrease() {
-  if (menuStatus == PRIMARY_MENU_ACTIVE) {
-    mainMenuIndex++;
-    if (mainMenuIndex == TOP_MENU_COUNT) {  // At last menu option, so...
-      mainMenuIndex = 0;                    // ...wrap around to first menu option
-    }
-  } else {
-    if (menuStatus == SECONDARY_MENU_ACTIVE) {
+void ButtonMenuDown() {
+  switch (menuStatus) {
+    case PRIMARY_MENU_ACTIVE:
+      mainMenuIndex++;
+      if (mainMenuIndex == TOP_MENU_COUNT) {  // At last menu option, so...
+        mainMenuIndex = 0;                    // ...wrap around to first menu option
+      }
+      break;
+
+    case SECONDARY_MENU_ACTIVE:
       secondaryMenuIndex++;
       if (secondaryMenuIndex == subMenuMaxOptions) {  // Same here...
         secondaryMenuIndex = 0;
       }
-    }
+      break;
+
+    default:
+      break;
   }
 }
 
 /*****
-  Purpose: To process a menu decrease button push
+  Purpose: To process a menu up button push
 
   Parameter list:
     void
@@ -34,19 +39,24 @@ void ButtonMenuIncrease() {
   Return value:
     void
 *****/
-void ButtonMenuDecrease() {
-  if (menuStatus == PRIMARY_MENU_ACTIVE) {
-    mainMenuIndex--;
-    if (mainMenuIndex < 0) {               // At last menu option, so...
-      mainMenuIndex = TOP_MENU_COUNT - 1;  // ...wrap around to first menu option
-    }
-  } else {
-    if (menuStatus == SECONDARY_MENU_ACTIVE) {
+void ButtonMenuUp() {
+  switch (menuStatus) {
+    case PRIMARY_MENU_ACTIVE:
+      mainMenuIndex--;
+      if (mainMenuIndex < 0) {               // At last menu option, so...
+        mainMenuIndex = TOP_MENU_COUNT - 1;  // ...wrap around to first menu option
+      }
+      break;
+
+    case SECONDARY_MENU_ACTIVE:
       secondaryMenuIndex--;
       if (secondaryMenuIndex < 0) {  // Same here...
         secondaryMenuIndex = subMenuMaxOptions - 1;
       }
-    }
+      break;
+
+    default:
+      break;
   }
 }
 //==================  AFP 09-27-22
@@ -415,12 +425,13 @@ int ButtonSetNoiseFloor() {
 
   tft.setFontScale((enum RA8875tsize)1);
   ErasePrimaryMenu();
-  tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 120, CHAR_HEIGHT, RA8875_MAGENTA);
+//  tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 120, CHAR_HEIGHT, RA8875_MAGENTA);
+  tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_MAGENTA);
   //tft.setTextColor(RA8875_WHITE);
   tft.setTextColor(RA8875_BLACK);     // JJP 7/17/23
-  tft.setCursor(SECONDARY_MENU_X - 98, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X - 98, MENUS_Y);
   tft.print("Pixels above axis:");
-  tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
   tft.print(currentNoiseFloor[currentBand]);
   MyDelay(150L);
 
@@ -429,7 +440,7 @@ int ButtonSetNoiseFloor() {
       floor += filterEncoderMove;  // It moves the display
       floor = DrawNewFloor(floor);
       tft.fillRect(SECONDARY_MENU_X + 190, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
       tft.print(floor);
       filterEncoderMove = 0;
     }
@@ -662,7 +673,7 @@ void ButtonFrequencyEntry() {
   tft.fillRect(SECONDARY_MENU_X + 20, MENUS_Y, EACH_MENU_WIDTH + 10, CHAR_HEIGHT, RA8875_MAGENTA);
   //tft.setTextColor(RA8875_WHITE);
   tft.setTextColor(RA8875_BLACK);       // JJP 7/17/23
-  tft.setCursor(SECONDARY_MENU_X + 21, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 21, MENUS_Y);
   tft.print("kHz or MHz:");
   tft.setFontScale((enum RA8875tsize)0);
   tft.setCursor(WATERFALL_LEFT_X + 50, SPECTRUM_TOP_Y + 260);
@@ -738,8 +749,8 @@ void ButtonFrequencyEntry() {
       }
       tft.setTextColor(RA8875_WHITE);
       tft.setFontScale((enum RA8875tsize)1);
-      tft.fillRect(SECONDARY_MENU_X + 195, MENUS_Y + 1, 85, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y + 1);
+      tft.fillRect(SECONDARY_MENU_X + 195, MENUS_Y, 85, CHAR_HEIGHT, RA8875_MAGENTA);
+      tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
       tft.print(strF);
       MyDelay(250);  // only for analogue switch matrix
     }

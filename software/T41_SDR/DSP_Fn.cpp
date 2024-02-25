@@ -606,9 +606,9 @@ void SetCompressionLevel()
 
   tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y);
   tft.print("Compression:");
-  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
   tft.print(currentMicThreshold);
 
   while (true) {
@@ -620,7 +620,7 @@ void SetCompressionLevel()
         currentMicThreshold = 0;
 
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicThreshold);
       filterEncoderMove = 0;
     }
@@ -655,9 +655,9 @@ void SetCompressionRatio()
 
   tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y);
   tft.print("Comp Ratio:");
-  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
   tft.print(currentMicCompRatio, 1);
 
   while (true) {
@@ -669,7 +669,7 @@ void SetCompressionRatio()
         currentMicCompRatio = 1;
 
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicCompRatio, 1);
       filterEncoderMove = 0;
     }
@@ -704,9 +704,9 @@ void SetCompressionAttack()
 
   tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y);
   tft.print("Attack Sec:");
-  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
   tft.print(currentMicAttack, 1);
 
   while (true) {
@@ -718,7 +718,7 @@ void SetCompressionAttack()
         currentMicAttack = .1;
 
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicAttack, 1);
       filterEncoderMove = 0;
     }
@@ -754,9 +754,9 @@ void SetCompressionRelease()
 
   tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X  - 48, MENUS_Y);
   tft.print("Decay Sec:");
-  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
   tft.print(currentMicRelease, 1);
 
   while (true) {
@@ -768,7 +768,7 @@ void SetCompressionRelease()
         currentMicRelease = 0.1;
 
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicRelease, 1);
       filterEncoderMove = 0;
     }

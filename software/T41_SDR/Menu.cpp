@@ -1,5 +1,9 @@
 #include "SDT.h"
 
+int Cancel() {
+  return 0;
+}
+
 /*
 const char *topMenus[] = { "Bearing", "CW Options", "RF Set", "VFO Select",
                            "EEPROM", "AGC", "Spectrum Options",
@@ -23,22 +27,25 @@ int (*functionPtr[])() = { &BearingMaps, &CWOptions, &RFOptions, &VFOSelect,
     void
 *****/
 void ShowMenu(const char *menu[], int where) {
-  tft.setFontScale((enum RA8875tsize)1);
+  tft.setFontScale( (enum RA8875tsize) 1);
 
-  if (menuStatus == NO_MENUS_ACTIVE)  // No menu selected??
-    NoActiveMenu();
+  if (menuStatus == NO_MENUS_ACTIVE) {
+    NoActiveMenu(); // display error message if no menu selected
+  }
 
   if (where == PRIMARY_MENU) {                                             // Should print on left edge of top line
-    tft.fillRect(PRIMARY_MENU_X, MENUS_Y, 300, CHAR_HEIGHT, RA8875_BLUE);  // Top-left of display
-    tft.setCursor(5, 0);
+    tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_BLUE);  // Top-left of display
+    tft.setCursor(PRIMARY_MENU_X + 1, MENUS_Y);
     tft.setTextColor(RA8875_WHITE);
     tft.print(*menu);  // Primary Menu
   } else {
-    tft.fillRect(SECONDARY_MENU_X, MENUS_Y, 300, CHAR_HEIGHT, RA8875_GREEN);  // Right of primary display
-    tft.setCursor(35, 0);
-    tft.setTextColor(RA8875_WHITE);
+    tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Right of primary display
+    tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
+//    tft.setTextColor(RA8875_WHITE);
+    tft.setTextColor(RA8875_BLACK);
     tft.print(*menu);  // Secondary Menu
   }
+
   return;
 }
 
@@ -50,22 +57,7 @@ void ShowMenu(const char *menu[], int where) {
 
   Return value: index number for the selected menu
 *****/
-const char *secondaryChoices[][8] = {
-  { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Vol", "Xmit Delay", "Cancel" },
-  { "Power level", "Gain", "Cancel" },
-  { "VFO A", "VFO B", "Split", "Cancel" },
-  { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite", "EEPROM-->SD", "SD-->EEPROM", "SD Dump", "Cancel" },
-  { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" },
-  { "20 dB/unit", "10 dB/unit", " 5 dB/unit", " 2 dB/unit", " 1 dB/unit", "Cancel" },
-  { "Set floor", "Cancel" },
-  { "Set Mic Gain", "Cancel" },
-  { "On", "Off", "Set Threshold", "Set Ratio", "Set Attack", "Set Decay", "Cancel" },
-  { "On", "Off", "EQSet", "Cancel" },
-  { "On", "Off", "EQSet", "Cancel" },
-  { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" },
-  { "Set Prefix", "Cancel" }
-};
-
+/*
 const char *secondaryFunctions[][8] = {
   { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Vol", "Xmit Delay", "Cancel" },
   { "Power level", "Gain", "Cancel" },
@@ -81,6 +73,7 @@ const char *secondaryFunctions[][8] = {
   { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" },
   { "Set Prefix", "Cancel" }
 };
+*/
 
 int DrawMenuDisplay() 
 {

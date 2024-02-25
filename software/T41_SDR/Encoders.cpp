@@ -303,9 +303,9 @@ int SetWPM() {
 
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
   tft.print("current WPM:");
-  tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
   tft.print(currentWPM);
 
   while (true) {
@@ -317,8 +317,8 @@ int SetWPM() {
       else if (lastWPM > MAX_WPM)
         lastWPM = MAX_WPM;
 
-      tft.fillRect(SECONDARY_MENU_X + 200, MENUS_Y + 1, 50, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y + 1);
+      tft.fillRect(SECONDARY_MENU_X + 200, MENUS_Y, 50, CHAR_HEIGHT, RA8875_MAGENTA);
+      tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
       tft.print(lastWPM);
       filterEncoderMove = 0;
     }
@@ -358,9 +358,9 @@ long SetTransmitDelay()  // new function JJP 9/1/22
 
   tft.fillRect(SECONDARY_MENU_X - 150, MENUS_Y, EACH_MENU_WIDTH + 150, CHAR_HEIGHT, RA8875_MAGENTA);  // scoot left cuz prompt is long
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X - 149, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X - 149, MENUS_Y);
   tft.print("current delay:");
-  tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y);
   tft.print(cwTransmitDelay);
 
   while (true) {
@@ -369,8 +369,8 @@ long SetTransmitDelay()  // new function JJP 9/1/22
       if (lastDelay < 0L)
         lastDelay = 250L;
 
-      tft.fillRect(SECONDARY_MENU_X + 80, MENUS_Y + 1, 200, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y + 1);
+      tft.fillRect(SECONDARY_MENU_X + 80, MENUS_Y, 200, CHAR_HEIGHT, RA8875_MAGENTA);
+      tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y);
       tft.print(lastDelay);
       filterEncoderMove = 0;
     }
@@ -464,8 +464,12 @@ FASTRUN  // Causes function to be allocated in RAM1 at startup for fastest perfo
       // filter_pos = last_filter_pos - 5 * filterEncoderMove;   // AFP 10-22-22
       break;
   }
-  Serial.print("filterEncoderMove = ");
-  Serial.println(filterEncoderMove);
+
+  #ifdef DEBUG
+    Serial.print("filterEncoderMove = ");
+    Serial.println(filterEncoderMove);
+  #endif
+
   if (calibrateFlag == 0) {                                // AFP 10-22-22
     filter_pos = last_filter_pos - 5 * filterEncoderMove;  // AFP 10-22-22
   }                                                        // AFP 10-22-22

@@ -2081,7 +2081,7 @@ void EEPROMStartup() {
   // If the flow proceeds here, it is time to initialize some things.
   // The rest of the code will require a switch matrix calibration, and will write the EEPROMData struct to EEPROM.
 
-  SaveAnalogSwitchValues();         // Calibrate the switch matrix.
+//  SaveAnalogSwitchValues();         // Calibrate the switch matrix.
   EEPROMWriteSize(stackStructSize); // Write the size of the struct to EEPROM.
 
   EEPROMWrite();  // Write the EEPROMData struct to non-volatile memory.

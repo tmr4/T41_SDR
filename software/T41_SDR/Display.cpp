@@ -1570,7 +1570,7 @@ void EraseSpectrumWindow() {
 *****/
 void EraseMenus() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, BOTH_MENU_WIDTHS, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                            // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                            // Change menu state
 }
 /*****
   Purpose: To erase primary menu from display
@@ -1582,7 +1582,7 @@ void EraseMenus() {
 *****/
 void ErasePrimaryMenu() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                           // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                           // Change menu state
 }
 /*****
   Purpose: To erase secondary menu from display
@@ -1594,7 +1594,7 @@ void ErasePrimaryMenu() {
 *****/
 void EraseSecondaryMenu() {
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                             // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                             // Change menu state
 }
 
 /*****

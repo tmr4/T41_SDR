@@ -29,7 +29,7 @@
 //#define SD_CARD_PRESENT         0                                         //   JJP  7/18/23
 
 //====================== System specific ===============
-#define CURRENT_FREQ_A            7200000                                   // VFO_A
+#define CURRENT_FREQ_A            7048000                                   // VFO_A
 #define CURRENT_FREQ_B            7030000                                   // VFO_B
                                                                             //            0   1   2     3     4      5       6        7
 #define DEFAULTFREQINDEX          7                                         // Default: (10, 50, 100, 250, 1000, 10000, 100000, 1000000)
@@ -46,3 +46,5 @@
 // ==== Pick one of the following encoder configurations
 //#define                           NORM_ENCODER
 #define                           FOURSQRP
+
+#define USE_FULL_MENU             0   // 0 - use top line menus; 1 - use full screen menus

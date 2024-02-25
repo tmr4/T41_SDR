@@ -200,62 +200,109 @@ int ReadSelectedPushButton() {
   Return value;
     void
 *****/
-void ExecuteButtonPress(int val) 
-{
-  /*
-  if (val == 1) {                           // If they selected Menu Up
-    DrawMenuDisplay();
-  }
-
-  if (val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
-    NoActiveMenu();
-    return;
-  } else {
-    menuStatus = PRIMARY_MENU_ACTIVE;
-  }
-menuStatus = PRIMARY_MENU_ACTIVE;
-*/
-
-#ifdef DEBUG
-Serial.print("In ExecuteButtonPress(int val): val = ");
-Serial.println(val);  
-#endif
-
+void ExecuteButtonPress(int val) {
   switch (val) {
-/*  
     case MENU_OPTION_SELECT:  // 0
 
-      if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
-        ErasePrimaryMenu();
-        secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
-Serial.print("In ExecuteButtonPress() mainMenuIndex = ");
-Serial.print(mainMenuIndex);  
-Serial.print("   secondaryMenuChoiceMade = ");
-Serial.print(secondaryMenuChoiceMade);  
-Serial.print("   secondaryMenuIndex = ");
-Serial.println(secondaryMenuIndex);  
-        menuStatus = SECONDARY_MENU_ACTIVE;
-        secondaryMenuIndex = -1;  // Reset secondary menu
-      } else {
-        if (menuStatus == SECONDARY_MENU_ACTIVE) {  // Doing primary menu
+      if(USE_FULL_MENU) {
+        if (val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
+          NoActiveMenu();
+          return;
+        } else {
           menuStatus = PRIMARY_MENU_ACTIVE;
-          mainMenuIndex = 0;
+        }
+
+        if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
+          ErasePrimaryMenu();
+          secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();  // These are processed in MenuProc.cpp
+          menuStatus = SECONDARY_MENU_ACTIVE;
+          secondaryMenuIndex = -1;  // Reset secondary menu
+        } else {
+          if (menuStatus == SECONDARY_MENU_ACTIVE) {  // Doing primary menu
+            menuStatus = PRIMARY_MENU_ACTIVE;
+            mainMenuIndex = 0;
+          }
+        }
+
+        EraseMenus();
+      } else {
+        switch (menuStatus) {
+          case NO_MENUS_ACTIVE:
+            NoActiveMenu();
+            break;
+
+          case PRIMARY_MENU_ACTIVE:
+            if(mainMenuIndex == TOP_MENU_COUNT - 1) {
+              menuStatus = NO_MENUS_ACTIVE;
+              mainMenuIndex = 0;
+              EraseMenus();
+            } else {
+              menuStatus = SECONDARY_MENU_ACTIVE;
+              secondaryMenuIndex = 0;
+              subMenuMaxOptions = secondaryMenuCount[mainMenuIndex];
+              //secondaryMenuIndex = SubmenuSelect(secondaryChoices[mainMenuIndex], secondaryMenuCount[mainMenuIndex], 0);
+              ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
+            }
+            break;
+
+          case SECONDARY_MENU_ACTIVE:
+            if(secondaryMenuIndex == secondaryMenuCount[mainMenuIndex] - 1) {
+              // cancel selected
+              menuStatus = PRIMARY_MENU_ACTIVE;
+//              ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+              EraseSecondaryMenu();
+            } else {
+              secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();
+              EraseMenus();
+              menuStatus = NO_MENUS_ACTIVE;
+            }
+            break;
+
+          default:
+            break;
         }
       }
-      EraseMenus();
-      break;
-*/
-    case MAIN_MENU_UP:                      // 11/16/23 JJP
-      DrawMenuDisplay();                    // Draw selection box and primary menu
-      SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
-      SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
-      secondaryMenuChoiceMade = functionPtr[mainMenuIndex](); 
-      tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
-      DrawSpectrumDisplayContainer();
-      EraseMenus();
       break;
 
-    case BAND_UP:  // 2 Now calls ProcessIQData and Encoders calls
+    case MAIN_MENU_UP:  // 1
+      if(USE_FULL_MENU) {
+        DrawMenuDisplay();                    // Draw selection box and primary menu
+        SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
+        if(mainMenuIndex == TOP_MENU_COUNT - 1) {
+          EraseMenus();
+          break;
+        }
+        SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
+        secondaryMenuChoiceMade = functionPtr[mainMenuIndex](); 
+        tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
+        DrawSpectrumDisplayContainer();
+        EraseMenus();
+      } else {
+        if (menuStatus == NO_MENUS_ACTIVE) {
+          menuStatus = PRIMARY_MENU_ACTIVE;
+          mainMenuIndex = 0;
+          ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+        } else {
+          ButtonMenuUp();
+
+          switch (menuStatus) {
+            case PRIMARY_MENU_ACTIVE:
+//              EraseMenus();
+              ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+              break;
+
+            case SECONDARY_MENU_ACTIVE:
+              ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
+              break;
+
+            default:
+              break;
+          }
+        }
+      }
+      break;
+
+    case BAND_UP:  // 2
       EraseMenus();
       if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], LOW);  // Added if so unused GPOs will not be touched.  KF5N October 16, 2023.
       ButtonBandIncrease();
@@ -274,9 +321,40 @@ Serial.println(secondaryMenuIndex);
       break;
 
     case MAIN_MENU_DN:  // 4
-      ButtonMenuDecrease();
-      if (menuStatus != NO_MENUS_ACTIVE) {  // Doing primary menu
-        ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+      if(USE_FULL_MENU) {
+        DrawMenuDisplay();                    // Draw selection box and primary menu
+        SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
+        if(mainMenuIndex == TOP_MENU_COUNT - 1) {
+          EraseMenus();
+          break;
+        }
+        SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
+        secondaryMenuChoiceMade = functionPtr[mainMenuIndex](); 
+        tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
+        DrawSpectrumDisplayContainer();
+        EraseMenus();
+      } else {
+        if (menuStatus == NO_MENUS_ACTIVE) {
+          menuStatus = PRIMARY_MENU_ACTIVE;
+          mainMenuIndex = TOP_MENU_COUNT - 2;
+          ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+        } else {
+          ButtonMenuDown();
+
+          switch (menuStatus) {
+            case PRIMARY_MENU_ACTIVE:
+              EraseMenus();
+              ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+              break;
+
+            case SECONDARY_MENU_ACTIVE:
+              ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
+              break;
+
+            default:
+              break;
+          }
+        }
       }
       break;
 
@@ -424,10 +502,12 @@ void ButtonFreqIncrement() {
 void NoActiveMenu() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_RED);
-  tft.setCursor(10, 0);
+  tft.setCursor(PRIMARY_MENU_X + 1, MENUS_Y);
   tft.print("No menu selected");
 
   menuStatus = NO_MENUS_ACTIVE;
+Serial.print("at #4: mainMenuIndex = ");
+Serial.println(mainMenuIndex);
   mainMenuIndex = 0;
   secondaryMenuIndex = 0;
 }

@@ -141,13 +141,17 @@ int CWOptions()  // new option for Sidetone and Delay JJP 9/1/22
 */
 
 //  switch (CWChoice) {
-Serial.print("In CWOptions(), secondaryMenuIndex = ");
-Serial.println(secondaryMenuIndex);
+#ifdef DEBUG
+  Serial.print("In CWOptions(), secondaryMenuIndex = ");
+  Serial.println(secondaryMenuIndex);
+#endif
    
   switch (secondaryMenuIndex) {
     case 0:  // WPM
 
-    Serial.println("Into SetWPM");
+#ifdef DEBUG
+  Serial.println("Into SetWPM");
+#endif
 
       SetWPM();
       SetTransmitDitLength(currentWPM);  //Afp 09-22-22     // JJP 8/19/23
@@ -527,9 +531,9 @@ int MicGainSet() {
       tft.setFontScale((enum RA8875tsize)1);
       tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setTextColor(RA8875_WHITE);
-      tft.setCursor(SECONDARY_MENU_X - 48, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X - 48, MENUS_Y);
       tft.print("Mic Gain:");
-      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicGain);
       while (true) {
         if (filterEncoderMove != 0) {
@@ -539,7 +543,7 @@ int MicGainSet() {
           else if (currentMicGain > 30)  // 100% max
             currentMicGain = 30;
           tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
-          tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y + 1);
+          tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
           tft.print(currentMicGain);
           filterEncoderMove = 0;
         }
@@ -621,8 +625,10 @@ int RFOptions() {
 //  rfSet = SubmenuSelect(rfOptions, 3, rfSet);
 
 //  switch (rfSet) {
-Serial.print("secondaryMenuChoiceMade = ");
-Serial.println(secondaryMenuChoiceMade);
+#ifdef DEBUG
+  Serial.print("secondaryMenuChoiceMade = ");
+  Serial.println(secondaryMenuChoiceMade);
+#endif
   switch (secondaryMenuIndex) {
     case 0:                                                                                             // Power Level JJP 11/17/23 JJP
       transmitPowerLevel = (float)GetEncoderValue(1, 20, transmitPowerLevel, 1, (char *)"Power: ");
@@ -675,7 +681,7 @@ void DoPaddleFlip() {
 
   tft.setTextColor(RA8875_BLACK);
   tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_GREEN);
-  tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y);
   tft.print(paddleState[choice]);  // Show the default (right paddle = dah
 
   while (true) {
@@ -686,7 +692,7 @@ void DoPaddleFlip() {
       if (pushButtonSwitchIndex == MAIN_MENU_UP || pushButtonSwitchIndex == MAIN_MENU_DN) {
         choice = !choice;  // Reverse the last choice
         tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_GREEN);
-        tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y + 1);
+        tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y);
         tft.print(paddleState[choice]);
       }
       if (pushButtonSwitchIndex == MENU_OPTION_SELECT)
@@ -735,7 +741,7 @@ int VFOSelect()
 
   tft.setTextColor(RA8875_BLACK);
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);
-  tft.setCursor(SECONDARY_MENU_X + 7, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 7, MENUS_Y);
   tft.print(VFOOptions[choice]);  // Show the default (right paddle = dah
 
   choice = SubmenuSelect(VFOOptions, 4, 0);
@@ -744,7 +750,7 @@ int VFOSelect()
   NCOFreq = 0L;
   switch (secondaryMenuIndex) {
     case VFO_A:  // VFO A
-    Serial.println("in VFO_A");
+//    Serial.println("in VFO_A");
       centerFreq = TxRxFreq = currentFreqA;
       activeVFO = VFO_A;
       currentBand = currentBandA;
@@ -753,7 +759,7 @@ int VFOSelect()
       break;
 
     case VFO_B:  // VFO B
-    Serial.println("in VFO_B");
+//    Serial.println("in VFO_B");
       centerFreq = TxRxFreq = currentFreqB;
       activeVFO = VFO_B;
       currentBand = currentBandB;
@@ -762,13 +768,13 @@ int VFOSelect()
       break;
 
     case VFO_SPLIT:  // Split
-    Serial.println("in SPLIT");
+//    Serial.println("in SPLIT");
       DoSplitVFO();
       splitOn = 1;
       break;
 
     default:  // Cancel
-    Serial.println("in default");
+//    Serial.println("in default");
       return activeVFO;
       break;
   }
@@ -903,7 +909,7 @@ int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart) 
   tft.setFontScale((enum RA8875tsize)1);
   if (refreshFlag == 0) {
     tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Show the option in the second field
-    tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y + 1);
+    tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
     tft.print(options[encoderReturnValue]);  // Secondary Menu
     refreshFlag = 1;
   }
@@ -941,7 +947,7 @@ int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart) 
         if (encoderReturnValue != -1) {
           tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Show the option in the second field
           tft.setTextColor(RA8875_BLACK);
-          tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y + 1);
+          tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
           tft.print(options[encoderReturnValue]);
           MyDelay(50L);
           refreshFlag = 0;

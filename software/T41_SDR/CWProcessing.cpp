@@ -324,11 +324,12 @@ void SetSideToneVolume() {
   Q_in_L.clear();  // Clear other buffers too?
   Q_in_R.clear();
   tft.setFontScale((enum RA8875tsize)1);
-  tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 60, CHAR_HEIGHT, RA8875_MAGENTA);
+//  tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 60, CHAR_HEIGHT, RA8875_MAGENTA);
+  tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X - 48, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X - 48, MENUS_Y);
   tft.print("Sidetone Volume:");
-  tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y + 1);
+  tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y);
   sidetoneDisplay = (int)(sidetoneVolume);
   tft.print(sidetoneDisplay);  // Display in range of 0 to 100.
   modeSelectInR.gain(0, 0);
@@ -353,7 +354,7 @@ void SetSideToneVolume() {
       else if (sidetoneDisplay > 100)  // 100% max
         sidetoneDisplay = 100;
       tft.fillRect(SECONDARY_MENU_X + 200, MENUS_Y, 70, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y + 1);
+      tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y);
       sidetoneVolume = (float32_t)sidetoneDisplay;
       tft.setTextColor(RA8875_WHITE);
       tft.print(sidetoneDisplay);

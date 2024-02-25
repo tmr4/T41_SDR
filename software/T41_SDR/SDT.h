@@ -2,7 +2,7 @@
 
 //======================================== User section that might need to be changed ===================================
 #include "MyConfigurationFile.h"  // This file name should remain unchanged
-#define VERSION "sdr_fb0.1"       // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
+#define VERSION "sdr_fm0.1"       // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
 
 struct maps {
   char mapNames[50];
@@ -41,7 +41,7 @@ extern struct maps myMapFiles[];
 //======================================== Symbolic Constants for the T41 ===================================================
 #define RIGNAME             "T41-EP SDT"
 #define NUMBER_OF_SWITCHES  18              // Number of push button switches. 16 on older boards
-#define TOP_MENU_COUNT      13              // Menus to process AFP 09-27-22, JJP 7-8-23
+#define TOP_MENU_COUNT      14              // Menus to process AFP 09-27-22, JJP 7-8-23
 #define RIGNAME_X_OFFSET    570             // Pixel count to rig name field
 #define RA8875_DISPLAY      1               // Comment out if not using RA8875 display
 #define TEMPMON_ROOMTEMP    25.0f
@@ -117,10 +117,11 @@ extern struct maps myMapFiles[];
 #define SECONDARY_MENU                1
 #define SELECTED_INDEX                3     // This is the index for MENU_OPTION_SELECT
 #define PRIMARY_MENU_X                0
-#define SECONDARY_MENU_X              250
+#define SECONDARY_MENU_X              260
 #define MENUS_Y                       0
 #define EACH_MENU_WIDTH               260
-#define BOTH_MENU_WIDTHS             (EACH_MENU_WIDTH * 2 + 30)
+//#define BOTH_MENU_WIDTHS             (EACH_MENU_WIDTH * 2 + 30)
+#define BOTH_MENU_WIDTHS             (EACH_MENU_WIDTH * 2)
 #define MENU_OPTION_SELECT           0     // These are the expected values from the switch ladder
 #define MAIN_MENU_UP                 1
 #define BAND_UP                      2
@@ -579,6 +580,9 @@ extern int radioState, lastState;  // Used by the loop to monitor current state.
 //#define STARTUP_BAND              BAND_40M    //AFP 1-28-21
 
 //#endif
+
+extern const char *secondaryChoices[][8];
+extern const int secondaryMenuCount[];
 
 //=== CW Filter ===
 
@@ -1121,7 +1125,7 @@ extern struct config_t {
   int currentBandB        = STARTUP_BAND;
   long currentFreqA       = CURRENT_FREQ_A;
   long currentFreqB       = CURRENT_FREQ_B;
-  long freqCorrectionFactor = 68000;
+  long freqCorrectionFactor = 1200; //68000;
 
   int equalizerRec[EQUALIZER_CELL_COUNT] = { 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100 };
   int equalizerXmt[EQUALIZER_CELL_COUNT] = {0, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 0, 0};   // Provide equalizer optimized for SSB voice based on Neville's tests.  KF5N November 2, 2023
@@ -1132,12 +1136,20 @@ extern struct config_t {
   float currentMicRelease   = 2.0;
   int currentMicGain        = -10;
 
-  int switchValues[18] = { 924, 870, 817,
+/*
+  int switchValues[18] = { 924, 870, 817, // default values
                            769, 713, 669,
                            616, 565, 513,
                            459, 407, 356,
                            298, 242, 183,
                            131, 67, 10 };
+*/
+  int switchValues[18] = { 905, 853, 802, // my values
+                           752, 705, 653,
+                           604, 556, 502,
+                           451, 399, 344,
+                           291, 237, 181,
+                           124, 65, 4 };
 
   float LPFcoeff             = 0.0;
   float NR_PSI               = 0.0;
@@ -1156,9 +1168,11 @@ extern struct config_t {
   float IQXPhaseCorrectionFactor[NUMBER_OF_BANDS] = { 0, 0, 0, 0, 0, 0, 0 };
 
   long favoriteFreqs[13] = { 3560000, 3690000, 7030000, 7200000, 14060000, 14200000, 21060000, 21285000, 28060000, 28365000, 5000000, 10000000, 15000000 };
-  int lastFrequencies[NUMBER_OF_BANDS][2] = { { 3690000, 3560000 }, { 7090000, 7030000 }, { 14285000, 14060000 }, { 18130000, 18096000 }, { 21285000, 21060000 }, { 24950000, 24906000 }, { 28365000, 28060000 } };
+//  int lastFrequencies[NUMBER_OF_BANDS][2] = { { 3690000, 3560000 }, { 7090000, 7030000 }, { 14285000, 14060000 }, { 18130000, 18096000 }, { 21285000, 21060000 }, { 24950000, 24906000 }, { 28365000, 28060000 } };
+  int lastFrequencies[NUMBER_OF_BANDS][2] = { { 3548000, 3560000 }, { 7048000, 7030000 }, { 14048000, 14060000 }, { 18116000, 18096000 }, { 21048000, 21060000 }, { 24137000, 24906000 }, { 28048000, 28060000 } };
 
-  long centerFreq               = 7030000L;              // 4 bytes
+//  long centerFreq               = 7030000L;              // 4 bytes
+  long centerFreq               = 7048000; // this will be CURRENT_FREQ_A on startup
 
   // New user config data                                JJP 7-3-23
   char mapFileName[50] = MAP_FILE_NAME;
@@ -2034,8 +2048,8 @@ void ButtonDemodMode();
 void ButtonFilter();
 void ButtonFrequencyEntry();
 void ButtonFreqIncrement();
-void ButtonMenuIncrease();
-void ButtonMenuDecrease();
+void ButtonMenuDown();
+void ButtonMenuUp();
 void ButtonMode();
 void ButtonNotchFilter();
 void ButtonNR();
@@ -2047,6 +2061,7 @@ void CalcFIRCoeffs(float * coeffs_I, int numCoeffs, float32_t fc, float32_t Asto
 void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float32_t FLoCut, float32_t FHiCut, float SampleRate);
 void CalcNotchBins();
 void Calculatedbm();
+int Cancel();
 void CaptureKeystrokes();
 int  CalibrateOptions(int IQChoice); // AFP 10-22-22, changed JJP 2/3/23
 void CalibratePreamble();   // KF5N August 14, 2023
