@@ -1,14 +1,42 @@
 #include "SDT.h"
+#include "Button.h"
+#include "ButtonProc.h"
+#include "Display.h"
+#include "EEPROM.h"
+#include "Encoders.h"
+#include "FFT.h"
+#include "Freq_Shift.h"
+#include "Menu.h"
+#include "MenuProc.h"
+#include "Process.h"
+#include "Tune.h"
+#include "Utility.h"
 
-// Updates to DoReceiveCalibration() and DoXmitCalibrate() functions by KF5N.  July 20, 2023
-// Updated PlotCalSpectrum() function to clean up graphics.  KF5N August 3, 2023
-// Major clean-up of calibration.  KF5N August 16, 2023
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
 
 int val;
 int corrChange;
 float correctionIncrement;  //AFP 2-7-23
 int userScale, userZoomIndex, userXmtMode;
 int transmitPowerLevelTemp;
+uint16_t base_y = SPECTRUM_BOTTOM;
+int calTypeFlag = 0;
+int calOnFlag = 0;
+int IQCalType;
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+void ShowSpectrum2();
+float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins);
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
+
 /*****
   Purpose: Set up prior to IQ calibrations.  New function.  KF5N August 14, 2023
   These things need to be saved here and restored in the prologue function:
@@ -34,8 +62,7 @@ void CalibratePreamble(int setZoom) {
   modeSelectOutExR.gain(0, powerOutCW[currentBand]);  //AFP 10-21-22
   userXmtMode = xmtMode;          // Store the user's mode setting.  KF5N July 22, 2023
   userZoomIndex = spectrum_zoom;  // Save the zoom index so it can be reset at the conclusion.  KF5N August 12, 2023
-  zoomIndex = setZoom - 1;
-  ButtonZoom();
+  SetZoom(setZoom);
   tft.writeTo(L2);  // Erase the bandwidth bar.  KF5N August 16, 2023
   tft.clearMemory();
   tft.writeTo(L1);
@@ -107,8 +134,8 @@ void CalibratePrologue() {
   xmtMode = userXmtMode;   // Restore the user's floor setting.  KF5N July 27, 2023
   transmitPowerLevel = transmitPowerLevelTemp;  // Restore the user's transmit power level setting.  KF5N August 15, 2023
   EEPROMWrite();                                // Save calibration numbers and configuration.  KF5N August 12, 2023
-  zoomIndex = userZoomIndex - 1;
-  ButtonZoom();     // Restore the user's zoom setting.  Note that this function also modifies spectrum_zoom.
+  spectrum_zoom = userZoomIndex; // Restore the user's zoom setting
+  SetZoom(spectrum_zoom); // ... and zoom display
   EEPROMWrite();                                // Save calibration numbers and configuration.  KF5N August 12, 2023
   tft.writeTo(L2);  // Clear layer 2.  KF5N July 31, 2023
   tft.clearMemory();
@@ -235,7 +262,7 @@ void DoXmitCalibrate() {
         tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 35, CHAR_HEIGHT, RA8875_BLACK);
         EEPROMData.IQXAmpCorrectionFactor[currentBand] = IQAmpCorrectionFactor[currentBand];
         EEPROMData.IQXPhaseCorrectionFactor[currentBand] = IQPhaseCorrectionFactor[currentBand];
-        IQChoice = 6;  // AFP 2-11-23
+        IQChoice = 6;
         break;
       default:
         break;
@@ -255,7 +282,7 @@ void DoXmitCalibrate() {
 
 
 /*****
-  Purpose: Signal processing for th purpose of calibrating the transmit IQ
+  Purpose: Signal processing for the purpose of calibrating the transmit IQ
 
    Parameter List:
       void
@@ -356,20 +383,17 @@ void ProcessIQData2() {
     }
     FreqShift1();  // Why done here? KF5N
 
-    if (spectrum_zoom == SPECTRUM_ZOOM_1) {  // && display_S_meter_or_spectrum_state == 1)
-      zoom_display = 1;
+    if (spectrum_zoom == 0) {  // && display_S_meter_or_spectrum_state == 1)
       CalcZoom1Magn();  //AFP Moved to display function
     }
 
-    if (spectrum_zoom != SPECTRUM_ZOOM_1) {
+    if (spectrum_zoom != 0) {
       //AFP  Used to process Zoom>1 for display
       ZoomFFTExe(BUFFER_SIZE * N_BLOCKS);  // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
       // does not work for magnifications > 8
     }
 
-    if (auto_codec_gain == 1) {
-      Codec_gain();
-    }
+    Codec_gain(); // *** T41EEE deletes this
   }
 }
 
@@ -384,13 +408,10 @@ void ProcessIQData2() {
   Return value;
     void
 *****/
-void ShowSpectrum2()  //AFP 2-10-23
-{
+void ShowSpectrum2() {
   int x1 = 0;
   float adjdB = 0.0;
   int capture_bins = 10;  // Sets the number of bins to scan for signal peak.
-  //=========== // AFP 2-11-23
-//  tft.drawFastVLine(centerLine, SPECTRUM_TOP_Y, h + 14, RA8875_GREEN);  // Centerline not required for calibration.  KF5N August 16, 2023
 
   pixelnew[0] = 0;
   pixelnew[1] = 0;
@@ -420,10 +441,6 @@ void ShowSpectrum2()  //AFP 2-10-23
     cal_bins[0] = 209;
     cal_bins[1] = 273;
   }  // Transmit calibration, USB.  KF5N
-
-  // Draw vertical markers for the reference and undesired sideband locations.  For debugging only!
-  //  tft.drawFastVLine(cal_bins[0], SPECTRUM_TOP_Y, h, RA8875_GREEN);
-  //  tft.drawFastVLine(cal_bins[1], SPECTRUM_TOP_Y, h, RA8875_GREEN);
 
   //  There are 2 for-loops, one for the reference signal and another for the undesired sideband.
   for (x1 = cal_bins[0] - capture_bins; x1 < cal_bins[0] + capture_bins; x1++) adjdB = PlotCalSpectrum(x1, cal_bins, capture_bins);
@@ -505,22 +522,22 @@ float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
     adjdB = ((float)adjAmplitude - (float)refAmplitude) / 1.95;
     tft.writeTo(L2);
     if (bands[currentBand].mode == DEMOD_LSB) {
-      tft.fillRect(450, SPECTRUM_TOP_Y + 20, 20, h - 6, DARK_RED);     // SPECTRUM_TOP_Y = 100
-      tft.fillRect(300, SPECTRUM_TOP_Y + 20, 20, h - 6, RA8875_BLUE);  // h = SPECTRUM_HEIGHT + 3
+      tft.fillRect(450, SPECTRUM_TOP_Y + 20, 20, 135 - 6, DARK_RED);     // SPECTRUM_TOP_Y = 100
+      tft.fillRect(300, SPECTRUM_TOP_Y + 20, 20, 135 - 6, RA8875_BLUE);  // h = SPECTRUM_HEIGHT + 3
     } else {                                                           // SPECTRUM_HEIGHT = 150 so h = 153
-      tft.fillRect(55, SPECTRUM_TOP_Y + 20, 20, h - 6, DARK_RED);
-      tft.fillRect(182, SPECTRUM_TOP_Y + 20, 20, h - 6, RA8875_BLUE);
+      tft.fillRect(55, SPECTRUM_TOP_Y + 20, 20, 135 - 6, DARK_RED);
+      tft.fillRect(182, SPECTRUM_TOP_Y + 20, 20, 135 - 6, RA8875_BLUE);
     }
   } else {                                                       //Transmit Cal
     adjdB = ((float)adjAmplitude - (float)refAmplitude) / 1.95;  // Cast to float and calculate the dB level.  KF5N
     tft.writeTo(L2);
     if (bands[currentBand].mode == DEMOD_LSB) {
-      tft.fillRect(295, SPECTRUM_TOP_Y + 20, 20, h - 6, DARK_RED);  // Adjusted height due to other graphics changes.  KF5N August 3, 2023
-      tft.fillRect(230, SPECTRUM_TOP_Y + 20, 20, h - 6, RA8875_BLUE);      
+      tft.fillRect(295, SPECTRUM_TOP_Y + 20, 20, 135 - 6, DARK_RED);  // Adjusted height due to other graphics changes.  KF5N August 3, 2023
+      tft.fillRect(230, SPECTRUM_TOP_Y + 20, 20, 135 - 6, RA8875_BLUE);      
     } else {
       if (bands[currentBand].mode == DEMOD_USB) {  //mode == DEMOD_LSB
-        tft.fillRect(199, SPECTRUM_TOP_Y + 20, 20, h - 6, DARK_RED);
-        tft.fillRect(263, SPECTRUM_TOP_Y + 20, 20, h - 6, RA8875_BLUE);
+        tft.fillRect(199, SPECTRUM_TOP_Y + 20, 20, 135 - 6, DARK_RED);
+        tft.fillRect(263, SPECTRUM_TOP_Y + 20, 20, 135 - 6, RA8875_BLUE);
       }
     }
   }

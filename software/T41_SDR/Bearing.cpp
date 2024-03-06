@@ -1,8 +1,15 @@
 #include "SDT.h"
+#include "Bearing.h"
+#include "Button.h"
+#include "Display.h"
+#include "Menu.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
 
 /*
-  #define SD_CS                       BUILTIN_SDCARD        // Works on T_3.6 and T_4.1 ...
-
   #define MY_LON                      -84.42676671875002
   #define MY_LAT                      39.074660204008886
   #define CENTER_SCREEN_X             387
@@ -10,26 +17,33 @@
   #define IMAGE_CORNER_X              211 // ImageWidth = 378 Therefore 800 - 378 = 422 / 2 = 211
   #define IMAGE_CORNER_Y              89  // ImageHeight = 302 Therefore 480 - 302 = 178 / 2 = 89
   #define RAY_LENGTH                  190
-  #define BUFFPIXEL                   20  // Use buffer to read image rather than 1 pixel at a time
-
-  #define DEGREES2RADIANS             0.01745329
-  #define RADIANS2DEGREES             57.29578
-  #define PI_BY_180                   0.01745329
 */
+
+#define DEGREES2RADIANS             0.01745329
+#define RADIANS2DEGREES             57.29578
+#define PI_BY_180                   0.01745329
+
+#define BUFFPIXEL                   20  // Use buffer to read image rather than 1 pixel at a time
+
+#define MAX_KEY_NAME 20
+
 enum { SCL_HALF = 0,
        SCL_QUARTER,
        SCL_EIGHTH,
        SCL_16TH
 };
-#define MAX_KEY_NAME 20
+
 typedef struct {
   const char key_name[MAX_KEY_NAME];
   int *key_value_addr;
 } key_name_value_t;
 
+char keyboardBuffer[10];  // Set for call prefixes. May be increased later
+int countryIndex = -1;
+int selectedMapIndex;
 
 uint8_t sdbuffer[3 * BUFFPIXEL];  // pixel buffer (R+G+B per pixel)
-
+const char DEGREE_SYMBOL[] = { 0xB0, '\0' };
 
 int g_background_color = RA8875_BLACK;
 int g_debug_output = 0;
@@ -53,14 +67,12 @@ int g_tft_width;
 int g_WRCount;
 // debug count how many time writeRect called
 int keyCell;  // Where to place the cell in the X axis
-//const int chipSelect          = BUILTIN_SDCARD;
 uint8_t g_ra8875_layer_active = 0;
 
 float bearingDegrees;
 float bearingRadians;
 float bearingDistance;
 float displayBearing;  // Different because of image distortion
-
 
 #ifdef TFT_CLIP_SUPPORT
 inline void writeClippedRect(int16_t x, int16_t y, int16_t cx, int16_t cy, uint16_t *pixels, bool waitForWRC = true) {
@@ -542,7 +554,27 @@ PROGMEM struct cities dxCities[] = {
   "", "", 0.0, 0.0  // EOT
 };
 
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
 
+void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight);
+void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight);
+int FindCountry(char *prefix);
+float HaversineDistance(float lat2, float lon2);
+uint16_t read16(File &f);
+uint32_t read32(File &f);
+int CreateMapList(char ptrMaps[][50], int *count);
+int WhichOneToUse(char ptrMaps[][50], int count);
+void WaitforWRComplete();
+
+// the following functions are not used anywhere
+// inline void Color565ToRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b);
+// void TurnOffInitializingMessage();
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: To draw the onscreen keyboard and prompts
@@ -640,7 +672,6 @@ void DrawKeyboard() {
   tft.setCursor(10, 100);
   tft.printf("Enter call prefix: ");
 }
-
 
 /*****
   Purpose: To process the user keystrokes for the onscreen keyboard
@@ -938,6 +969,7 @@ float BearingHeading(char *dxCallPrefix) {
   }
   return displayBearing;
 }
+
 /*****
   Purpose: This function searches the ARRL list of country prefixes
            and returns an index into the cities array. The coordiantes
@@ -978,7 +1010,6 @@ int FindCountry(char *prefix) {
   }
 }
 
-
 /*****
   Purpose: This function calculates the distance between your
            QTH and some other coordinates on the globe
@@ -1009,7 +1040,8 @@ float HaversineDistance(float lat2, float lon2) {
 }
 //======================================
 
-
+/*
+*****/
 void bmpDraw(const char *filename, int x, int y) {
   //  int image_width, image_height;        // W+H in pixels
   int len;
@@ -1032,7 +1064,8 @@ void bmpDraw(const char *filename, int x, int y) {
   uint8_t r, g, b;
   uint32_t pos = 0;
   uint8_t lcdidx = 0;
-  float x1, y1, y2;
+//  float x1, x2, y1, y2;
+  float x1, y1;
   float homeLatRadians;
   float dxLatRadians;
   float deltaLon = (dxLon - homeLon);
@@ -1041,7 +1074,7 @@ void bmpDraw(const char *filename, int x, int y) {
   if ((x >= tft.width()) || (y >= tft.height()))
     return;
 
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
     MyDelay(2000L);  // Given them time to read it.
     return;
@@ -1083,7 +1116,7 @@ void bmpDraw(const char *filename, int x, int y) {
         w = bmpWidth;
         h = bmpHeight;
         if ((x + w - 1) >= tft.width()) w = tft.width() - x;
-        if ((y + h - 1) >= tft.height()) h = tft.height() - y;
+        if ((y + 135 - 1) >= tft.height()) h = tft.height() - y;
 
         // Set TFT address window to clipped image bounds
         ypos = y;
@@ -1159,8 +1192,8 @@ void bmpDraw(const char *filename, int x, int y) {
 
   x1 = CENTER_SCREEN_X;                                          // The image center coordinates
   y1 = CENTER_SCREEN_Y;                                          // and should be the same for all
-  x2 = CENTER_SCREEN_X * sin(bearingRadians) + CENTER_SCREEN_X;  // Endpoints for ray
-  y2 = CENTER_SCREEN_Y * cos(bearingRadians) - CENTER_SCREEN_Y;
+//  x2 = CENTER_SCREEN_X * sin(bearingRadians) + CENTER_SCREEN_X;  // Endpoints for ray
+//  y2 = CENTER_SCREEN_Y * cos(bearingRadians) - CENTER_SCREEN_Y;
 
   rayStart = displayBearing - 8.0;
   rayEnd = displayBearing + 8.0;
@@ -1179,9 +1212,9 @@ void bmpDraw(const char *filename, int x, int y) {
       }
     }
   }
-  if (y2 < 0) {
-    y2 = fabs(y2);
-  }
+//  if (y2 < 0) {
+//    y2 = fabs(y2);
+//  }
 
   for (int i = rayStart; i < rayEnd; i++) {
     tft.drawLineAngle(x1, y1, displayBearing + i, RAY_LENGTH, RA8875_RED, -90);
@@ -1228,6 +1261,7 @@ uint16_t read16(File &f) {
   ((uint8_t *)&result)[1] = f.read();  // MSB
   return result;
 }
+
 /*****
   Purpose: Read 32-bit image data from the SD card file.
            BMP data is stored little-endian, Arduino is little-endian too.
@@ -1268,7 +1302,7 @@ uint16_t Color565(uint8_t r, uint8_t g, uint8_t b) {
 
 //=============================================================================
 // TFT Helper functions to work on ILI9341_t3
-// which doe snot have offset/clipping support
+// which does not have offset/clipping support
 //=============================================================================
 
 #if !defined(TFT_CLIP_SUPPORT)
@@ -1391,7 +1425,7 @@ int InitializeSDCard() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_RED, RA8875_BLACK);
   tft.setCursor(100, 240);
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
     MyDelay(2000L);  // Given them time to read it.
     return 0;
@@ -1417,6 +1451,7 @@ void TurnOffInitializingMessage() {
   tft.setCursor(100, 240);
   tft.print("                              ");
 }
+
 void WaitforWRComplete() {
 #if defined(_RA8876_T3)
   // bugbug: ra8876 may use dma code, and since some of our decoders
@@ -1439,7 +1474,7 @@ int BearingMaps() {
   char ptrMaps[10][50];
   int count;
 
-  if (sdCardPresent == 0) {  // JJP 8/11/23
+  if (sdCardPresent == 0) {
     tft.setCursor(200, 300);
     tft.setTextColor(RA8875_RED, RA8875_BLACK);
     tft.println("No SD card.");
@@ -1470,7 +1505,7 @@ int BearingMaps() {
     tft.print("Select map file:");
     tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
 
-    if (!SD.begin(chipSelect)) {
+    if (!SD.begin(BUILTIN_SDCARD)) {
       tft.setCursor(200, 200);
       tft.setTextColor(RA8875_RED, RA8875_BLACK);
       tft.println("initialization failed!");

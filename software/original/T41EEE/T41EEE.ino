@@ -1,5 +1,5 @@
 /*
-### Version T41EEE.3 T41 Software Defined Transceiver Arduino Sketch
+### Version T41EEE.4 T41 Software Defined Transceiver Arduino Sketch
 
 This is the "T41 Extreme Experimenter's Edition" software for the 
 T41 Software Defined Transceiver.  The T41EEE was "forked" from the V049.2 version
@@ -32,7 +32,7 @@ and feature enhancements become available.  You will be able to update and FLASH
 with the revised software quickly.
 
 Please note that the configuration structure is different than the predecessor V049.2
-It is recommended to perform a full FLASH erase before loading T41EEE.1.
+It is recommended to perform a full FLASH erase before loading T41EEE.4.
 
 You will need to install the ArduinoJSON library by Benoit Blanchon.  Using the IDE:
 Tools -> Manage Libraries ...
@@ -41,16 +41,45 @@ with the name Arduino_JSON, which is not the correct library.  Install the libra
 and if you have the other dependencies for the V049.2 version, compilation will be
 successful.
 
-## Highlight of Features included in T41EEE.3
+## Highlight of Changes included in T41EEE.4
 
-No new features are introduced in T41EEE.3.  This is a "clean-up" version.
-
-1.  Removal of extraneous #define statements.
-2.  Removal of unused variables.
-3.  Global variables which do not require global access are moved to their individual
-    files and are no longer extern (removed from SDT.h).
-4.  Some larger arrays are now DMAMEM.  This moves them to RAM2, thereby increasing the
-    stack size.
+1.   Moved CW and SSB power calculations out of loop().
+2.   Moved Morse decoder states to CWProcessing.cpp.
+3.   Fixed error in SSB and CW power set code.
+4.   User selected CW offset frequency shown in menu and saved to EEPROM.
+5.   Revised mic gain downward to 15 from 20.
+6.   TX equalizer amplitudes on and off close to the same.  TX and RX equalizer status to display.
+7.   CW filter selection was erasing graphics.
+8.   Fixed erasure of equalizer status when exiting calibration menus.
+9.   Re-inserted Len's switch matrix calibration by button press code.
+10.  Memory conservation by sharing buffers between RX and TX.
+11.  Adjusted Morse decoder to be less responsive to noise.
+12.  Re-normalization of CW and SSB power calibration.
+13.  Used arm functions to DC offset DAC outputs in the case of QSE2.
+14.  Added clipping function to receiver datastream.
+15.  Adjusted dataflow gain by 12 dB to increase volume.
+16.  Added AGC indicator.  
+17.  Increased CW decoding gain.  Earlier adjustment was too low.
+18.  Fixed AGC OFF indication.  RF gain set to 10dB when bandswitched.
+19.  Scaling factors for TX calibration were properly updated to match the CW exciter values.
+20.  Added a function to initialize the power arrays at boot.
+21.  Auto-gain upper limit set to 25.
+22.  Reduced Kim noise reduction gain.
+23.  Added a call to ResetHistograms() in setup.  This gets Morse decoder synced faster.
+24.  Updated SSB calibration defaults to higher. SSB exciter coefficient boosted.
+25.  Equalized TX gain paths (TX equalizer On versus Off).
+26.  Added new function initUserDefinedStuff().  Called after SD->EEPROM.
+27.  Adjusted CW and SSB encoder to maximum of 1.0.  This is completion of power calibration normalization.
+28.  Updated exciter code to use 2048 buffers.
+29.  Added DEBUG1 back in to allow temp and load display to work.
+30.  Moved the audio spectrum buffer to the stack due to users reporting audio problems.
+31.  Moved audioYPixel[] to the stack from DMAMEM in response to users reporting audio problems.
+32.  Added initializers (0) to audioSpectBuffer and audioYPixel.  This fixes audio spectrum glitch at power-up.
+33.  Restricted audioYPixel for loop due to array out-of-bounds.
+34.  Added CW zero scaling for periods between keying so that DC offset remains (affects QSE2 only);
+35.  Fixed problem with loud tone at power up with key down.
+36.  Added #ifdefs for QSE2.
+37.  Fixed problem with LMS noise conflict with AutoNotch.
 
 *********************************************************************************************
 
@@ -120,7 +149,7 @@ const char *topMenus[] = { "CW Options", "RF Set", "VFO Select",
                            "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing" };
 
 // Pointers to functions which execute the menu options.  Do these functions used the returned integer???
-int (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
+void (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
                            &EEPROMOptions, &AGCOptions, &SpectrumOptions,
                            &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
                            &EqualizerRecOptions, &EqualizerXmtOptions, &CalibrateOptions, &BearingMaps };
@@ -133,7 +162,7 @@ const char *labels[] = { "Select", "Menu Up", "Band Up",
 
 uint32_t FFT_length = FFT_LENGTH;
 
-extern "C" uint32_t set_arm_clock(uint32_t frequency);
+//extern "C" uint32_t set_arm_clock(uint32_t frequency);
 
 //======================================== Global object definitions ==================================================
 // ===========================  AFP 08-22-22
@@ -199,8 +228,8 @@ AudioConnection patchCord20(modeSelectOutExR, 0, i2s_quadOut, 1);
 AudioConnection patchCord21(modeSelectOutL, 0, i2s_quadOut, 2);  //Rec out
 AudioConnection patchCord22(modeSelectOutR, 0, i2s_quadOut, 3);
 
-AudioConnection patchCord23(Q_out_L_Ex, 0, modeSelectOutL, 1);  //Rec out Queue for sidetone
-AudioConnection patchCord24(Q_out_R_Ex, 0, modeSelectOutR, 1);
+//AudioConnection patchCord23(Q_out_L_Ex, 0, modeSelectOutL, 1);  //Rec out Queue for sidetone
+//AudioConnection patchCord24(Q_out_R_Ex, 0, modeSelectOutR, 1);
 AudioControlSGTL5000 sgtl5000_2;
 // End dataflow code
 
@@ -367,8 +396,7 @@ int fHiCutOld;
 int filterWidth = (int)((bands[EEPROMData.currentBand].FHiCut - bands[EEPROMData.currentBand].FLoCut) / 1000.0 * pixel_per_khz);
 int h = SPECTRUM_HEIGHT + 3;
 int8_t menuStatus = NO_MENUS_ACTIVE;
-uint8_t ANR_notch = 0;
-uint8_t ANR_notchOn = 0;
+bool ANR_notch = false;
 uint8_t auto_codec_gain = 1;
 uint8_t display_S_meter_or_spectrum_state = 0;
 uint8_t keyPressedOn = 0;
@@ -385,11 +413,6 @@ const uint8_t NR_N_frames = 15;
 int16_t pixelCurrent[SPECTRUM_RES];
 int16_t pixelnew[SPECTRUM_RES];
 int16_t pixelold[SPECTRUM_RES];
-
-q15_t* sp_L1 = new q15_t[2048];  // Arrays moved to RAM2.
-q15_t* sp_R1 = new q15_t[2048];;
-q15_t *sp_L2 = new q15_t[2048];;
-q15_t *sp_R2 = new q15_t[2048];;
 
 //===== New histogram stuff ===
 volatile int filterEncoderMove = 0;
@@ -430,7 +453,8 @@ const uint16_t n_dec2_taps = (1 + (uint16_t)(n_att / (22.0 * (n_fstop2 - n_fpass
 int mute = 0;
 int attenuator = 0;
 
-int DMAMEM audioYPixel[1024];  // Will int16_t save memory here???
+int audioYPixel[256]{0};  // Will int16_t save memory here???  DMAMEM not working here.  Causes audio spectrum glitch.  KF5N February 26, 2024.
+//int* audioYPixel = new int[256]{0};
 
 int bandswitchPins[] = {
   30,  // 80M
@@ -920,24 +944,20 @@ FLASHMEM void InitializeDataArrays() {
   CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, (float32_t)SR[SampleRate].rate);
 
   if (arm_fir_decimate_init_f32(&FIR_dec1_I, n_dec1_taps, (uint32_t)DF1, FIR_dec1_coeffs, FIR_dec1_I_state, BUFFER_SIZE * N_BLOCKS)) {
-    while (1)
-      ;
+    while (1);
   }
 
   if (arm_fir_decimate_init_f32(&FIR_dec1_Q, n_dec1_taps, (uint32_t)DF1, FIR_dec1_coeffs, FIR_dec1_Q_state, BUFFER_SIZE * N_BLOCKS)) {
-    while (1)
-      ;
+    while (1);
   }
   // Decimation filter 2, M2 = DF2
   CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, (float32_t)(SR[SampleRate].rate / DF1));
   if (arm_fir_decimate_init_f32(&FIR_dec2_I, n_dec2_taps, (uint32_t)DF2, FIR_dec2_coeffs, FIR_dec2_I_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while (1)
-      ;
+    while (1);
   }
 
   if (arm_fir_decimate_init_f32(&FIR_dec2_Q, n_dec2_taps, (uint32_t)DF2, FIR_dec2_coeffs, FIR_dec2_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while (1)
-      ;
+    while (1);
   }
 
   // Interpolation filter 1, L1 = 2
@@ -945,12 +965,10 @@ FLASHMEM void InitializeDataArrays() {
   // yes, because the interpolation filter is AFTER the upsampling, so it has to be in the target sample rate!
   CalcFIRCoeffs(FIR_int1_coeffs, 48, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, SR[SampleRate].rate / 4.0);
   if (arm_fir_interpolate_init_f32(&FIR_int1_I, (uint8_t)DF2, 48, FIR_int1_coeffs, FIR_int1_I_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF)) {
-    while (1)
-      ;
+    while (1);
   }
   if (arm_fir_interpolate_init_f32(&FIR_int1_Q, (uint8_t)DF2, 48, FIR_int1_coeffs, FIR_int1_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF)) {
-    while (1)
-      ;
+    while (1);
   }
   // Interpolation filter 2, L2 = 4
   // not sure whether I should design with the final sample rate ??
@@ -958,12 +976,10 @@ FLASHMEM void InitializeDataArrays() {
   CalcFIRCoeffs(FIR_int2_coeffs, 32, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, (float32_t)SR[SampleRate].rate);
 
   if (arm_fir_interpolate_init_f32(&FIR_int2_I, (uint8_t)DF1, 32, FIR_int2_coeffs, FIR_int2_I_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while (1)
-      ;
+    while (1);
   }
   if (arm_fir_interpolate_init_f32(&FIR_int2_Q, (uint8_t)DF1, 32, FIR_int2_coeffs, FIR_int2_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while (1)
-      ;
+    while (1);
   }
 
   SetDecIntFilters();  // here, the correct bandwidths are calculated and set accordingly
@@ -1027,8 +1043,8 @@ void SetAudioOperatingState(int operatingState) {
       Q_in_R_Ex.clear();
 
       // CW sidetone output disconnected
-      patchCord23.disconnect();
-      patchCord24.disconnect();
+//      patchCord23.disconnect();
+//      patchCord24.disconnect();
 
       break;
     case SSB_TRANSMIT_STATE:
@@ -1047,8 +1063,8 @@ void SetAudioOperatingState(int operatingState) {
       patchCord2.connect();
 
       // CW sidetone output disconnected
-      patchCord23.disconnect();
-      patchCord24.disconnect();
+//      patchCord17.disconnect();
+//      patchCord24.disconnect();
 
       break;
     case CW_TRANSMIT_STRAIGHT_STATE:
@@ -1069,9 +1085,9 @@ void SetAudioOperatingState(int operatingState) {
       Q_in_R_Ex.end();
       Q_in_R_Ex.clear();
 
-      // CW sidetone output connected
-      patchCord23.connect();
-      patchCord24.connect();
+      // CW sidetone output connected.  Use only left channel.
+//      patchCord17.connect();
+//      patchCord24.connect();
 
       break;
   }
@@ -1250,7 +1266,6 @@ FLASHMEM void setup() {
   Q_in_L.begin();  //Initialize receive input buffers
   Q_in_R.begin();
   MyDelay(100L);
-  NR_Index = EEPROMData.nrOptionSelect;
 
   // ========================  End set up of Parameters from EEPROM data ===============
   NCOFreq = 0;
@@ -1267,20 +1282,10 @@ FLASHMEM void setup() {
   si5351.output_enable(SI5351_CLK2, 0);
   si5351.output_enable(SI5351_CLK1, 0);
 
-  // Initialize the frequency setting based on the last used frequency stored to EEPROM.
-  TxRxFreq = EEPROMData.centerFreq = EEPROMData.lastFrequencies[EEPROMData.currentBand][EEPROMData.activeVFO];
-
   InitializeDataArrays();
+  // Initialize user defined stuff
+  initUserDefinedStuff();
 
-  SetupMode(bands[EEPROMData.currentBand].mode);
-
-  SetKeyPowerUp();  // Use EEPROMData.keyType and EEPROMData.paddleFlip to configure key GPIs.  KF5N August 27, 2023
-  SetDitLength(EEPROMData.currentWPM);
-  SetTransmitDitLength(EEPROMData.currentWPM);
-
-  // Initialize buffers used by the CW transmitter and CW decoder.
-  sineTone(EEPROMData.CWOffset + 6);  // This function takes "number of cycles" which is the offset + 6.
-  initCWShaping();
   filterEncoderMove = 0;
   fineTuneEncoderMove = 0L;
   xrState = RECEIVE_STATE;  // Enter loop() in receive state.  KF5N July 22, 2023
@@ -1399,8 +1404,10 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
       modeSelectInExL.gain(0, 1);
       modeSelectOutL.gain(0, 0);
       modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, EEPROMData.powerOutSSB[EEPROMData.currentBand]);  //AFP 10-21-22
-      modeSelectOutExR.gain(0, EEPROMData.powerOutSSB[EEPROMData.currentBand]);  //AFP 10-21-22
+//      modeSelectOutExL.gain(0, EEPROMData.powerOutSSB[EEPROMData.currentBand]);  //AFP 10-21-22
+//      modeSelectOutExR.gain(0, EEPROMData.powerOutSSB[EEPROMData.currentBand]);  //AFP 10-21-22
+      modeSelectOutExL.gain(0, 1);  //AFP 10-21-22
+      modeSelectOutExR.gain(0, 1);  //AFP 10-21-22
       ShowTransmitReceiveStatus();
 
       while (digitalRead(PTT) == LOW) {
@@ -1447,7 +1454,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
       modeSelectOutExL.gain(0, 0);
       modeSelectOutExR.gain(0, 0);
       digitalWrite(MUTE, LOW);  // unmutes audio
-      cwKeyDown = false;
+      cwKeyDown = false;  // false initiates CW_SHAPING_RISE.
       cwTimer = millis();
       while (millis() - cwTimer <= EEPROMData.cwTransmitDelay) {  //Start CW transmit timer on
         digitalWrite(RXTX, HIGH);
@@ -1455,10 +1462,10 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           cwTimer = millis();                                                       //Reset timer
 
           if (!cwKeyDown) {
-            modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-            modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-            modeSelectOutL.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);        // Sidetone  AFP 10-01-22
-
+            // Don't scale for power here.  Scale in the CW exciter code.
+            modeSelectOutExL.gain(0, 1.0);
+            modeSelectOutExR.gain(0, 1.0);
+            modeSelectOutL.gain(0, volumeLog[(int)EEPROMData.sidetoneVolume]);  // Sidetone, left channel only.  AFP 10-01-22
             CW_ExciterIQData(CW_SHAPING_RISE);
             cwKeyDown = true;
           } else {
@@ -1468,16 +1475,16 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           if (digitalRead(EEPROMData.paddleDit) == HIGH && EEPROMData.keyType == 0) {  //Turn off CW signal
             keyPressedOn = 0;
 
-            if (cwKeyDown) {
+            if (cwKeyDown) {       // Initiate falling CW signal.
               CW_ExciterIQData(CW_SHAPING_FALL);
               cwKeyDown = false;
-            }
+            } else CW_ExciterIQData(CW_SHAPING_ZERO);  //  No waveforms; but DC offset is still present.
           }
         }
       }
       digitalWrite(MUTE, HIGH);   // mutes audio
-      modeSelectOutL.gain(1, 0);  // Sidetone off
-      modeSelectOutR.gain(1, 0);
+      modeSelectOutL.gain(0, 0);  // Sidetone off
+//      modeSelectOutR.gain(1, 0);
       modeSelectOutExL.gain(0, 0);  //Power = 0 //AFP 10-11-22
       modeSelectOutExR.gain(0, 0);  //AFP 10-11-22
       digitalWrite(RXTX, LOW);      // End Straight Key Mode
@@ -1499,9 +1506,11 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
 
         if (digitalRead(EEPROMData.paddleDit) == LOW) {  // Keyer Dit
           ditTimerOn = millis();
-          modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-          modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-          modeSelectOutL.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);        // Sidetone
+//          modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
+//          modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
+          modeSelectOutExL.gain(0, 1);  //AFP 10-21-22
+          modeSelectOutExR.gain(0, 1);  //AFP 10-21-22
+          modeSelectOutL.gain(0, volumeLog[(int)EEPROMData.sidetoneVolume]);        // Sidetone
 
           // Queue audio blocks--execution time of this loop will be between 0-20ms shorter
           // than the desired dit time, due to audio buffering
@@ -1517,23 +1526,24 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           }
 
           // Pause for one dit length of silence
+          modeSelectOutL.gain(0, 0);  // Sidetone off
           ditTimerOff = millis();
           while (millis() - ditTimerOff <= transmitDitLength) {
-            ;
+          CW_ExciterIQData(CW_SHAPING_ZERO);
           }
 
-          modeSelectOutExL.gain(0, 0);  //Power =0
-          modeSelectOutExR.gain(0, 0);
-          modeSelectOutL.gain(1, 0);  // Sidetone off
-          modeSelectOutR.gain(1, 0);
+      //    modeSelectOutExL.gain(0, 0);  //Power =0
+      //    modeSelectOutExR.gain(0, 0);
+       //   modeSelectOutR.gain(1, 0);
 
           cwTimer = millis();
-        } else {
-          if (digitalRead(EEPROMData.paddleDah) == LOW) {  //Keyer DAH
+        } else if (digitalRead(EEPROMData.paddleDah) == LOW) {  //Keyer DAH
             dahTimerOn = millis();
-            modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);
-            modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);
-            modeSelectOutL.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);
+   //         modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);
+   //         modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);
+            modeSelectOutExL.gain(0, 1);  //AFP 10-21-22
+            modeSelectOutExR.gain(0, 1);  //AFP 10-21-22
+            modeSelectOutL.gain(0, volumeLog[(int)EEPROMData.sidetoneVolume]);
 
             // Queue audio blocks--execution time of this loop will be between 0-20ms shorter
             // than the desired dah time, due to audio buffering
@@ -1549,25 +1559,27 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
             }
 
             // Pause for one dit length of silence
+            modeSelectOutL.gain(0, 0);  // Sidetone off
             ditTimerOff = millis();
             while (millis() - ditTimerOff <= transmitDitLength) {
-              ;
+            CW_ExciterIQData(CW_SHAPING_ZERO);
             }
 
-            modeSelectOutExL.gain(0, 0);  //Power =0
-            modeSelectOutExR.gain(0, 0);
-            modeSelectOutL.gain(1, 0);  // Sidetone off
-            modeSelectOutR.gain(1, 0);
+//            modeSelectOutExL.gain(0, 0);  //Power =0
+//            modeSelectOutExR.gain(0, 0); 
+        //    modeSelectOutR.gain(1, 0);
 
             cwTimer = millis();
+          } else {            
+            CW_ExciterIQData(CW_SHAPING_ZERO);
           }
-        }
+
         keyPressedOn = 0;  // Fix for keyer click-clack.  KF5N August 16, 2023
       }                    //End Relay timer
 
       digitalWrite(MUTE, HIGH);   // mutes audio
-      modeSelectOutL.gain(1, 0);  // Sidetone off
-      modeSelectOutR.gain(1, 0);
+  //    modeSelectOutL.gain(1, 0);  // Sidetone off
+  //    modeSelectOutR.gain(1, 0);
       modeSelectOutExL.gain(0, 0);  //Power = 0 //AFP 10-11-22
       modeSelectOutExR.gain(0, 0);  //AFP 10-11-22
       digitalWrite(RXTX, LOW);      // End Straight Key Mode

@@ -1,6 +1,54 @@
 #include "SDT.h"
+#include "CW_Excite.h"
+#include "CWProcessing.h"
+#include "Demod.h"
+#include "Display.h"
+#include "DSP_Fn.h"
+#include "Encoders.h"
+#include "FFT.h"
+#include "Filter.h"
+#include "FIR.h"
+#include "Freq_Shift.h"
+#include "Menu.h"
+#include "MenuProc.h"
+#include "Noise.h"
+#include "Process.h"
+#include "Tune.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+//const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;  // 512/2/128 * 8 = 16
+//const uint32_t N_B = 16;
+
+int audioYPixel[1024];
+float32_t audioSpectBuffer[1024]; // This can't be DMAMEM.  It will break the S-Meter.
+float32_t DMAMEM float_buffer_L_AudioCW[256];
+//const uint32_t N_DEC_B = N_B / (uint32_t)DF;
+//float32_t DMAMEM last_sample_buffer_L[BUFFER_SIZE * N_DEC_B];
+//float32_t DMAMEM last_sample_buffer_R[BUFFER_SIZE * N_DEC_B];
+
+uint8_t NB_on = 0; // noise blanker: 0 - off, 1 - on
+int16_t *sp_L1;
+int16_t *sp_R1;
 
 char atom, currentAtom;
+float32_t HP_DC_Butter_state2[2] = { 0, 0 };
+arm_biquad_cascade_df2T_instance_f32 s1_Receive2 = { 1, HP_DC_Butter_state2, HP_DC_Filter_Coeffs2 };
+uint8_t ANR_notch = 0;
+uint8_t ANR_notchOn = 0;
+
+int8_t first_block = 1;
+int mute = 0; // 0 - normal volume, 1 - mute (*** this is never changed ***)
+
+float VolumeToAmplification(int volume);
+Metro ms_500 = Metro(500);  // Set up a Metro
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: Read audio from Teensy Audio Library
@@ -16,9 +64,13 @@ char atom, currentAtom;
 
    CAUTION: Assumes a spaces[] array is defined
  *****/
-void ProcessIQData()
-{
-  if (keyPressedOn == 1) { //AFP 09-01-22
+void ProcessIQData() {
+  static float32_t audioMaxSquaredAve = 0;
+  static float32_t audiotmp = 0.0f;
+  float32_t w;
+  static float32_t wold = 0.0f;
+
+  if (keyPressedOn == 1) {
     return;
   }
   /**********************************************************************************  AFP 12-31-20
@@ -42,7 +94,6 @@ void ProcessIQData()
       sp_L1 = Q_in_R.readBuffer();
       sp_R1 = Q_in_L.readBuffer();
 
-
       /**********************************************************************************  AFP 12-31-20
           Using arm_Math library, convert to float one buffer_size.
           Float_buffer samples are now standardized from > -1.0 to < 1.0
@@ -52,18 +103,18 @@ void ProcessIQData()
       Q_in_L.freeBuffer();
       Q_in_R.freeBuffer();
     }
-    if (keyPressedOn == 1) { ////AFP 09-01-22
+    if (keyPressedOn == 1) {
       return;
     }
+
     // Set frequency here only to minimize interruption to signal stream during tuning
     // This code was unnecessary in the revised tuning scheme.  KF5N July 22, 2023
-    if (centerTuneFlag == 1) { //AFP 10-04-22
+    if (centerTuneFlag == 1) {
       DrawBandWidthIndicatorBar();
       ShowFrequency();
-  //    SetFreq();            //AFP 10-04-22
-     // BandInformation();
-    }                       //AFP 10-04-22
-    centerTuneFlag = 0;     //AFP 10-04-22
+    }
+    centerTuneFlag = 0;
+
     if (resetTuningFlag == 1) {
       ResetTuning();
     }
@@ -85,22 +136,9 @@ void ProcessIQData()
     //
     //================
 
-    /*arm_mean_f32(float_buffer_L, BUFFER_SIZE * N_BLOCKS, &sample_meanL);
-    arm_mean_f32(float_buffer_R, BUFFER_SIZE * N_BLOCKS, &sample_meanR);
-
-    for (uint32_t j = 0; j < BUFFER_SIZE * N_BLOCKS  ; j++) {
-      L_BufferOffset [j] = -sample_meanL;
-      R_BufferOffset [j] = -sample_meanR;
-    }
-    arm_add_f32(float_buffer_L , L_BufferOffset, float_buffer_L2 , BUFFER_SIZE * N_BLOCKS ) ;
-    arm_add_f32(float_buffer_R , R_BufferOffset, float_buffer_R2 , BUFFER_SIZE * N_BLOCKS ) ;
-
-    arm_biquad_cascade_df2T_f32(&s1_Receive, float_buffer_L, float_buffer_L, 2048); //AFP 09-23-22
-    arm_biquad_cascade_df2T_f32(&s1_Receive, float_buffer_R, float_buffer_R, 2048); //AFP 09-23-22*/
-        arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048); //AFP 11-03-22
-    arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048); //AFP 11-03-22
+    arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
+    arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
     
-
     //===========================
 
     /**********************************************************************************  AFP 12-31-20
@@ -118,12 +156,10 @@ void ProcessIQData()
       **********************************************************************************/
     if (Q_in_L.available() > 25) {
       Q_in_L.clear();
-      n_clear++; // just for debugging to check how often this occurs
       AudioInterrupts();
     }
     if (Q_in_R.available() > 25) {
       Q_in_R.clear();
-      n_clear++; // just for debugging to check how often this occurs
       AudioInterrupts();
     }
     /**********************************************************************************  AFP 12-31-20
@@ -147,7 +183,6 @@ void ProcessIQData()
     }
     // IQ phase correction
 
-
     /**********************************************************************************  AFP 12-31-20
         Perform a 256 point FFT for the spectrum display on the basis of the first 256 complex values
         of the raw IQ input data this saves about 3% of processor power compared to calculating
@@ -156,12 +191,12 @@ void ProcessIQData()
         Only go there from here, if magnification == 1
      ***********************************************************************************************/
 
-    if (spectrum_zoom == SPECTRUM_ZOOM_1) { // && display_S_meter_or_spectrum_state == 1)
-      zoom_display = 1;
+    if (spectrum_zoom == 0) { // && display_S_meter_or_spectrum_state == 1)
       CalcZoom1Magn();  //AFP Moved to display function
     }
-    display_S_meter_or_spectrum_state++;
-    if ( keyPressedOn == 1) { ////AFP 09-01-22
+
+    //display_S_meter_or_spectrum_state++;
+    if ( keyPressedOn == 1) {
       return;
     }
 
@@ -187,18 +222,12 @@ void ProcessIQData()
 
         Spectrum Zoom uses the shifted spectrum, so the center "hump" around DC is shifted by fs/4
     **********************************************************************************/
-    if (spectrum_zoom != SPECTRUM_ZOOM_1) {
+    if (spectrum_zoom != 0) {
       //AFP  Used to process Zoom>1 for display
       ZoomFFTExe(BUFFER_SIZE * N_BLOCKS); // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
       // does not work for magnifications > 8
     }
 
-    if (zoom_display) {
-      if (show_spectrum_flag) {
-      }
-      zoom_display = 1;
-      //zoom_sample_ptr = 0;
-    }
     /**********************************************************************************  AFP 12-31-20
         S-Meter & dBm-display ?? not usually called
      **********************************************************************************/
@@ -206,9 +235,6 @@ void ProcessIQData()
     if (calibrateFlag == 1) {
       CalibrateOptions(IQChoice);
     }
-
-    //============================== AFP 10-21-22  End new
-
 
     /*************************************************************************************************
         freq_conv2()
@@ -258,7 +284,6 @@ void ProcessIQData()
     arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, FFT_length / 2);
     arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, FFT_length / 2);
 
-    //=================  AFP 10-21-22  =================
     /**********************************************************************************  AFP 12-31-20
         Digital FFT convolution
         Filtering is accomplished by combinig (multiplying) spectra in the frequency domain.
@@ -333,7 +358,7 @@ void ProcessIQData()
       }
       arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // AFP 09-18-22 Max value of squared abin magnitued in audio
       audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  //AFP 09-18-22Running averaged values
-      DisplaydbM();
+      DisplaydbM(audioMaxSquaredAve);
     }
 
     /**********************************************************************************
@@ -347,7 +372,7 @@ void ProcessIQData()
         positive & negative frequency -1kHz and +1kHz --> delete 2 bins
         we are not deleting one bin, but five bins for the test
         1024 bins in 12ksps = 11.71Hz per bin
-        SR[SampleRate].rate / 8.0 / 1024 = bin BW
+        SampleRate / 8.0 / 1024 = bin BW
         1000Hz / 11.71Hz = bin 85.333
 
      **********************************************************************************/
@@ -448,7 +473,7 @@ void ProcessIQData()
       Spectral NR
       LMS variable leak NR
     **********************************************************************************/
-    switch (NR_Index) {
+    switch (nrOptionSelect) {
       case 0:                               // NR Off
         break;
       case 1:                               // Kim NR
@@ -526,8 +551,6 @@ void ProcessIQData()
 
 
     }
-    //=========================  AFP 10-18-22 ===================
-
 
     // ======================================Interpolation  ================
 
@@ -541,9 +564,6 @@ void ProcessIQData()
     /**********************************************************************************  AFP 12-31-20
       Digital Volume Control
     **********************************************************************************/
-
-
-
     if (mute == 1) {
       arm_scale_f32(float_buffer_L, 0.0, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
       arm_scale_f32(float_buffer_R, 0.0, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
@@ -564,16 +584,85 @@ void ProcessIQData()
       Q_out_R.playBuffer(); // play it !
     }
 
-    if (auto_codec_gain == 1) {
-      Codec_gain();
-    }
+    Codec_gain();
+
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
   } // end of if(audio blocks available)
   if (ms_500.check() == 1)                                  // For clock updates AFP 10-26-22
   {
-    //wait_flag = 0;
     DisplayClock();
   }
-    
+}
+
+/*****
+  Purpose: scale volume from 0 to 100
+
+  Parameter list:
+    int volume        the current reading
+
+  Return value;
+    void
+*****/
+float VolumeToAmplification(int volume) {
+  float x = volume / 100.0f;  //"volume" Range 0..100
+                              //#if 0
+                              //  float a = 3.1623e-4;
+                              //  float b = 8.059f;
+                              //  float ampl = a * expf( b * x );
+                              //  if (x < 0.1f) ampl *= x * 10.0f;
+                              //#else
+  //Approximation:
+  float ampl = 5 * x * x * x * x * x;  //70dB
+                                       //#endif
+  return ampl;
+}
+
+/*****
+  Purpose: To set the codec gain
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+
+*****/
+void Codec_gain() {
+  static uint32_t timer = 0;
+  static uint8_t half_clip = 0;
+  static uint8_t quarter_clip = 0;
+
+  timer++;
+  if (timer > 10000) timer = 10000;
+  if (half_clip == 1)  // did clipping almost occur?
+  {
+    if (timer >= 20)  // 100  // has enough time passed since the last gain decrease?
+    {
+      if (bands[currentBand].RFgain != 0)  // yes - is this NOT zero?
+      {
+        bands[currentBand].RFgain -= 1;  // decrease gain one step, 1.5dB
+        if (bands[currentBand].RFgain < 0) {
+          bands[currentBand].RFgain = 0;
+        }
+        timer = 0;  // reset the adjustment timer
+        AudioNoInterrupts();
+        AudioInterrupts();
+      }
+    }
+  } else if (quarter_clip == 0)  // no clipping occurred
+  {
+    if (timer >= 50)  // 500   // has it been long enough since the last increase?
+    {
+      bands[currentBand].RFgain += 1;  // increase gain by one step, 1.5dB
+      timer = 0;                       // reset the timer to prevent this from executing too often
+      if (bands[currentBand].RFgain > 15) {
+        bands[currentBand].RFgain = 15;
+      }
+      AudioNoInterrupts();
+      AudioInterrupts();
+    }
+  }
+  half_clip = 0;     // clear "half clip" indicator that tells us that we should decrease gain
+  quarter_clip = 0;  // clear indicator that, if not triggered, indicates that we can increase gain
 }

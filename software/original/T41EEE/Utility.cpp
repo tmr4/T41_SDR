@@ -446,7 +446,6 @@ float ApproxAtan(float z) {
 }
 
 
-
 /*****
   Purpose: function reads the analog value for each matrix switch and stores that value in EEPROM.
            Only called if STORE_SWITCH_VALUES is uncommented.
@@ -681,6 +680,45 @@ int SDPresentCheck() {
   }
 }
 
+
+/*****
+  Purpose: Initialize power coefficients based on transmit power level and calibration factor.
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+FLASHMEM void initPowerCoefficients() {
+      for(int i = 0; i < NUMBER_OF_BANDS; i = i + 1) {        
+         EEPROMData.powerOutCW[i] = sqrt(EEPROMData.transmitPowerLevel/20.0) * EEPROMData.CWPowerCalibrationFactor[i];
+         EEPROMData.powerOutSSB[i] =  sqrt(EEPROMData.transmitPowerLevel/20.0) * EEPROMData.SSBPowerCalibrationFactor[i];
+      }
+}
+
+
+FLASHMEM void initUserDefinedStuff() {
+  NR_Index = EEPROMData.nrOptionSelect;
+  TxRxFreq = EEPROMData.centerFreq = EEPROMData.lastFrequencies[EEPROMData.currentBand][EEPROMData.activeVFO];
+  SetKeyPowerUp();  // Use EEPROMData.keyType and EEPROMData.paddleFlip to configure key GPIs.  KF5N August 27, 2023
+  SetDitLength(EEPROMData.currentWPM);
+  SetTransmitDitLength(EEPROMData.currentWPM);
+  // Initialize buffers used by the CW transmitter and CW decoder.
+  sineTone(EEPROMData.CWOffset + 6);  // This function takes "number of cycles" which is the offset + 6.
+  si5351.set_correction(EEPROMData.freqCorrectionFactor, SI5351_PLL_INPUT_XO);
+  initCWShaping();
+  initPowerCoefficients();
+  ResetHistograms();  // KF5N February 20, 2024
+}
+
+
+/*****
+  Purpose: Arm function which is not included in the older library included with TeensyDuino.
+  
+  https://www.keil.com/pack/doc/cmsis/dsp/html/arm__clip__f32_8c.html
+
+*****/
 void arm_clip_f32(const float32_t * pSrc, 
   float32_t * pDst, 
   float32_t low, 

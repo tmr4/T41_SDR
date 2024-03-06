@@ -1,4 +1,40 @@
 #include "SDT.h"
+#include "Button.h"
+#include "ButtonProc.h"
+#include "Display.h"
+#include "DSP_Fn.h"
+#include "EEPROM.h"
+#include "Encoders.h"
+#include "FFT.h"
+#include "Filter.h"
+#include "Menu.h"
+#include "Noise.h"
+#include "Process.h"
+#include "Tune.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define MAX_ZOOM_ENTRIES      5
+
+int switchFilterSideband = 0;
+
+//------------------------- Local Variables ----------
+bool save_last_frequency = false;
+int directFreqFlag = 0;
+long TxRxFreqOld;
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+int DrawNewFloor(int floor);
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: To process a menu down button push
@@ -247,38 +283,26 @@ void ButtonBandDecrease() {
   DrawFrequencyBarValue();
 }
 
-
-//================ AFP 09-27-22
 /*****
-  Purpose: Chnage the horizontal scale of the frequency display
+  Purpose: Change the horizontal scale of the frequency display
 
   Parameter list:
     void
 
   Return value:
-    int             index of the option selected
+    void
 *****/
 void ButtonZoom() {
-  zoomIndex++;
+  spectrum_zoom++;
 
-  if (zoomIndex == MAX_ZOOM_ENTRIES) {
-    zoomIndex = 0;
-  }
-  if (zoomIndex <= 0)
+  if (spectrum_zoom == MAX_ZOOM_ENTRIES) {
     spectrum_zoom = 0;
-  else
-    spectrum_zoom = zoomIndex;
-  ZoomFFTPrep();
-  UpdateZoomField();
-  tft.writeTo(L2);  // Clear layer 2.  KF5N July 31, 2023
-  tft.clearMemory();
-  tft.writeTo(L1);  // Always exit function in L1.  KF5N August 15, 2023
-  DrawBandWidthIndicatorBar();
-  ShowSpectrumdBScale();
-  DrawFrequencyBarValue();
-  ShowFrequency();
-  ShowBandwidth();
-  ResetTuning();  // AFP 10-11-22
+  }
+  if (spectrum_zoom <= 0) {
+    spectrum_zoom = 0;
+  }
+
+  SetZoom(spectrum_zoom);
 }
 
 /*****
@@ -328,7 +352,6 @@ void ButtonDemodMode() {
   SetFreq();  // Must update frequency, for example moving from SSB to CW, the RX LO is shifted.  KF5N
 }
 
-
 /*****
   Purpose: Set transmission mode for SSB or CW
 
@@ -338,15 +361,13 @@ void ButtonDemodMode() {
   Return value:
     void
 *****/
-void ButtonMode()  //====== Changed AFP 10-05-22  =================
-{
+void ButtonMode() {
   if (xmtMode == CW_MODE) {  // Toggle the current mode
     xmtMode = SSB_MODE;
   } else {
     xmtMode = CW_MODE;
   }
-  //fLoCutOld = bands[currentBand].FLoCut;
-  //fHiCutOld = bands[currentBand].FHiCut;
+
   SetFreq();  // Required due to RX LO shift from CW to SSB modes.  KF5N
   //tft.fillWindow();  // This was erasing the waterfall when switching modes.  Removed by KF5N.
   DrawSpectrumDisplayContainer();
@@ -385,13 +406,14 @@ void ButtonMode()  //====== Changed AFP 10-05-22  =================
   Return value:
     void
 *****/
-void ButtonNR()  //AFP 09-19-22 update
-{
+void ButtonNR() {
   nrOptionSelect++;
-  if (nrOptionSelect > 3) {
+  //if (nrOptionSelect == 1) { // skip "KIM NR"
+  //  nrOptionSelect++;
+  //}
+  if (nrOptionSelect > NR_OPTIONS) {
     nrOptionSelect = 0;
   }
-  NROptions();  //AFP 09-19-22
   UpdateNoiseField();
 }
 
@@ -420,7 +442,7 @@ void ButtonNotchFilter() {
     int           the current noise floor value
 *****/
 int ButtonSetNoiseFloor() {
-  int floor = currentNoiseFloor[currentBand];   // KF5N
+  int floor = currentNoiseFloor[currentBand];
   int val;
 
   tft.setFontScale((enum RA8875tsize)1);
@@ -428,18 +450,20 @@ int ButtonSetNoiseFloor() {
 //  tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 120, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_MAGENTA);
   //tft.setTextColor(RA8875_WHITE);
-  tft.setTextColor(RA8875_BLACK);     // JJP 7/17/23
+  tft.setTextColor(RA8875_BLACK);
   tft.setCursor(SECONDARY_MENU_X - 98, MENUS_Y);
   tft.print("Pixels above axis:");
   tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
-  tft.print(currentNoiseFloor[currentBand]);
+  tft.print(floor);
   MyDelay(150L);
 
   while (true) {
     if (filterEncoderMove != 0) {
       floor += filterEncoderMove;  // It moves the display
+      EraseSpectrumWindow();
       floor = DrawNewFloor(floor);
-      tft.fillRect(SECONDARY_MENU_X + 190, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
+//      tft.fillRect(SECONDARY_MENU_X + 190, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
+      tft.fillRect(SECONDARY_MENU_X + 190, MENUS_Y, 70, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
       tft.print(floor);
       filterEncoderMove = 0;
@@ -451,7 +475,8 @@ int ButtonSetNoiseFloor() {
     if (val == MENU_OPTION_SELECT)  // If they made a choice...
     {
       currentNoiseFloor[currentBand]             = floor;
-      EEPROMData.spectrumNoiseFloor              = floor;
+//      spectrumNoiseFloor                         = floor;
+//      EEPROMData.spectrumNoiseFloor              = floor;
       EEPROMData.currentNoiseFloor[currentBand]  = floor;
       EEPROMWrite();
       break;
@@ -479,76 +504,23 @@ int ButtonSetNoiseFloor() {
   Return value;
     int           the current noise floor value
 *****/
-int DrawNewFloor(int floor)
-{
-//  static int oldY = SPECTRUM_BOTTOM;
+int DrawNewFloor(int floor) {
+  static int oldY = SPECTRUM_BOTTOM;
 
   if (floor < 0) {
     floor = 0;
-//    oldY = SPECTRUM_BOTTOM - floor;
+    oldY = SPECTRUM_BOTTOM - floor;
     return floor;
   }
+
+  tft.drawFastHLine(SPECTRUM_LEFT_X + 30, oldY - floor, 100, RA8875_BLACK);
+  tft.drawFastHLine(SPECTRUM_LEFT_X + 30, oldY - floor - 1, 100, RA8875_BLACK);
+  tft.drawFastHLine(SPECTRUM_LEFT_X + 30, oldY - floor, 100, RA8875_RED);
+  tft.drawFastHLine(SPECTRUM_LEFT_X + 30, oldY - floor - 1, 100, RA8875_RED);
+  oldY = SPECTRUM_BOTTOM - floor;
   return floor;
 }
 
-/*****
-  Purpose: The next 3 functions are "empty" user-defined function stubs that can be filled in by the user with
-           "real" code.
-
-  Parameter list:
-    void
-
-  Return value;
-    int           the current noise floor value
-*****/
-int Unused1() {
-  return -1;
-}
-int Unused2() {
-  return -1;
-}
-int Unused3() {
-  return -1;
-}
-/*****
-  Purpose: Reset Zoom to zoomIndex
-
-  Parameter list:
-    void
-
-  Return value;
-    int           the current noise floor value
-*****/
-void ResetZoom(int zoomIndex1) {
-  if (zoomIndex1 == MAX_ZOOM_ENTRIES) {
-    zoomIndex1 = 0;
-  }
-  if (zoomIndex1 <= 0)
-    spectrum_zoom = 0;
-  else
-    spectrum_zoom = zoomIndex1;
-
-  ZoomFFTPrep();
-  UpdateZoomField();
-  DrawBandWidthIndicatorBar();
-  //ShowSpectrumdBScale();
-  DrawFrequencyBarValue();
-  ShowFrequency();
-  ShowBandwidth();
-  //ResetTuning();
-  RedrawDisplayScreen();
-}
-
-/*****
-  Purpose: Direct Frequrncy Entry
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-    Base Code courtesy of Harry  GM3RVL
-*****/
 /*****
   Purpose: Direct Frequency Entry
 
@@ -755,16 +727,17 @@ void ButtonFrequencyEntry() {
       MyDelay(250);  // only for analogue switch matrix
     }
   }
-  if (key != 0x58) {
 
+  if (key != 0x58) {
     TxRxFreq = enteredF;
   }
+
   NCOFreq = 0L;
   directFreqFlag = 1;
   centerFreq = TxRxFreq;
   centerTuneFlag = 1;  // Put back in so tuning bar is refreshed.  KF5N July 31, 2023
   SetFreq();  // Used here instead of centerTuneFlag.  KF5N July 22, 2023
-  //}
+
   if (save_last_frequency == 1) {
     lastFrequencies[currentBand][activeVFO] = enteredF;
   } else {

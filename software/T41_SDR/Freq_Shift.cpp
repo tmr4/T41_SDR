@@ -1,4 +1,29 @@
 #include "SDT.h"
+#include "Display.h"
+#include "FIR.h"
+#include "Tune.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+//const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;  // 512/2/128 * 8 = 16
+const uint32_t N_B = 16;
+
+float32_t NCO_INC;
+double OSC_COS;
+double OSC_SIN;
+double Osc_Vect_Q = 1.0;
+double Osc_Vect_I = 0.0;
+double Osc_Gain = 0.0;
+double Osc_Q = 0.0;
+double Osc_I = 0.0;
+float32_t float_buffer_L_3[BUFFER_SIZE * N_B];
+float32_t float_buffer_R_3[BUFFER_SIZE * N_B];
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: void FreqShift1()
@@ -19,8 +44,10 @@
   Return value:
     void
 *****/
-void FreqShift1()
-{
+void FreqShift1() {
+  float32_t hh1;
+  float32_t hh2;
+
   for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS; i += 4) {
     hh1 = - float_buffer_R[i + 1];  // xnew(1) =  - ximag(1) + jxreal(1)
     hh2 =   float_buffer_L[i + 1];
@@ -69,36 +96,20 @@ void FreqShift1()
     Requires 4 complex multiplies and two adds per data point within the time domain buffer.  Applied after the data
     stream is sent to the Zoom FFT , but befor decimation.
 *****/
-void FreqShift2()
-{
+void FreqShift2() {
   uint i;
-  //long currentFreqAOld;  Not used.  KF5N July 22, 2023
   int sideToneShift = 0;
 
   if (fineTuneEncoderMove != 0L) {
-   // SetFreq();           //AFP 10-04-22
-   // ShowFrequency();
-   // DrawBandWidthIndicatorBar();
-
-    // ); //AFP 10-04-22
-    // EncoderFineTune();      //AFP 10-04-22
-
     if (NCOFreq > 40000L) {
       NCOFreq = 40000L;
     }
-    // centerFreq += freqIncrement;
+
     currentFreqA = centerFreq + NCOFreq;
-    //SetFreq(); //AFP 10-04-22
-    //ShowFrequency();
   }
 
-  encoderStepOld = fineTuneEncoderMove;
-  //currentFreqAOld = TxRxFreq;
   TxRxFreq = centerFreq + NCOFreq;
-  //if (abs(currentFreqAOld - TxRxFreq) < 9 * stepFineTune && currentFreqAOld != TxRxFreq) {  // AFP 10-30-22
-  //  ShowFrequency();
-  //  DrawBandWidthIndicatorBar();
-  //}
+
   if (xmtMode == SSB_MODE ) {
     sideToneShift = 0;
   } else {

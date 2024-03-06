@@ -32,8 +32,23 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
 * dev/v0.1 - SDR.1 with:
 
   * feature/menu
+  * restructured program:
+    * moving code from SDT.h and T41_SDR.ino to individual header and code files/functions *(need a second pass; much more to do with both files; likely more work to do moving local variables to functions)*
+    * removing unused variables and some functions *(and noting others that aren't used)*
+    * replaced some variables that serve a duplicate purpose with a single variable or none at all where the variable appears to serve no purpose
+  * correct placement of VFO B frequency
+  * added some debugging capability to examing switch matrix functionality and anomalies
+  * corrected full screen main menu cancel feature
+  * fixed some coding errors and shortcomings in original software
+  * removed many DEBUG sections that seem outdated
+  * some clean up (removing useless and out of date comments)
+  * *KIM NR gain is higher as a result of these changes.  Will investigate.*
 
 * feature/menu - SDR.1 with option to select top line menu functionality (similar to T41EEE) or retain full screen menu (SDTVer049.2K).
+
+  * currently dev/v0.1
+
+* previous feature/menu changes
 
   * Added USE_FULL_MENU option to MyConfigurationFile.h to allow user to select whether to use the STDVer049.2K full screen menus or top line menus similar to T41EEE *(this seems to be the original T41 menu system)*.  Need to verify continued functionality of full screen menu option.
   * Modified ExecuteButtonPress():

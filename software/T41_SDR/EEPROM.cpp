@@ -1,10 +1,132 @@
 #include "SDT.h"
+#include "Button.h"
+#include "Display.h"
+#include "EEPROM.h"
+#include "Filter.h"
+#include "Menu.h"
+#include "Tune.h"
+#include "Utility.h"
+
+#include "debug.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define MAX_SD_ITEMS        184     // Number of discrete data items written to EEPROM
+#define MAX_FAVORITES        13     // Max number of favorite frequencies stored in EEPROM
 
 //DB2OO, 29-AUG-23: Don't use the overall VERSION for the EEPROM structure version information, but use a combination of an EEPROM_VERSION with the size of the EEPROMData variable.
 // The "EEPROM_VERSION" should only be changed, if the structure config_t EEPROMData has changed!
 // For V049.1 the new version in EEPROM will be "V049_808", for V049.2 it will be "V049_812"
 #define EEPROM_VERSION  "V049"
 static char version_size[10];
+
+config_t EEPROMData {
+  VERSION,                      // char versionSettings[10]
+  1,                            // int AGCMode
+  30,                           // int audioVolume
+  1,                            // int rfGainAllBands
+  SPECTRUM_NOISE_FLOOR,         // int spectrumNoiseFloor
+  DEFAULTFREQINDEX,             // int tuneIndex
+  FAST_TUNE_INCREMENT,          // long stepFineTune
+  DEFAULT_POWER_LEVEL,          // float32_t transmitPowerLevel
+  0,                            // int xmtMode
+  0,                            // int nrOptionSelect
+  1,                            // int currentScale
+  1,                            // long spectrum_zoom = SPECTRUM_ZOOM_2
+  20.0,                         // float spectrum_display_scale
+
+  5,                            // int CWFilterIndex
+  36,                           // int paddleDit
+  35,                           // int paddleDah
+  DECODER_STATE,                // int decoderFlag
+  STRAIGHT_KEY_OR_PADDLES,      // int keyType - straight key = 0, keyer = 1                   
+  DEFAULT_KEYER_WPM,            // int currentWPM
+  20.0,                         // float32_t sidetoneVolume
+  750,                          // uint32_t cwTransmitDelay
+
+  0,                            // int activeVFO
+  100000,                       // int freqIncrement
+
+  STARTUP_BAND,                 // int currentBand
+  STARTUP_BAND,                 // int currentBandA
+  STARTUP_BAND,                 // int currentBandB
+  CURRENT_FREQ_A,               // int currentFreqA
+  CURRENT_FREQ_B,               // int currentFreqB
+  1200,                         // int freqCorrectionFactor
+
+  { 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100 }, // int equalizerRec[EQUALIZER_CELL_COUNT]
+  {0, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 0, 0}, // int equalizerXmt[EQUALIZER_CELL_COUNT]
+
+  -10,                          // int currentMicThreshold
+  5.0,                          // float currentMicCompRatio
+  0.1,                          // float currentMicAttack
+  2.0,                          // float currentMicRelease
+  -10,                          // int currentMicGain
+
+  { 905, 853, 802, 752, 705, 653, 604, 556, 502, 451, 399, 344, 291, 237, 181, 124, 65, 4 }, // int switchValues[NUMBER_OF_SWITCHES]
+
+  0.0,                           // float LPFcoeff
+  0.0,                           // float NR_PSI
+  0.95,                          // float NR_alpha
+  0.85,                          // float NR_beta
+  200.0,                         // float omegaN
+  4000.0,                        // float pll_fmax
+
+  { 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 }, // float powerOutCW[NUMBER_OF_BANDS]
+  { 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03 }, // float powerOutSSB[NUMBER_OF_BANDS]
+  { 0.019, 0.019, .0190, .019, .019, .019, .019 }, // float CWPowerCalibrationFactor[NUMBER_OF_BANDS]
+  { 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008 }, // float SSBPowerCalibrationFactor[NUMBER_OF_BANDS]
+  { 1, 1, 1, 1, 1, 1, 1 }, // float IQAmpCorrectionFactor[NUMBER_OF_BANDS]
+  { 0, 0, 0, 0, 0, 0, 0 }, // float IQPhaseCorrectionFactor[NUMBER_OF_BANDS]
+  { 1, 1, 1, 1, 1, 1, 1 }, // float IQXAmpCorrectionFactor[NUMBER_OF_BANDS]
+  { 0, 0, 0, 0, 0, 0, 0 }, // float IQXPhaseCorrectionFactor[NUMBER_OF_BANDS]
+
+  { 3560000, 3690000, 7030000, 7200000, 14060000, 14200000, 21060000, 21285000, 28060000, 28365000, 5000000, 10000000, 15000000 }, // long favoriteFreqs[13]
+  { { 3548000, 3560000 }, { 7048000, 7030000 }, { 14048000, 14100000 }, { 18116000, 18110000 }, { 21048000, 21150000 }, { 24937000, 24930000 }, { 28048000, 28200000 } }, // int lastFrequencies[NUMBER_OF_BANDS][2]
+
+  7048000, // long centerFreq
+
+  "",           // char mapFileName[50]
+  MY_CALL,      // char myCall[10]
+  MY_TIMEZONE,  // char myTimeZone[10]
+  (int) '.',    // int  separationCharacter = 
+  
+  PADDLE_FLIP,  // int paddleFlip
+  0,            // int sdCardPresent
+
+  MY_LON,       // float myLon
+  MY_LAT,       // float myLat
+  { 0, 0, 0, 0, 0, 0, 0 }, // int currentNoiseFloor[NUMBER_OF_BANDS] = 
+  0,            // int compressorFlag
+
+#ifndef ALT_ISR
+  944,          // int buttonThresholdPressed
+  964,          // int buttonThresholdReleased
+  300000,       // int buttonRepeatDelay
+#else
+  921,          // int buttonThresholdPressed
+  941,          // int buttonThresholdReleased
+  0,            // int buttonRepeatDelay
+#endif
+};
+
+//int16_t currentMode; // not used
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+// the following functions are not used anywhere
+// void CopyEEPROM();
+// void ConvertForEEPROM(File file, char *buffer, int val, int whatDataType);
+// int ValidEEPROMData();
+// void ClearEEPROM();
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: To save the configuration data (working variables) to EEPROM.
@@ -18,11 +140,11 @@ static char version_size[10];
 *****/
 //FLASHMEM void EEPROMWrite() {
 void EEPROMWrite() {
-  EEPROM.put(EEPROM_BASE_ADDRESS + 4, EEPROMData);
+  EEPROM.put(EEPROM_BASE_ADDRESS + sizeof(int), EEPROMData);
 }
 
 /*****
-  Purpose: This is nothing more than an alias for EEPROM.get(EEPROM_BASE_ADDRESS + 4, EEPROMData).
+  Purpose: This is nothing more than an alias for EEPROM.get(EEPROM_BASE_ADDRESS +  sizeof(int), EEPROMData).
 
   Parameter list:
   None
@@ -32,7 +154,7 @@ void EEPROMWrite() {
 *****/
 //FLASHMEM void EEPROMRead() {
 void EEPROMRead() {
-  EEPROM.get(EEPROM_BASE_ADDRESS + 4, EEPROMData);  // Read as one large chunk
+  EEPROM.get(EEPROM_BASE_ADDRESS + sizeof(int), EEPROMData);
 }
 
 /*****
@@ -46,7 +168,7 @@ void EEPROMRead() {
 *****/
 //FLASHMEM void EEPROMWriteSize(int structSize) {
 void EEPROMWriteSize(int structSize) {
-  EEPROM.put(EEPROM_BASE_ADDRESS, structSize);  // Read as one large chunk
+  EEPROM.put(EEPROM_BASE_ADDRESS, structSize);
 }
 
 /*****
@@ -61,7 +183,7 @@ void EEPROMWriteSize(int structSize) {
 //FLASHMEM int EEPROMReadSize() {
 int EEPROMReadSize() {
   int structSize;
-  EEPROM.get(EEPROM_BASE_ADDRESS, structSize);  // Read as one large chunk
+  EEPROM.get(EEPROM_BASE_ADDRESS, structSize);
   return structSize;
 }
 
@@ -74,8 +196,7 @@ int EEPROMReadSize() {
   Return value;
     char* pointer to EEPROM version string of the form "V049_808"
 *****/
-static char* EEPROMSetVersion(void)
-{
+static char* EEPROMSetVersion(void) {
     size_t  l;
   strncpy(version_size, EEPROM_VERSION, sizeof(version_size));
   l = strlen(version_size);
@@ -96,8 +217,7 @@ static char* EEPROMSetVersion(void)
   Return value;
     void
 *****/
-void EEPROMShow() 
-{
+void EEPROMShow() {
    int i;
 
   Serial.println("----- EEPROM Parameters: -----");
@@ -116,8 +236,8 @@ void EEPROMShow()
   Serial.println(EEPROMData.tuneIndex);
   Serial.print("stepFineTne                     = ");
   Serial.println(EEPROMData.stepFineTune);
-  Serial.print("powerLevel                      = ");
-  Serial.println(EEPROMData.powerLevel);
+  Serial.print("transmitPowerLevel                      = ");
+  Serial.println(EEPROMData.transmitPowerLevel);
   Serial.print("xmtMode                         = ");
   Serial.println(EEPROMData.xmtMode);
   Serial.print("nrOptionSelect                  = ");
@@ -415,7 +535,7 @@ void SetFavoriteFrequency() {
       } else {
         currentFreqB = TxRxFreq;
       }
-      //      EEPROMWrite();
+
       SetFreq();
       BandInformation();
       ShowBandwidth();
@@ -513,7 +633,7 @@ void GetFavoriteFrequency() {
     if (val == MENU_OPTION_SELECT) {
 
       EraseSpectrumDisplayContainer();
-      currentMode = bands[currentBand].mode;
+      //currentMode = bands[currentBand].mode;
       DrawSpectrumDisplayContainer();
       DrawFrequencyBarValue();
       SetBand();
@@ -562,8 +682,8 @@ void CopyEEPROM() {
   decoderFlag = EEPROMData.decoderFlag;
 
   for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
-    recEQ_Level[i] = EEPROMData.equalizerRec[i];  // 4 bytes each
-    xmtEQ_Level[i] = EEPROMData.equalizerXmt[i];
+    equalizerRec[i] = EEPROMData.equalizerRec[i];  // 4 bytes each
+    equalizerXmt[i] = EEPROMData.equalizerXmt[i];
   }
 
   freqIncrement = EEPROMData.freqIncrement;              // 4 bytes
@@ -577,15 +697,15 @@ void CopyEEPROM() {
   paddleDit = EEPROMData.paddleDit;
   paddleDah = EEPROMData.paddleDah;
   rfGainAllBands = EEPROMData.rfGainAllBands;
-  spectrumNoiseFloor = EEPROMData.spectrumNoiseFloor;  // AFP 09-26-22
+  spectrumNoiseFloor = EEPROMData.spectrumNoiseFloor;
 
   //  Note: switch values are read and written to EEPROM only
 
   tuneIndex = EEPROMData.tuneIndex;
   stepFineTune = EEPROMData.stepFineTune;
-  transmitPowerLevel = EEPROMData.powerLevel;
-  currentWPM = EEPROMData.currentWPM;  // 4 bytes
-  xmtMode = EEPROMData.xmtMode;        // AFP 09-26-22
+  transmitPowerLevel = EEPROMData.transmitPowerLevel;
+  currentWPM = EEPROMData.currentWPM;
+  xmtMode = EEPROMData.xmtMode;
 
   currentScale = EEPROMData.currentScale;
   spectrum_zoom = EEPROMData.spectrum_zoom;
@@ -644,7 +764,6 @@ void CopyEEPROM() {
   strncpy(mapFileName, EEPROMData.mapFileName, 50);
   strncpy(myCall, EEPROMData.myCall, 10);
   strncpy(myTimeZone, EEPROMData.myTimeZone, 10);
-  freqSeparationChar = (char)EEPROMData.separationCharacter;  //   JJP  7/25/23
 
   paddleFlip = EEPROMData.paddleFlip;
   sdCardPresent = EEPROMData.sdCardPresent;
@@ -667,7 +786,6 @@ void CopyEEPROM() {
   Return value;
     void
 *****/
-
 void EEPROMSaveDefaults2() {
   strcpy(EEPROMData.versionSettings, EEPROMSetVersion());  // Update version
 
@@ -677,7 +795,7 @@ void EEPROMSaveDefaults2() {
   EEPROMData.spectrumNoiseFloor = SPECTRUM_NOISE_FLOOR;
   EEPROMData.tuneIndex = 5;
   EEPROMData.stepFineTune = 50L;
-  EEPROMData.powerLevel = 10;
+  EEPROMData.transmitPowerLevel = 10;
   EEPROMData.xmtMode = 0;
   EEPROMData.nrOptionSelect = 0;  // 1 byte
   EEPROMData.currentScale = 1;
@@ -894,7 +1012,7 @@ int CopySDToEEPROM() {
   int index = 0;
   int lineCount = 0;
 
-  if (!SD.begin(chipSelect)) {  // SD failed
+  if (!SD.begin(BUILTIN_SDCARD)) {  // SD failed
     // don't do anything more:
     return 0;  // Go home and report it
   }
@@ -952,7 +1070,7 @@ int CopySDToEEPROM() {
         EEPROMData.stepFineTune = atol(temp);
         break;
       case 7:
-        EEPROMData.powerLevel = atoi(temp);
+        EEPROMData.transmitPowerLevel = atoi(temp);
         break;
       case 8:
         EEPROMData.xmtMode = atoi(temp);
@@ -1501,8 +1619,7 @@ int CopySDToEEPROM() {
   file.close();
   //  EEPROM.put(0, EEPROMData);  // This rewrites the entire EEPROM struct as defined in SDT.h
   EEPROM.put(EEPROM_BASE_ADDRESS, EEPROMData);  // KF5N
-                                                //  EEPROMShow();
-  //UpdateEEPROMSyncIndicator(1);     //  JJP 7/25/23
+
   RedrawDisplayScreen();
   return 1;
 }
@@ -1525,7 +1642,6 @@ void UpdateEEPROMSyncIndicator(int inSync) {
     //tft.fillRect(SD_X,      BAND_INDICATOR_Y + 70, tft.getFontWidth() * 7, tft.getFontHeight(), RA8875_RED);
     tft.setCursor(SD_X + 2, BAND_INDICATOR_Y + 72);
     tft.setTextColor(RA8875_RED, RA8875_RED);
-//    tft.print("EEPROM");
 
     tft.print((char) ' ');          // JJP 7/25/23
     tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
@@ -1534,9 +1650,6 @@ void UpdateEEPROMSyncIndicator(int inSync) {
   }
   */
 }
-
-
-
 
 /*****
   Purpose: Converts EEPROMData members and value to ASCII
@@ -1582,7 +1695,6 @@ void ConvertForEEPROM(File file, char *buffer, int val, int whatDataType) {
   file.println(buffer);
   buffer[0] = '\0';
 }
-
 
 /*****
   Purpose: Writes the current values of the working variable
@@ -1633,7 +1745,7 @@ int CopyEEPROMToSD() {
   ltoa(stepFineTune, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
-  strcpy(buffer, "EEPROMData.powerLevel = ");
+  strcpy(buffer, "EEPROMData.transmitPowerLevel = ");
   itoa(transmitPowerLevel, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
@@ -1729,7 +1841,7 @@ int CopyEEPROMToSD() {
     strcpy(buffer, "EEPROMData.equalizerRec[");  // long data type
     strcat(buffer, digits);
     strcat(buffer, "] = ");
-    itoa(recEQ_Level[i], temp, DEC);
+    itoa(equalizerRec[i], temp, DEC);
     strcat(buffer, temp);
     file.println(buffer);
   }
@@ -1738,7 +1850,7 @@ int CopyEEPROMToSD() {
     strcpy(buffer, "EEPROMData.equalizerXmt[");  // long data type
     strcat(buffer, digits);
     strcat(buffer, "] = ");
-    itoa(xmtEQ_Level[i], temp, DEC);
+    itoa(equalizerXmt[i], temp, DEC);
     strcat(buffer, temp);
     file.println(buffer);
   }
@@ -1768,7 +1880,7 @@ int CopyEEPROMToSD() {
     strcpy(buffer, "EEPROMData.switchValues[");
     strcat(buffer, digits);
     strcat(buffer, "] = ");
-    itoa(switchThreshholds[i], temp, DEC);
+    itoa(switchValues[i], temp, DEC);
     strcat(buffer, temp);
     file.println(buffer);
   }
@@ -1971,7 +2083,6 @@ int CopyEEPROMToSD() {
   return 1;
 }
 
-
 /*****
   Purpose: See if the EEPROM has ever been set
 
@@ -1984,9 +2095,9 @@ int CopyEEPROMToSD() {
 int ValidEEPROMData() {
   int val = EEPROMData.switchValues[0];
   if (val > 0 && val < 1023)
-    return VALID_EEPROM_DATA;  // return 1
+    return 1;
   else
-    return INVALID_EEPROM_DATA;  // return 0
+    return 0;
 }
 
 /*****
@@ -1998,12 +2109,11 @@ int ValidEEPROMData() {
   Return value;
     int               0 = SD is untouched, 1 = has data
 *****/
-void SDEEPROMDump() 
-{
+void SDEEPROMDump() {
   char c;
   int lines = 0;
 
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(BUILTIN_SDCARD)) {
     Serial.print("SD card cannot be initialized.");
   }
   // open the file.
@@ -2045,7 +2155,6 @@ void ClearEEPROM() {
     EEPROM.write(i, 0xFF);
   }
 }
-
 
 /*****
   Purpose: Manage EEPROM memory at radio start-up.

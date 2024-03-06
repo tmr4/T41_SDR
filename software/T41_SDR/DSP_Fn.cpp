@@ -1,10 +1,81 @@
 #include "SDT.h"
+#include "Button.h"
+#include "Display.h"
+#include "DSP_Fn.h"
+#include "EEPROM.h"
+#include "Menu.h"
+#include "Utility.h"
 
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
 
 #define debug_alternate_NR
 #define boundary_blank 14                           //14 // for first trials very large!!!!
 #define impulse_length NB_impulse_samples           // 7 // has to be odd!!!! 7 / 3 should be enough
 #define PL             (impulse_length - 1) / 2     // 6 // 3 has to be (impulse_length-1)/2 !!!!
+#define MAX_SAMPLE_RATE             (24000.0)
+#define MAX_N_TAU                   (8)
+#define MAX_TAU_ATTACK              (0.01)
+
+AudioEffectCompressor_F32 comp1, comp2;
+
+//------------------------- Local Variables ----------
+long notchFreq = 1000;
+int8_t NB_taps = 10;
+int8_t NB_impulse_samples = 7;
+uint8_t agc_action = 0;
+uint8_t hang_enable;
+uint8_t NB_test = 0;
+int attack_buffsize;
+int hang_counter = 0;
+int n_tau;
+int out_index = -1;
+int pmode = 1;
+uint32_t in_index;
+float32_t attack_mult;
+float32_t decay_mult;
+float32_t fast_backmult;
+float32_t fast_decay_mult;
+float32_t fixed_gain = 1.0;
+float32_t hang_backmult;
+float32_t hang_decay_mult;
+float32_t hang_thresh;
+float32_t hang_level;
+float32_t hangtime;
+float32_t inv_max_input;
+float32_t max_gain;
+float32_t max_input = -0.1;
+float32_t min_volts;
+float32_t onemfast_backmult;
+float32_t onemhang_backmult;
+float32_t out_sample[2];
+float32_t out_targ;
+float32_t pop_ratio;
+float32_t slope_constant;
+float32_t tau_attack;
+float32_t tau_decay;
+float32_t tau_fast_backaverage = 0.0;
+float32_t tau_fast_decay;
+float32_t tau_hang_backmult;
+float32_t tau_hang_decay;
+float32_t var_gain;
+float32_t out_target;
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+void AltNoiseBlanking(float* insamp, int Nsam, float* E );
+
+// the following functions are not used anywhere
+// void CalcNotchBins();
+// void AGCThresholdChanged();
+// void DecodeIQ();
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: Setup Teensy Mic Compressor
@@ -14,15 +85,19 @@
     void
 *****/
 void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_ratio1, float attack_sec1, float release_sec1) {
-  comp1.enableHPFilter(use_HP_filter1);   comp2.enableHPFilter(use_HP_filter1);
-  comp1.setThresh_dBFS(knee_dBFS1);       comp2.setThresh_dBFS(knee_dBFS1);
-  comp1.setCompressionRatio(comp_ratio1); comp2.setCompressionRatio(comp_ratio1);
+  comp1.enableHPFilter(use_HP_filter1);
+  comp2.enableHPFilter(use_HP_filter1);
+  comp1.setThresh_dBFS(knee_dBFS1);
+  comp2.setThresh_dBFS(knee_dBFS1);
+  comp1.setCompressionRatio(comp_ratio1);
+  comp2.setCompressionRatio(comp_ratio1);
 
   float fs_Hz = AUDIO_SAMPLE_RATE;
-  comp1.setAttack_sec(attack_sec1, fs_Hz);       comp2.setAttack_sec(attack_sec1, fs_Hz);
-  comp1.setRelease_sec(release_sec1, fs_Hz);     comp2.setRelease_sec(release_sec1, fs_Hz);
+  comp1.setAttack_sec(attack_sec1, fs_Hz);
+  comp2.setAttack_sec(attack_sec1, fs_Hz);
+  comp1.setRelease_sec(release_sec1, fs_Hz);
+  comp2.setRelease_sec(release_sec1, fs_Hz);
 }
-
 
 /*****
   Purpose: void noiseblanker
@@ -31,8 +106,7 @@ void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_rat
   Return value;
     void
 *****/
-void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples)
-{
+void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
   float32_t* Energy = 0;
 
   AltNoiseBlanking(inputsamples, NB_FFT_SIZE, Energy);
@@ -64,8 +138,8 @@ void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples)
   backward prediction)
   hopefully we have enough processor power left....
 *****/
-void AltNoiseBlanking(float* insamp, int Nsam, float* E )
-{
+void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
+  float32_t NB_thresh = 2.5;
   int impulse_positions[20];      //we allow a maximum of 5 impulses per frame
   int search_pos    = 0;
   int impulse_count = 0;
@@ -293,9 +367,9 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E )
 
 void CalcNotchBins()
 {
-  bin_BW =  SR[SampleRate].rate / 16; // sample rate/2/8
+  bin_BW =  SampleRate / 16; // sample rate/2/8
   // calculate notch centre bin for FFT512
-  notchCenterBin = roundf(notchFreq / bin_BW);
+  //notchCenterBin = roundf(notchFreq / bin_BW);
   // calculate bins  for deletion of bins in the iFFT_buffer
   // set iFFT_buffer[notch_L] to iFFT_buffer[notch_R] to zero
 }
@@ -306,7 +380,7 @@ void CalcNotchBins()
 
 void AGCLoadValues() {
   float32_t tmp;
-  float32_t sample_rate = (float32_t)SR[SampleRate].rate / DF;
+  float32_t sample_rate = (float32_t)SampleRate / DF;
 
   //calculate internal parameters
   switch (AGCMode)
@@ -326,7 +400,8 @@ void AGCLoadValues() {
       tau_decay = 0.5;
       break;
 
-    case 3:                                           //agcMED        hang_thresh = 1.0;
+    case 3:                                           //agcMED
+      hang_thresh = 1.0; // *** this is effectively commented out in original ***
       // G0ORX
       hangtime = 0.000;
       tau_decay = 0.250;
@@ -355,7 +430,6 @@ void AGCLoadValues() {
 
   out_target = out_targ * (1.0 - expf(-(float32_t)n_tau)) * 0.9999;
   min_volts = out_target / (var_gain * max_gain);
-  inv_out_target = 1.0 / out_target;
 
   tmp = log10f(out_target / (max_input * var_gain * max_gain));
   if (tmp == 0.0)
@@ -380,8 +454,7 @@ void AGCLoadValues() {
   Return value;
     void
 *****/
-void AGCPrep()
-{
+void AGCPrep() {
   // Start variables taken from wdsp
 
   tau_attack      = 0.001;                // tau_attack
@@ -404,14 +477,15 @@ void AGCPrep()
   hang_thresh           = 0.250;      // hang_thresh
   tau_hang_decay        = 0.100;      // tau_hang_decay
 
-
   AGCLoadValues(); // G0ORX
-
 }
 
 void AGCThresholdChanged() {
   max_gain = powf (10.0, (float32_t)bands[currentBand].AGC_thresh / 20.0);
 }
+
+#define RB_SIZE                     (int) (MAX_SAMPLE_RATE * MAX_N_TAU * MAX_TAU_ATTACK + 1)
+
 /*****
   Purpose: Audio AGC()
   Parameter list:
@@ -419,11 +493,21 @@ void AGCThresholdChanged() {
   Return value;
     void
 *****/
-void AGC()
-{
-
+void AGC() {
   int k;
   float32_t mult;
+  static uint8_t decay_type = 0;
+  static uint8_t state = 0;
+  unsigned ring_buffsize = RB_SIZE;
+  static float32_t abs_ring[RB_SIZE];
+  static float32_t ring[RB_SIZE * 2];
+  float32_t abs_out_sample;
+  static float32_t fast_backaverage = 0;
+  static float32_t hang_backaverage = 0;
+  static float32_t ring_max = 0.0;
+  static float32_t save_volts = 0.0;
+  static float32_t volts = 0.0;
+
   if (AGCMode == 0)  // AGC OFF
   {
     for (unsigned i = 0; i < FFT_length / 2; i++)
@@ -484,7 +568,7 @@ void AGC()
           } else {
             if (hang_enable && (hang_backaverage > hang_level)) {
               state = 2;
-              hang_counter = (int)(hangtime * SR[SampleRate].rate / DF);
+              hang_counter = (int)(hangtime * SampleRate / DF);
               decay_type = 1;
             } else {
               state = 3;
@@ -558,19 +642,11 @@ void AGC()
       agc_action = 1;                           // LED indicator for AGC action
     }
 
-    //#ifdef USE_LOG10FAST
     mult = (out_target - slope_constant * min (0.0, log10f_fast(inv_max_input * volts))) / volts;
-    //#else
-    //  mult = (out_target - slope_constant * min (0.0, log10f(inv_max_input * volts))) / volts;
-    //#endif
     iFFT_buffer[FFT_length + 2 * i + 0] = out_sample[0] * mult;
     iFFT_buffer[FFT_length + 2 * i + 1] = out_sample[1] * mult;
   }
 }
-
-// ========== AM-Decode stuff
-
-
 
 /*****
   Purpose: Demod IQ
@@ -586,8 +662,6 @@ void DecodeIQ() {
   }
 }
 
-
-
 /*****
   Purpose: Allow user to set the mic compression level
 
@@ -597,10 +671,8 @@ void DecodeIQ() {
   Return value;
     void
 *****/
-void SetCompressionLevel()
-{
+void SetCompressionLevel() {
   int val;
-  //currentMicThreshold = knee_dBFS; // AFP 09-22-22  Commented out.  KF5N October 31, 2023
 
   tft.setFontScale( (enum RA8875tsize) 1);
 
@@ -647,8 +719,7 @@ void SetCompressionLevel()
   Return value;
     void
 *****/
-void SetCompressionRatio()
-{
+void SetCompressionRatio() {
   int val;
 
   tft.setFontScale( (enum RA8875tsize) 1);
@@ -685,8 +756,10 @@ void SetCompressionRatio()
       break;
     }
   }
+
   EraseMenus();
 }
+
 /*****
   Purpose: Allow user to set the mic Attack in sec
 
@@ -696,8 +769,7 @@ void SetCompressionRatio()
   Return value;
     void
 *****/
-void SetCompressionAttack()
-{
+void SetCompressionAttack() {
   int val;
 
   tft.setFontScale( (enum RA8875tsize) 1);
@@ -746,8 +818,7 @@ void SetCompressionAttack()
   Return value;
     void
 *****/
-void SetCompressionRelease()
-{
+void SetCompressionRelease() {
   int val;
 
   tft.setFontScale( (enum RA8875tsize) 1);

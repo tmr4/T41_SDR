@@ -1,6 +1,197 @@
 #include "SDT.h"
+#include "Button.h"
+#include "CWProcessing.h"
+#include "CW_Excite.h"
+#include "Display.h"
+#include "DSP_Fn.h"
+#include "EEPROM.h"
+#include "Encoders.h"
+#include "FFT.h"
+#include "Menu.h"
+#include "MenuProc.h"
+#include "Utility.h"
 
-//=================  AFP10-18-22 ================
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define MAX_DECODE_CHARS        32                    // Max chars that can appear on decoder line.  Increased to 32.  KF5N October 29, 2023
+#define DECODER_BUFFER_SIZE     128                   // Max chars in binary search string with , . ?
+#define HISTOGRAM_ELEMENTS      750
+#define LOWEST_ATOM_TIME         20                   // 60WPM has an atom of 20ms
+#define ADAPTIVE_SCALE_FACTOR   0.8                   // The amount of old histogram values are presesrved
+#define SCALE_CONSTANT          (1.0 / (1.0 - ADAPTIVE_SCALE_FACTOR)) // Insure array has enough observations to scale
+
+unsigned long ditLength;
+unsigned long transmitDitLength;
+long signalElapsedTime;
+long gapLength;    // Time for noise measures
+
+// Morse Code Tables
+char letterTable[] = {
+  // Morse coding: dit = 0, dah = 1
+  0b101,    // A                first 1 is the sentinel marker
+  0b11000,  // B
+  0b11010,  // C
+  0b1100,   // D
+  0b10,     // E
+  0b10010,  // F
+  0b1110,   // G
+  0b10000,  // H
+  0b100,    // I
+  0b10111,  // J
+  0b1101,   // K
+  0b10100,  // L
+  0b111,    // M
+  0b110,    // N
+  0b1111,   // O
+  0b10110,  // P
+  0b11101,  // Q
+  0b1010,   // R
+  0b1000,   // S
+  0b11,     // T
+  0b1001,   // U
+  0b10001,  // V
+  0b1011,   // W
+  0b11001,  // X
+  0b11011,  // Y
+  0b11100   // Z
+};
+
+char numberTable[] = {
+  0b111111,  // 0
+  0b101111,  // 1
+  0b100111,  // 2
+  0b100011,  // 3
+  0b100001,  // 4
+  0b100000,  // 5
+  0b110000,  // 6
+  0b111000,  // 7
+  0b111100,  // 8
+  0b111110   // 9
+};
+
+// not used
+char punctuationTable[] = {
+  0b01101011,  // exclamation mark 33
+  0b01010010,  // double quote 34
+  0b10001001,  // dollar sign 36
+  0b00101000,  // ampersand 38
+  0b01011110,  // apostrophe 39
+  0b01011110,  // parentheses (L) 40, 41
+  0b01110011,  // comma 44
+  0b00100001,  // hyphen 45
+  0b01010101,  // period  46
+  0b00110010,  // slash 47
+  0b01111000,  // colon 58
+  0b01101010,  // semi-colon 59
+  0b01001100,  // question mark 63
+  0b01001101,  // underline 95
+  0b01101000,  // paragraph
+  0b00010001   // break
+};
+
+//=== CW Filter ===
+
+float32_t CW_Filter_state[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t CW_AudioFilter1_state[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t CW_AudioFilter2_state[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t CW_AudioFilter3_state[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t CW_AudioFilter4_state[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t CW_AudioFilter5_state[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+//---------  Code Filter instance -----
+arm_biquad_cascade_df2T_instance_f32 S1_CW_Filter = { IIR_CW_NUMSTAGES, CW_Filter_state, CW_Filter_Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter1 = { 6, CW_AudioFilter1_state, CW_AudioFilterCoeffs1 };
+arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter2 = { 6, CW_AudioFilter2_state, CW_AudioFilterCoeffs2 };
+arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter3 = { 6, CW_AudioFilter3_state, CW_AudioFilterCoeffs3 };
+arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter4 = { 6, CW_AudioFilter4_state, CW_AudioFilterCoeffs4 };
+arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter5 = { 6, CW_AudioFilter5_state, CW_AudioFilterCoeffs5 };
+//=== end CW Filter ===
+
+float32_t float_Corr_Buffer[511];
+float32_t float_Corr_BufferR[511];
+float32_t float_Corr_BufferL[511];
+
+float32_t aveCorrResult;
+float32_t aveCorrResultR;
+float32_t aveCorrResultL;
+
+float goertzelMagnitude;
+
+arm_fir_instance_f32 FIR_CW_DecodeL;
+arm_fir_instance_f32 FIR_CW_DecodeR;
+
+const char *CWFilter[] = { "0.8kHz", "1.0kHz", "1.3kHz", "1.8kHz", "2.0kHz", " Off " };
+
+//------------------------- Local Variables ----------
+// *** looks like many of these should be function variables ***
+
+float32_t corrResult;
+uint32_t corrResultIndex;
+float32_t corrResultR;
+uint32_t corrResultIndexR;
+float32_t corrResultL;
+uint32_t corrResultIndexL;
+float32_t combinedCoeff;
+float32_t combinedCoeff2;
+float32_t combinedCoeff2Old;
+int CWCoeffLevelOld = 0.0;
+float CWLevelTimer = 0.0;
+float CWLevelTimerOld = 0.0;
+
+int endGapFlag = 0;
+int topGapIndex;
+int topGapIndexOld;
+
+int32_t gapHistogram[HISTOGRAM_ELEMENTS];
+int32_t signalHistogram[HISTOGRAM_ELEMENTS];
+
+long valRef1;
+long valRef2;
+long gapRef1;
+int valFlag = 0;
+long signalStartOld = 0;
+long aveDitLength = 80;
+long aveDahLength = 200;
+float thresholdGeometricMean = 140.0;  // This changes as decoder runs
+float thresholdArithmeticMean;
+
+char decodeBuffer[33];    // The buffer for holding the decoded characters
+byte currentDashJump = DECODER_BUFFER_SIZE;
+byte currentDecoderIndex = 0;
+int dahLength;
+int gapAtom;  // Space between atoms
+int gapChar;  // Space between characters
+
+float32_t DMAMEM float_buffer_L_CW[256];
+float32_t DMAMEM float_buffer_R_CW[256];
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+void DoCWDecoding(int audioValue);
+void DoGapHistogram(long gapLen);
+void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, int32_t *maxIndex, int32_t *firstNonZero, int32_t spread);
+void DoSignalHistogram(long val);
+float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, float *data);
+
+void Dah();
+void Dit();
+
+// the following functions are not used anywhere
+// void Send(char myChar);
+// void MorseCharacterClear(void);
+// void DisplayDitLength();
+// void Lookup(char currentAtom);
+// void DrawSignalPlotFrame();
+// void DoSignalPlot(float val);
+// void CW_DecodeLevelDisplay();
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
+
 /*****
   Purpose: Select CW Filter. CWFilterIndex has these values:
            0 = 840Hz
@@ -18,14 +209,14 @@
 *****/
 void SelectCWFilter() {
   CWFilterIndex = SubmenuSelect(CWFilter, 6, 0);
-  //  RedrawDisplayScreen();  Kills the bandwidth graphics in the audio display window, remove. KF5N July 30, 2023
+
   // Clear the current CW filter graphics and then restore the bandwidth indicator bar.  KF5N July 30, 2023
   tft.writeTo(L2);
   tft.clearMemory();
   BandInformation();
   DrawBandWidthIndicatorBar();
 }
-//=================  AFP10-18-22 ================
+
 /*****
   Purpose: to process CW specific signals
 
@@ -36,10 +227,11 @@ void SelectCWFilter() {
     void
 
 *****/
-void DoCWReceiveProcessing() {  // All New AFP 09-19-22
+void DoCWReceiveProcessing() {
   float goertzelMagnitude1;
   float goertzelMagnitude2;
-  int audioTemp;  // KF5N
+  int audioTemp;
+
   //arm_copy_f32(float_buffer_R, float_buffer_R_CW, 256);
   //arm_biquad_cascade_df2T_f32(&S1_CW_Filter, float_buffer_R, float_buffer_R_CW, 256);//AFP 09-01-22
   //arm_biquad_cascade_df2T_f32(&S1_CW_Filter, float_buffer_L, float_buffer_L_CW, 256);//AFP 09-01-22
@@ -47,8 +239,7 @@ void DoCWReceiveProcessing() {  // All New AFP 09-19-22
   arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_L_CW, 256);  // AFP 10-25-22  Park McClellan FIR filter const Group delay
   arm_fir_f32(&FIR_CW_DecodeR, float_buffer_R, float_buffer_R_CW, 256);  // AFP 10-25-22
 
-  //  if (decoderFlag == DECODE_OFF) {                  // AFP 09-27-22
-  if (decoderFlag == DECODE_ON) {  // JJP 7/20/23
+  if (decoderFlag == ON) {  // JJP 7/20/23
 
     //=== end CW Filter ===
 
@@ -67,8 +258,8 @@ void DoCWReceiveProcessing() {  // All New AFP 09-19-22
     aveCorrResultL = .7 * corrResultL + .3 * aveCorrResultL;
     aveCorrResult = (corrResultR + corrResultL) / 2;
     // Calculate Goertzel Mahnitude of incomming signal
-    goertzelMagnitude1 = goertzel_mag(256, 750, 24000, float_buffer_L_CW);  //AFP 10-25-22
-    goertzelMagnitude2 = goertzel_mag(256, 750, 24000, float_buffer_R_CW);  //AFP 10-25-22
+    goertzelMagnitude1 = goertzel_mag(256, 750, 24000, float_buffer_L_CW);
+    goertzelMagnitude2 = goertzel_mag(256, 750, 24000, float_buffer_R_CW);
     goertzelMagnitude = (goertzelMagnitude1 + goertzelMagnitude2) / 2;
     //Combine Correlation and Gowetzel Coefficients
     combinedCoeff = 10 * aveCorrResult * 100 * goertzelMagnitude;
@@ -110,6 +301,7 @@ void DoCWReceiveProcessing() {  // All New AFP 09-19-22
 void LetterSpace() {
   MyDelay(3UL * ditLength);
 }
+
 /*****
   Purpose: to provide spacing between words
 
@@ -147,9 +339,9 @@ void SendCode(char code) {
     else
       Dit();  // ...send a dit
   }
+
   LetterSpace();
 }
-
 
 /*****
   Purpose: to send a Morse code character
@@ -284,7 +476,6 @@ void SetKeyType() {
   }
 }
 
-
 /*****
   Purpose: Set up key at power-up.
 
@@ -308,7 +499,6 @@ void SetKeyPowerUp() {
     paddleDah = KEYER_DAH_INPUT_RING;
   }
 }
-
 
 /*****
   Purpose: Allow user to set the sidetone volume.  KF5N August 31, 2023
@@ -374,7 +564,6 @@ void SetSideToneVolume() {
   lastState = 1111;  // This is required due to the function deactivating the receiver.  This forces a pass through the receiver set-up code.  KF5N October 7, 2023
 }
 
-
 //==================================== Decoder =================
 //DB2OO, 29-AUG-23: moved col declaration here
 static int col = 0;  // Start at lower left
@@ -421,7 +610,6 @@ void MorseCharacterDisplay(char currentLetter) {
   tft.print(decodeBuffer);
 }
 
-
 /*****
   Purpose: When the CW decoder is active, this function allows the user to set the ditLenght, which updates
            the display for the new WPM.
@@ -443,7 +631,6 @@ void DisplayDitLength() {
   tft.setTextColor(RA8875_WHITE);
   tft.print(" ]");
 }
-
 
 /*****
   Purpose: This function looks up the current character in the decode array using a binary search algorithm.
@@ -591,9 +778,14 @@ int currentTime, interElementGap, noSignalTimeStamp;
 char *bigMorseCodeTree = (char *)"-EISH5--4--V---3--UF--------?-2--ARL---------.--.WP------J---1--TNDB6--.--X/-----KC------Y------MGZ7----,Q------O-8------9--0----";
 //                                012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678
 //                                         10        20        30        40        50        60        70        80        90       100       110       120
+// This enum is used by an experimental Morse decoder.
+enum states {state0, state1, state2, state3, state4, state5, state6};
 
 void DoCWDecoding(int audioValue) {
   static long oldTime = millis();
+  static enum states decodeStates = state0;
+  static long signalStart;
+  static long signalEnd;  // Start-end of dit or dah
 
   switch (decodeStates) {
     
@@ -651,16 +843,13 @@ void DoCWDecoding(int audioValue) {
         currentDashJump = currentDashJump >> 1;                 // Fast divide by 2
         if (signalElapsedTime < (int)thresholdGeometricMean) {  // It was a dit
           charProcessFlag = true;                               
-// Serial.printf("dit signalElapsedTime = %d gapLength = %d noSignalGap = %d thresholdGeometricMean = %f\n\n", signalElapsedTime, gapLength, noSignalGap, thresholdGeometricMean);
-// Serial.printf("blankFlag = %d charProcessFlag = %d\n", blankFlag, charProcessFlag);
           currentDecoderIndex++;
         } else {  // It's a dah!
           charProcessFlag = true;
-// Serial.printf("dah signalElapsedTime = %d gapLength = %d noSignalGap = %d thresholdGeometricMean = %f\n\n", signalElapsedTime, gapLength, noSignalGap, thresholdGeometricMean);
           currentDecoderIndex += currentDashJump;
         }
       }
-// Serial.printf("currentDecoderIndex = %d\n", currentDecoderIndex);
+
       decodeStates = state0;  // Begin process again.
       break;                  // End state2
 
@@ -695,9 +884,9 @@ void DoCWDecoding(int audioValue) {
   }
 }
 
-
 /*
 void DoCWDecoding(int audioValue) {
+  long gapEnd, gapLength, gapStart;    // Time for noise measures
 
   if (audioValue == 1 && signalStart == 0L) {  // This is the start of the signal
     signalStart = millis();

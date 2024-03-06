@@ -1,27 +1,69 @@
 #include "SDT.h"
+#include "Bearing.h"
+#include "Button.h"
+#include "ButtonProc.h"
+#include "Display.h"
+#include "EEPROM.h"
+#include "Menu.h"
+#include "MenuProc.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+int32_t mainMenuIndex;
+int32_t secondaryMenuIndex;
+int32_t subMenuMaxOptions;           // holds the number of submenu options
+
+int8_t menuStatus = NO_MENUS_ACTIVE;
+
+const char *topMenus[] = { "CW Options", "RF Set", "VFO Select",
+                           "EEPROM", "AGC", "Spectrum Options",
+                           "Noise Floor", "Mic Gain", "Mic Comp",
+                           "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing", "Cancel" };
+
+int (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
+                           &EEPROMOptions, &AGCOptions, &SpectrumOptions,
+                           &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
+                           &EqualizerRecOptions, &EqualizerXmtOptions, &IQOptions, &BearingMaps, &Cancel };
+
+const char *secondaryChoices[][8] = {
+  /* CW Options */ { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Vol", "Xmit Delay", "Cancel" },
+  /* RF Set */ { "Power level", "Gain", "Cancel" },
+  /* VFO Select */ { "VFO A", "VFO B", "Split", "Cancel" },
+  /* EEPROM */ { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite", "EEPROM-->SD", "SD-->EEPROM", "SD Dump", "Cancel" },
+  /* AGC */ { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" },
+  /* Spectrum Options */ { "20 dB/unit", "10 dB/unit", " 5 dB/unit", " 2 dB/unit", " 1 dB/unit", "Cancel" },
+  /* Noise Floor */ { "Set floor", "Cancel" },
+  /* Mic Gain */ { "Set Mic Gain", "Cancel" },
+  /* Mic Comp */ { "On", "Off", "Set Threshold", "Set Ratio", "Set Attack", "Set Decay", "Cancel" },
+  /* EQ Rec Set */ { "On", "Off", "EQSet", "Cancel" },
+  /* EQ Xmt Set */ { "On", "Off", "EQSet", "Cancel" },
+  /* Calibrate */ { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" },
+  /* Bearing */ { "Set Prefix", "Cancel" },
+  /* Cancel */ { "" }
+};
+
+const int secondaryMenuCount[] {7, 3, 4, 8, 6, 6, 2, 2, 7, 4, 4, 6, 2, 1};
+
+int receiveEQFlag;
+int xmitEQFlag;
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 int Cancel() {
   return 0;
 }
 
-/*
-const char *topMenus[] = { "Bearing", "CW Options", "RF Set", "VFO Select",
-                           "EEPROM", "AGC", "Spectrum Options",
-                           "Noise Floor", "Mic Gain", "Mic Comp",
-                           "EQ Rec Set", "EQ Xmt Set", "Calibrate" };
-
-int (*functionPtr[])() = { &BearingMaps, &CWOptions, &RFOptions, &VFOSelect,
-                           &EEPROMOptions, &AGCOptions, &SpectrumOptions,
-                           &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
-                           &EqualizerRecOptions, &EqualizerXmtOptions, &IQOptions
-                        };
-*/
 /*****
-  Purpose: void ShowMenu()
+  Purpose: Display top line menu according to set menu parameters
 
   Parameter list:
     char *menuItem          pointers to the menu
-    int where               0 is a primary menu, 1 is a secondary menu
+    int where               PRIMARY_MENU or SECONDARY_MENU
 
   Return value;
     void
@@ -31,22 +73,28 @@ void ShowMenu(const char *menu[], int where) {
 
   if (menuStatus == NO_MENUS_ACTIVE) {
     NoActiveMenu(); // display error message if no menu selected
+    Serial.println("NAM #4");
   }
 
-  if (where == PRIMARY_MENU) {                                             // Should print on left edge of top line
-    tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_BLUE);  // Top-left of display
-    tft.setCursor(PRIMARY_MENU_X + 1, MENUS_Y);
-    tft.setTextColor(RA8875_WHITE);
-    tft.print(*menu);  // Primary Menu
-  } else {
-    tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Right of primary display
-    tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
-//    tft.setTextColor(RA8875_WHITE);
-    tft.setTextColor(RA8875_BLACK);
-    tft.print(*menu);  // Secondary Menu
-  }
+  switch (where) {
+    case PRIMARY_MENU:
+      tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_BLUE);
+      tft.setCursor(PRIMARY_MENU_X + 1, MENUS_Y);
+      tft.setTextColor(RA8875_WHITE);
+      tft.print(*menu);
+      break;
 
-  return;
+    case SECONDARY_MENU:
+      tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);
+      tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
+  //    tft.setTextColor(RA8875_WHITE);
+      tft.setTextColor(RA8875_BLACK);
+      tft.print(*menu);  // Secondary Menu
+      break;
+
+      default:
+        break;
+  }
 }
 
 /*****
@@ -74,17 +122,11 @@ const char *secondaryFunctions[][8] = {
   { "Set Prefix", "Cancel" }
 };
 */
-
-int DrawMenuDisplay() 
-{
+int DrawMenuDisplay() {
   int i;
   menuStatus = 0;                                                       // No primary or secondary menu set
   mainMenuIndex = 0;
   secondaryMenuIndex = 0;
-
-#ifdef DEBUG
-  Serial.println("\nInto first function");
-#endif
 
   tft.writeTo(L2);                                                      // Clear layer 2.  KF5N July 31, 2023
   tft.clearMemory();
@@ -122,18 +164,9 @@ int DrawMenuDisplay()
 
   Return value: index number for the selected primary menu 
 *****/
-int SetPrimaryMenuIndex() 
-{
+int SetPrimaryMenuIndex() {
   int i;
-//  int resultIndex;
   int val;
-
-#ifdef DEBUG
-  Serial.print("Start of SetPrimaryIndex()  mainMenuIndex = ");
-  Serial.print(mainMenuIndex);
-  Serial.print("   secondaryMenuIndex = ");
-  Serial.println(secondaryMenuIndex);
-#endif
 
   while (true) {
 
@@ -142,7 +175,7 @@ int SetPrimaryMenuIndex()
       tft.setCursor(10, mainMenuIndex * 25 + 115);
       tft.print(topMenus[mainMenuIndex]);
       mainMenuIndex += filterEncoderMove;     // Change the menu index to the new value
-      if (mainMenuIndex == TOP_MENU_COUNT) {  // Did they go past the end of the primary menu list?
+      if (mainMenuIndex >= TOP_MENU_COUNT) {  // Did they go past the end of the primary menu list?
         mainMenuIndex = 0;                    // Yep. Set to start of the list.
       } else {
         if (mainMenuIndex < 0) {               // Did they go past the start of the list?
@@ -154,13 +187,11 @@ int SetPrimaryMenuIndex()
       tft.print(topMenus[mainMenuIndex]);
       tft.fillRect(299, SPECTRUM_TOP_Y + 5, 210, 279, RA8875_BLACK);         // Erase secondary menu list
       tft.setTextColor(DARKGREY);
-//      resultIndex = mainMenuIndex;
       i = 0;
-      while (strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {   // Have we read the last entry in secondary menu?
+      for(int i = 0; i < secondaryMenuCount[mainMenuIndex]; i++) {   // Have we read the last entry in secondary menu?
         tft.setTextColor(DARKGREY);                                         // Nope.
         tft.setCursor(300, i * 25 + 115);
         tft.print(secondaryChoices[mainMenuIndex][i]);
-        i++;
       }
       tft.setCursor(300, i * 25 + 115);
       tft.print(secondaryChoices[mainMenuIndex][i]);
@@ -180,24 +211,11 @@ int SetPrimaryMenuIndex()
       }
     }
 
-#ifdef DEBUG
-  Serial.print("End of SetPrimaryIndex()  mainMenuIndex = ");
-  Serial.print(mainMenuIndex);
-  Serial.print("   secondaryMenuIndex = ");
-  Serial.println(secondaryMenuIndex);
-#endif
-
   }  // End while True
   tft.setTextColor(RA8875_WHITE);
 
-#ifdef DEBUG
-  Serial.print("Exit SetPrimaryIndex()  mainMenuIndex = ");
-  Serial.println(mainMenuIndex);
-#endif
-
   return mainMenuIndex;
 }
-
 
 /*****
   Purpose: To select the secondary menu
@@ -207,8 +225,7 @@ int SetPrimaryMenuIndex()
 
   Return value: index number for the selected primary menu 
 *****/
-int SetSecondaryMenuIndex() 
-{
+int SetSecondaryMenuIndex() {
   int i = 0;
   int secondaryMenuCount = 0;
   int oldIndex = 0;

@@ -212,7 +212,8 @@ void ExecuteButtonPress(int val) {
 
       if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
         ErasePrimaryMenu();
-        secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
+//        secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
+          functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
         menuStatus = SECONDARY_MENU_ACTIVE;
         secondaryMenuIndex = -1;  // Reset secondary menu
       } else {
@@ -236,6 +237,7 @@ void ExecuteButtonPress(int val) {
       if (EEPROMData.currentBand < 5) digitalWrite(bandswitchPins[EEPROMData.currentBand], LOW);  // Added if so unused GPOs will not be touched.  KF5N October 16, 2023.
       ButtonBandIncrease();
       if (EEPROMData.currentBand < 5) digitalWrite(bandswitchPins[EEPROMData.currentBand], HIGH);
+      EEPROMData.rfGainCurrent = 10;
       BandInformation();
       NCOFreq = 0L;
       DrawBandWidthIndicatorBar();  // AFP 10-20-22
@@ -265,6 +267,7 @@ void ExecuteButtonPress(int val) {
       BandInformation();
       NCOFreq = 0L;
       DrawBandWidthIndicatorBar();  //AFP 10-20-22
+      EEPROMData.rfGainCurrent = 10;
       break;
 
     case FILTER:  // 6
@@ -284,6 +287,7 @@ void ExecuteButtonPress(int val) {
 
     case NOISE_REDUCTION:  // 9
       ButtonNR();
+      UpdateNotchField();  // This is required because LMS NR must turn off AutoNotch.
       break;
 
     case NOTCH_FILTER:  // 10

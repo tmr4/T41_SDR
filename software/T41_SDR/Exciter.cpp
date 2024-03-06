@@ -1,4 +1,27 @@
 #include "SDT.h"
+#include "Exciter.h"
+#include "Filter.h"
+#include "Menu.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+arm_fir_instance_f32 FIR_Hilbert_L;
+arm_fir_instance_f32 FIR_Hilbert_R;
+
+arm_fir_decimate_instance_f32 FIR_dec1_EX_I;
+arm_fir_decimate_instance_f32 FIR_dec1_EX_Q;
+arm_fir_decimate_instance_f32 FIR_dec2_EX_I;
+arm_fir_decimate_instance_f32 FIR_dec2_EX_Q;
+
+int16_t *sp_L2;
+int16_t *sp_R2;
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: Create I and Q signals from Mic input
@@ -19,9 +42,8 @@
     6.  Interpolate 8x (upsample and filter) the data stream to 192KHz sample rate
     7.  Output the data stream thruogh the DACs at 192KHz
 *****/
-void ExciterIQData()
-{
-  uint32_t N_BLOCKS_EX                         = N_B_EX;
+void ExciterIQData() {
+  uint32_t N_BLOCKS_EX = 16;
 
   /**********************************************************************************  AFP 12-31-20
         Get samples from queue buffers
@@ -151,8 +173,7 @@ void ExciterIQData()
   Return value;
     void
 *****/
-void SetBandRelay(int state)
-{
+void SetBandRelay(int state) {
   // There are 4 physical relays.  Turn all of them off.
   for(int i = 0; i < 4; i = i + 1) {
   digitalWrite(bandswitchPins[i], LOW); // Set ALL band relays low.  KF5N July 21, 2023

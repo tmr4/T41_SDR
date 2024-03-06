@@ -1,9 +1,43 @@
 #include "SDT.h"
+#include "Bearing.h"
+#include "Button.h"
+#include "ButtonProc.h"
+#include "CWProcessing.h"
+#include "CW_Excite.h"
+#include "Display.h"
+#include "DSP_Fn.h"
+#include "EEPROM.h"
+#include "Encoders.h"
+#include "Exciter.h"
+#include "Filter.h"
+#include "Menu.h"
+#include "MenuProc.h"
+#include "Process2.h"
+#include "Tune.h"
+#include "Utility.h"
 
-// Updates by KF5N to CalibrateOptions() function. July 20, 2023
-// Updated receive calibration code to clean up graphics.  KF5N August 3, 2023
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
 
-// ==============  AFP 10-22-22 ==================
+int calibrateFlag = 0;
+int IQChoice;
+int micChoice;
+int micGainChoice;
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+void DoPaddleFlip();
+
+// the following functions are not used anywhere
+// void SetSidetoneVolume();
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
+
 /*****
   Purpose: Present the Calibrate options available and return the selection
 
@@ -14,6 +48,8 @@
    void
 *****/
 int CalibrateOptions(int IQChoice) {
+  static long long freqCorrectionFactorOld = freqCorrectionFactor;
+
   int val;
   int32_t increment = 100L;
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 30, CHAR_HEIGHT, RA8875_BLACK);
@@ -104,15 +140,13 @@ int CalibrateOptions(int IQChoice) {
     case 5:
       //EraseMenus();
       RedrawDisplayScreen();
-      currentFreq = TxRxFreq = centerFreq + NCOFreq;
+      TxRxFreq = centerFreq + NCOFreq;
       DrawBandWidthIndicatorBar();  // AFP 10-20-22
       ShowFrequency();
       BandInformation();
       calibrateFlag = 0;
-      // centerTuneFlag = 1;  Not used in revised tuning scheme.  July 22, 2023
       modeSelectOutExL.gain(0, 0);
       modeSelectOutExR.gain(0, 0);
-      //   ShowSpectrum();  KF5N
       break;
 
     default:  // Cancelled choice
@@ -121,7 +155,7 @@ int CalibrateOptions(int IQChoice) {
   }
   return 1;
 }
-// ==============  AFP 10-22-22 ==================
+
 /*****
   Purpose: Present the CW options available and return the selection
 
@@ -131,28 +165,17 @@ int CalibrateOptions(int IQChoice) {
   Return value
     int           an index into the band array
 *****/
-int CWOptions()  // new option for Sidetone and Delay JJP 9/1/22
-{
-  /*
+int CWOptions() {
+/*
   const char *cwChoices[] = { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Volume", "Transmit Delay", "Cancel" };  // AFP 10-18-22
   int CWChoice = 0;
 
   CWChoice = SubmenuSelect(cwChoices, 7, 0);
-*/
 
-//  switch (CWChoice) {
-#ifdef DEBUG
-  Serial.print("In CWOptions(), secondaryMenuIndex = ");
-  Serial.println(secondaryMenuIndex);
-#endif
-   
+  switch (CWChoice) {
+*/
   switch (secondaryMenuIndex) {
     case 0:  // WPM
-
-#ifdef DEBUG
-  Serial.println("Into SetWPM");
-#endif
-
       SetWPM();
       SetTransmitDitLength(currentWPM);  //Afp 09-22-22     // JJP 8/19/23
       break;
@@ -172,7 +195,6 @@ int CWOptions()  // new option for Sidetone and Delay JJP 9/1/22
       break;
 
     case 4:  // Sidetone volume
-    //  SetSidetoneVolume();
       SetSideToneVolume();
       break;
 
@@ -183,7 +205,7 @@ int CWOptions()  // new option for Sidetone and Delay JJP 9/1/22
     default:  // Cancel
       break;
   }
-//  UpdateEEPROMSyncIndicator(0);
+
   return secondaryMenuIndex;
 }
 
@@ -212,6 +234,7 @@ void SetSidetoneVolume() {
   RedrawDisplayScreen();
   ShowSpectrumdBScale();
 }
+
 /*****
   Purpose: Show the list of scales for the spectrum divisions
 
@@ -221,16 +244,7 @@ void SetSidetoneVolume() {
   Return value
     int           an index into displayScale[] array, or -1 on cancel
 *****/
-int SpectrumOptions() { /*
-  dispSc displayScale[] =  //r *dbText,dBScale, pixelsPerDB, baseOffset, offsetIncrement
-  {
-    {"20 dB/", 10.0,   2,  24, 1.00},
-    {"10 dB/", 20.0,   4,  10, 0.50},  // JJP 7/14/23
-    {"5 dB/",  40.0,   8,  58, 0.25},
-    {"2 dB/",  100.0, 20, 120, 0.10},
-    {"1 dB/",  200.0, 40, 200, 0.05}
-  };
-  */
+int SpectrumOptions() {
   const char *spectrumChoices[] = { "20 dB/unit", "10 dB/unit", "5 dB/unit", "2 dB/unit", "1 dB/unit", "Cancel" };
   int spectrumSet = EEPROMData.currentScale;  // JJP 7/14/23
 
@@ -245,6 +259,7 @@ int SpectrumOptions() { /*
   ShowSpectrumdBScale();
   return spectrumSet;
 }
+
 /*****
   Purpose: Present the bands available and return the selection
 
@@ -270,6 +285,7 @@ int AGCOptions() {
   UpdateAGCField();
   return AGCMode;
 }
+
 /*****
   Purpose: IQ Options
 
@@ -278,8 +294,7 @@ int AGCOptions() {
 
   Return value
 *****/
-int IQOptions()  //============================== AFP 10-22-22  All new
-{
+int IQOptions() {
   calibrateFlag = 1;
 //  const char *IQOptions[] = { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" };  //AFP 10-21-22
   //const char *IQOptions[] = {"Rec Cal", "Xmit Cal", "Freq Cal", "SSB PA Cal", "CW PA Cal", "Cancel"}; //AFP 10-21-22
@@ -288,6 +303,7 @@ int IQOptions()  //============================== AFP 10-22-22  All new
   CalibrateOptions(IQChoice);
   return IQChoice;
 }
+
 /*****
   Purpose: To process the graphics for the 14 chan equalizar otpion
 
@@ -417,13 +433,12 @@ void ProcessEqualizerChoices(int EQType, char *title) {
                      RA8875_GREEN);
 
         if (EQType == 0) {
-          recEQ_Level[columnIndex] = newValue;
-          EEPROMData.equalizerRec[columnIndex] = recEQ_Level[columnIndex];
+          equalizerRec[columnIndex] = newValue;
+          EEPROMData.equalizerRec[columnIndex] = equalizerRec[columnIndex];
         } else {
           if (EQType == 1) {
-            xmtEQ_Level[columnIndex] = newValue;
-            ;
-            EEPROMData.equalizerXmt[columnIndex] = xmtEQ_Level[columnIndex];
+            equalizerXmt[columnIndex] = newValue;
+            EEPROMData.equalizerXmt[columnIndex] = equalizerXmt[columnIndex];
           }
         }
 
@@ -431,8 +446,6 @@ void ProcessEqualizerChoices(int EQType, char *title) {
         columnIndex++;
         break;
       }
-      //recEQ_Level[columnIndex] = (float)array[columnIndex];  //AFP 08-09-22
-      //EEPROMData.equalizerRec[columnIndex] = recEQ_Level[columnIndex];
     }
   }
 
@@ -509,7 +522,6 @@ int EqualizerXmtOptions() {
   return 0;
 }
 
-
 /*****
   Purpose: Set Mic level
 
@@ -527,7 +539,7 @@ int MicGainSet() {
   switch (secondaryMenuIndex) {
     case 0:
       int val;
-      currentMicGain = EEPROMData.currentMicGain;  // AFP 09-22-22
+      currentMicGain = EEPROMData.currentMicGain;
       tft.setFontScale((enum RA8875tsize)1);
       tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setTextColor(RA8875_WHITE);
@@ -562,6 +574,7 @@ int MicGainSet() {
   return micGainChoice;
   //  EraseMenus();
 }
+
 /*****
   Purpose: Turn mic compression on and set the level
 
@@ -571,8 +584,7 @@ int MicGainSet() {
   Return value
     int           an index into the band array
 *****/
-int MicOptions()  // AFP 09-22-22 All new
-{
+int MicOptions() {
 //  const char *micChoices[] = { "On", "Off", "Set Threshold", "Set Comp_Ratio", "Set Attack", "Set Decay", "Cancel" };
 
 //  micChoice = SubmenuSelect(micChoices, 7, micChoice);
@@ -619,16 +631,8 @@ int MicOptions()  // AFP 09-22-22 All new
 *****/
 int RFOptions() {
 //  const char *rfOptions[] = { "Power level", "Gain", "Cancel" };
-//  int rfSet = 0;
   int returnValue = 0;
 
-//  rfSet = SubmenuSelect(rfOptions, 3, rfSet);
-
-//  switch (rfSet) {
-#ifdef DEBUG
-  Serial.print("secondaryMenuChoiceMade = ");
-  Serial.println(secondaryMenuChoiceMade);
-#endif
   switch (secondaryMenuIndex) {
     case 0:                                                                                             // Power Level JJP 11/17/23 JJP
       transmitPowerLevel = (float)GetEncoderValue(1, 20, transmitPowerLevel, 1, (char *)"Power: ");
@@ -643,7 +647,7 @@ int RFOptions() {
           EEPROMData.powerOutSSB[currentBand] = powerOutSSB[currentBand];                                                                                                //AFP 10-21-22
         }
       }
-      EEPROMData.powerLevel = transmitPowerLevel;  //AFP 10-21-22
+      EEPROMData.transmitPowerLevel = transmitPowerLevel;  //AFP 10-21-22
       EEPROMWrite();                               //AFP 10-21-22
       BandInformation();
       returnValue = transmitPowerLevel;
@@ -658,7 +662,6 @@ int RFOptions() {
   }
   return returnValue;
 }
-
 
 /*****
   Purpose: This option reverses the dit and dah paddles on the keyer
@@ -719,7 +722,6 @@ void DoPaddleFlip() {
   }
 }
 
-
 /*****
   Purpose: Used to change the currently active VFO
 
@@ -729,15 +731,13 @@ void DoPaddleFlip() {
   Return value
     int             // the currently active VFO, A = 1, B = 0
 *****/
-int VFOSelect() 
-{
+int VFOSelect() {
   /*
   const char *VFOOptions[] = { "VFO A", "VFO B", "Split", "Cancel" };
   int toggle;
   int choice, lastChoice;
 
   choice = lastChoice = toggle = activeVFO;
-  splitOn = 0;
 
   tft.setTextColor(RA8875_BLACK);
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);
@@ -750,36 +750,30 @@ int VFOSelect()
   NCOFreq = 0L;
   switch (secondaryMenuIndex) {
     case VFO_A:  // VFO A
-//    Serial.println("in VFO_A");
       centerFreq = TxRxFreq = currentFreqA;
       activeVFO = VFO_A;
       currentBand = currentBandA;
       tft.fillRect(FILTER_PARAMETERS_X + 180, FILTER_PARAMETERS_Y, 150, 20, RA8875_BLACK);  // Erase split message
-      splitOn = 0;
       break;
 
     case VFO_B:  // VFO B
-//    Serial.println("in VFO_B");
       centerFreq = TxRxFreq = currentFreqB;
       activeVFO = VFO_B;
       currentBand = currentBandB;
       tft.fillRect(FILTER_PARAMETERS_X + 180, FILTER_PARAMETERS_Y, 150, 20, RA8875_BLACK);  // Erase split message
-      splitOn = 0;
       break;
 
     case VFO_SPLIT:  // Split
-//    Serial.println("in SPLIT");
       DoSplitVFO();
-      splitOn = 1;
       break;
 
     default:  // Cancel
-//    Serial.println("in default");
       return activeVFO;
       break;
   }
+
   bands[currentBand].freq = TxRxFreq;
-  SetBand();                            // KF5N July 12, 2023
+  SetBand();
   SetBandRelay(HIGH);                   // Required when switching VFOs. KF5N July 12, 2023
   SetFreq();
   RedrawDisplayScreen();
@@ -828,7 +822,7 @@ int EEPROMOptions() {
   switch (secondaryMenuIndex) {   
     case 0:  // Save current values
       EEPROMWrite();
-      UpdateEEPROMSyncIndicator(1);  //  JJP 7/25/23
+      //UpdateEEPROMSyncIndicator(1);  //  JJP 7/25/23
       break;
 
     case 1:
@@ -849,7 +843,7 @@ int EEPROMOptions() {
 
     case 5:
       CopySDToEEPROM();  // Copy from SD to EEPROM
-      EEPROMRead();      // KF5N
+      EEPROMRead();
       tft.writeTo(L2);   // This is specifically to clear the bandwidth indicator bar.  KF5N August 7, 2023
       tft.clearMemory();
       tft.writeTo(L1);
@@ -867,7 +861,6 @@ int EEPROMOptions() {
   return defaultOpt;
 }
 
-
 /*****
   Purpose: To select an option from a submenu
 
@@ -878,25 +871,6 @@ int EEPROMOptions() {
 
   Return value
     int           an index into the band array
-const char *topMenus[] = { "Bearing", "CW Options", "RF Set", "VFO Select",
-                           "EEPROM", "AGC", "Spectrum Options",
-                           "Noise Floor", "Mic Gain", "Mic Comp",
-                           "EQ Rec Set", "EQ Xmt Set", "Calibrate" };
-
-int (*functionPtr[])() = { &BearingMaps, &CWOptions, &RFOptions, &VFOSelect,
-                           &EEPROMOptions, &AGCOptions, &SpectrumOptions,
-                           &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
-                           &EqualizerRecOptions, &EqualizerXmtOptions, &IQOptions
-
-};
-  const char *labels[]        = {"Select",       "Menu Up",  "Band Up",
-                               "Zoom",         "Menu Dn",  "Band Dn",
-                               "Filter",       "DeMod",    "Mode",
-                               "NR",           "Notch",    "Noise Floor",
-                               "Fine Tune",    "Decoder",  "Tune Increment",
-                               "User 1",       "User 2",   "User 3"
-                              };
-
 *****/
 int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart) {
   int refreshFlag = 0;

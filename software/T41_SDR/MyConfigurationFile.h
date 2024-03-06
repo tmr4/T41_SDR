@@ -1,6 +1,17 @@
 //====================== User Specific Preferences =============
 
-//#define DEBUG 		                                                        // Uncommented for debugging, comment out for normal use
+//#define DEBUG // Uncommented for debugging, comment out for normal use
+//#define DEBUG1
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define RIGNAME             "T41-EP SDT"
+#define RA8875_DISPLAY      1               // Comment out if not using RA8875 display
+#define Si_5351_crystal     25000000L
+#define MASTER_CLK_MULT     4ULL            // FOURSQRP QSD frontend requires 4x clock
+
 #define DECODER_STATE							0						                              // 0 = off, 1 = on
 #define DEFAULT_KEYER_WPM   			15                                        // Startup value for keyer wpm
 #define FREQ_SEP_CHARACTER  			'.'					                              // Some may prefer period, space, or combo
@@ -26,7 +37,6 @@
 #define PADDLE_FLIP								0						                              // 0 = right paddle = DAH, 1 = DIT
 #define STRAIGHT_KEY_OR_PADDLES		0						                              // 0 = straight, 1 = paddles
 #define SDCARD_MESSAGE_LENGTH     3000L                                     // The number of milliseconds to leave error message on screen
-//#define SD_CARD_PRESENT         0                                         //   JJP  7/18/23
 
 //====================== System specific ===============
 #define CURRENT_FREQ_A            7048000                                   // VFO_A
@@ -36,7 +46,7 @@
 #define DEFAULT_POWER_LEVEL       10                                        // Startup power level. Probably 20 for most people
 #define FAST_TUNE_INCREMENT    	  500			 		                    // Default from above for fine tune
 #define SPLASH_DELAY              4000L                                     // How long to show Splash screen. Use 1000 for testing, 4000 normally
-#define STARTUP_BAND        			1                                         // This is the 40M band. see around line 575 in SDT.h
+#define STARTUP_BAND        			1                                   // This is the 40M band (EEPROM.h)
 
 #define CENTER_SCREEN_X           400
 #define CENTER_SCREEN_Y           245
@@ -48,3 +58,11 @@
 #define                           FOURSQRP
 
 #define USE_FULL_MENU             0   // 0 - use top line menus; 1 - use full screen menus
+
+struct maps {
+  char mapNames[50];
+  float lat;
+  float lon;
+};
+
+extern struct maps myMapFiles[];

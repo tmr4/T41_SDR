@@ -1,4 +1,25 @@
 #include "SDT.h"
+#include "Display.h"
+#include "FIR.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define USE_LOG10FAST
+
+int zoom_sample_ptr = 0;
+float32_t DMAMEM FFT_buffer[FFT_LENGTH * 2] __attribute__((aligned(4)));
+float32_t DMAMEM buffer_spec_FFT[1024] __attribute__((aligned(4)));
+float32_t DMAMEM FFT_spec[1024];
+float32_t DMAMEM FFT_spec_old[1024];
+
+float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: ZoomFFTPrep() is used to alter the x axis for the spectrum display, thus narrowing its badwidth.
@@ -9,12 +30,12 @@
   Return value;
     void
 *****/
-void ZoomFFTPrep()
-{ // take value of spectrum_zoom and initialize IIR lowpass and FIR decimation filters for the right values
+void ZoomFFTPrep() {
+  // take value of spectrum_zoom and initialize IIR lowpass and FIR decimation filters for the right values
 
   tft.fillRect(SPECTRUM_LEFT_X , SPECTRUM_TOP_Y + 1, MAX_WATERFALL_WIDTH , SPECTRUM_HEIGHT - 2,  RA8875_BLACK);
-  float32_t Fstop_Zoom = 0.5 * (float32_t) SR[SampleRate].rate / (1 << spectrum_zoom);
-  CalcFIRCoeffs(Fir_Zoom_FFT_Decimate_coeffs, 4, Fstop_Zoom, 60, 0, 0.0, (float32_t)SR[SampleRate].rate);
+  float32_t Fstop_Zoom = 0.5 * (float32_t) SampleRate / (1 << spectrum_zoom);
+  CalcFIRCoeffs(Fir_Zoom_FFT_Decimate_coeffs, 4, Fstop_Zoom, 60, 0, 0.0, (float32_t)SampleRate);
 
   if (spectrum_zoom < 7)
   {
@@ -40,8 +61,8 @@ void ZoomFFTPrep()
     void
     Used when Spectrum Zoom>1
 *****/
-void ZoomFFTExe(uint32_t blockSize)  //AFP changed resolution 03-12-21  Only for spectrum Zoom > 1
-{
+void ZoomFFTExe(uint32_t blockSize) {
+  //AFP changed resolution 03-12-21  Only for spectrum Zoom > 1
   if (updateDisplayFlag == 1) {  //Runs display FFT routine only once for each Audio process FFT.  Cuts number of FFTs by 1/512.
     float32_t x_buffer[blockSize];                      // can be 4096 [FFT length == 1024] or even 8192 [FFT length == 2048]
     float32_t y_buffer[blockSize];
@@ -55,7 +76,7 @@ void ZoomFFTExe(uint32_t blockSize)  //AFP changed resolution 03-12-21  Only for
       sample_no = SPECTRUM_RES;
     }
 
-    if (spectrum_zoom != SPECTRUM_ZOOM_1) {                                                       //For magnifications >1
+    if (spectrum_zoom != 0) {                                                       //For magnifications >1
       arm_biquad_cascade_df1_f32 (&IIR_biquad_Zoom_FFT_I, float_buffer_L, x_buffer, blockSize);
       arm_biquad_cascade_df1_f32 (&IIR_biquad_Zoom_FFT_Q, float_buffer_R, y_buffer, blockSize);
       // decimation
@@ -75,11 +96,10 @@ void ZoomFFTExe(uint32_t blockSize)  //AFP changed resolution 03-12-21  Only for
         if (zoom_sample_ptr >= SPECTRUM_RES)
           zoom_sample_ptr = 0;
       }
-    } else {                                                // I have to think about this:
-      zoom_display = 0;                                     // when do we want to display a new spectrum?
     }
+    
     float32_t multiplier = (float32_t)spectrum_zoom;
-    if (spectrum_zoom > SPECTRUM_ZOOM_8) { // && spectrum_zoom < SPECTRUM_ZOOM_1024) {
+    if (spectrum_zoom > 3) { // SPECTRUM_ZOOM_8
       multiplier = (float32_t)(1 << spectrum_zoom);
     }
     for (int idx = 0; idx < SPECTRUM_RES; idx++) {
@@ -94,8 +114,8 @@ void ZoomFFTExe(uint32_t blockSize)  //AFP changed resolution 03-12-21  Only for
     // adjust lowpass filter coefficient, so that
     // "spectrum display smoothness" is the same across the different sample rates
     // and the same across different magnify modes . . .
-    //float32_t LPFcoeff = LPF_spectrum * (AUDIO_SAMPLE_RATE_EXACT / SR[SampleRate].rate);
-    float32_t LPFcoeff = 0.7;                                                           //AFP 03-12-21  reduced averaging time
+    float32_t LPFcoeff = 0.7;
+    
     if (LPFcoeff > 1.0) {
       LPFcoeff = 1.0;
     }
@@ -132,6 +152,7 @@ void ZoomFFTExe(uint32_t blockSize)  //AFP changed resolution 03-12-21  Only for
     }
   }
 }
+
 /*****
   Purpose: CalcZoom1Magn()
   Parameter list:
@@ -140,8 +161,7 @@ void ZoomFFTExe(uint32_t blockSize)  //AFP changed resolution 03-12-21  Only for
     void
     Used when Spectrum Zoom =1
 *****/
-void CalcZoom1Magn()
-{
+void CalcZoom1Magn() {
  if (updateDisplayFlag == 1) {
   float32_t spec_help = 0.0;
   float32_t LPFcoeff = 0.7;

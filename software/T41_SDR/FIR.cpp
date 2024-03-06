@@ -1,4 +1,20 @@
 #include "SDT.h"
+#include "CWProcessing.h"
+#include "FIR.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+//const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;  // 512/2/128 * 8 = 16
+//const uint32_t N_B = 16;
+
+uint8_t FIR_filter_window = 1; // 1 - 4-term Blackman-Harris, 2 - sine, 3 - cosine, 4 - Hann, other - Blackman-Nuttall
+float32_t coefficient_set[5] = { 0, 0, 0, 0, 0 };
+//const int INT1_STATE_SIZE = 24 + BUFFER_SIZE * N_B / (uint32_t)DF - 1;
+//const int INT2_STATE_SIZE = 8 + BUFFER_SIZE * N_B / (uint32_t)DF1 - 1;
+//const int DEC2STATESIZE = n_dec2_taps + (BUFFER_SIZE * N_B / (uint32_t)DF1) - 1;
 
 // 12 pole Chebyshev 24KSPS 840HZ Fc CW LPF  // AFP 10-18-22
 //   b0                     b1                   b2   
@@ -54,11 +70,6 @@ float32_t CW_AudioFilterCoeffs5[30] = {
 0.067256465545230904, 0.134512931090461807, 0.067256465545230904, 1.695113706470476880, -0.964139568651400491, //5
 };
 
-/*arm_Biquad_cascade_df2T_f32(&s1_Receive,float_buffer_L,float_buffer_L,2048);
-arm_Biquad_cascade_df2T_f32(&s1_Receive,float_buffer_R,float_buffer_R,2048);
-arm_Biquad_cascade_df2T_instance_f32   s1_Receive ={3,HP_DC_Butter_state,HP_DC_Filter_Coeffs};
-float32_t HP_DC_Butter_state[6]={0,0,0,0,0,0];*/
-
 // ============ AFP 09-23-22
 // 6 Pole IIR HP Buterworth 192000sps,-3dB: 300 HZ, 6 poles,HP_DC_Filter_Coeffs;
 //   b0                     b1                   b2                        -a1                    -a2
@@ -82,8 +93,6 @@ float32_t HP_DC_Filter_Coeffs[15] = {  //2KHz
   0.975860239678117303,  -1.951720479356234610,  0.975860239678117303,  1.951137666410104110,  -0.952303292302364990,
   0.990841013163504369,  -1.981682026327008740,  0.990841013163504369,  1.981090266414524460,  -0.982273786239492908
 };*/
-
-// ============ AFP 10-25-22 end
 
 //=== CW Filter ===
 // == CW FIR 64 taps 24ksps Fc = 1560 Parks-McCellan Sinc window (Constant group delay)
@@ -1089,41 +1098,9 @@ float32_t* mag_coeffs[11] =
   }
 };
 
-
-const float32_t nuttallWindow256[] = {
-  0.0000001, 0.0000073, 0.0000292, 0.0000663, 0.0001192, 0.0001891, 0.0002771, 0.0003851,
-  0.0005147, 0.0006684, 0.0008485, 0.0010580, 0.0012998, 0.0015775, 0.0018947, 0.0022554,
-  0.0026639, 0.0031248, 0.0036429, 0.0042235, 0.0048719, 0.0055940, 0.0063956, 0.0072832,
-  0.0082631, 0.0093423, 0.0105278, 0.0118269, 0.0132470, 0.0147960, 0.0164817, 0.0183122,
-  0.0202960, 0.0224414, 0.0247569, 0.0272514, 0.0299336, 0.0328123, 0.0358966, 0.0391953,
-  0.0427173, 0.0464717, 0.0504671, 0.0547124, 0.0592163, 0.0639871, 0.0690332, 0.0743626,
-  0.0799832, 0.0859024, 0.0921274, 0.0986651, 0.1055218, 0.1127036, 0.1202159, 0.1280637,
-  0.1362515, 0.1447831, 0.1536618, 0.1628900, 0.1724698, 0.1824023, 0.1926880, 0.2033264,
-  0.2143164, 0.2256560, 0.2373424, 0.2493718, 0.2617397, 0.2744405, 0.2874677, 0.3008139,
-  0.3144707, 0.3284289, 0.3426782, 0.3572073, 0.3720040, 0.3870552, 0.4023469, 0.4178639,
-  0.4335904, 0.4495095, 0.4656036, 0.4818541, 0.4982416, 0.5147460, 0.5313464, 0.5480212,
-  0.5647480, 0.5815041, 0.5982659, 0.6150094, 0.6317101, 0.6483431, 0.6648832, 0.6813048,
-  0.6975821, 0.7136890, 0.7295995, 0.7452874, 0.7607267, 0.7758911, 0.7907549, 0.8052924,
-  0.8194782, 0.8332872, 0.8466949, 0.8596772, 0.8722106, 0.8842721, 0.8958396, 0.9068915,
-  0.9174074, 0.9273674, 0.9367527, 0.9455454, 0.9537289, 0.9612875, 0.9682065, 0.9744726,
-  0.9800736, 0.9849988, 0.9892383, 0.9927841, 0.9956291, 0.9977678, 0.9991959, 0.9999106,
-  0.9999106, 0.9991959, 0.9977678, 0.9956291, 0.9927841, 0.9892383, 0.9849988, 0.9800736,
-  0.9744726, 0.9682065, 0.9612875, 0.9537289, 0.9455454, 0.9367527, 0.9273674, 0.9174074,
-  0.9068915, 0.8958396, 0.8842721, 0.8722106, 0.8596772, 0.8466949, 0.8332872, 0.8194782,
-  0.8052924, 0.7907549, 0.7758911, 0.7607267, 0.7452874, 0.7295995, 0.7136890, 0.6975821,
-  0.6813048, 0.6648832, 0.6483431, 0.6317101, 0.6150094, 0.5982659, 0.5815041, 0.5647480,
-  0.5480212, 0.5313464, 0.5147460, 0.4982416, 0.4818541, 0.4656036, 0.4495095, 0.4335904,
-  0.4178639, 0.4023469, 0.3870552, 0.3720040, 0.3572073, 0.3426782, 0.3284289, 0.3144707,
-  0.3008139, 0.2874677, 0.2744405, 0.2617397, 0.2493718, 0.2373424, 0.2256560, 0.2143164,
-  0.2033264, 0.1926880, 0.1824023, 0.1724698, 0.1628900, 0.1536618, 0.1447831, 0.1362515,
-  0.1280637, 0.1202159, 0.1127036, 0.1055218, 0.0986651, 0.0921274, 0.0859024, 0.0799832,
-  0.0743626, 0.0690332, 0.0639871, 0.0592163, 0.0547124, 0.0504671, 0.0464717, 0.0427173,
-  0.0391953, 0.0358966, 0.0328123, 0.0299336, 0.0272514, 0.0247569, 0.0224414, 0.0202960,
-  0.0183122, 0.0164817, 0.0147960, 0.0132470, 0.0118269, 0.0105278, 0.0093423, 0.0082631,
-  0.0072832, 0.0063956, 0.0055940, 0.0048719, 0.0042235, 0.0036429, 0.0031248, 0.0026639,
-  0.0022554, 0.0018947, 0.0015775, 0.0012998, 0.0010580, 0.0008485, 0.0006684, 0.0005147,
-  0.0003851, 0.0002771, 0.0001891, 0.0001192, 0.0000663, 0.0000292, 0.0000073, 0.0000001
-};
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: void calc_FIR_coeffs
@@ -1142,8 +1119,8 @@ const float32_t nuttallWindow256[] = {
   Return value;
     void
 *****/
-void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop, int type, float dfc, float Fsamprate)
-{ // modified by WMXZ and DD4WH after
+void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop, int type, float dfc, float Fsamprate) {
+  // modified by WMXZ and DD4WH after
   // Wheatley, M. (2011): CuteSDR Technical Manual. www.metronix.com, pages 118 - 120, FIR with Kaiser-Bessel Window
   // assess required number of coefficients by
   //     numCoeffs = (Astop - 8.0) / (2.285 * TPI * normFtrans);
@@ -1168,6 +1145,7 @@ void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop
     }
   }
   memset(coeffs_I, 0.0, sizeof(n_dec1_taps));    //zero entire buffer, important for variables from DMAMEM
+//  memset(coeffs_I, 0.0, sizeof(float) * n_dec1_taps);    //zero entire buffer, important for variables from DMAMEM
 
   izb = Izero(Beta);
   if (type == 0) { // low pass filter
@@ -1213,7 +1191,7 @@ void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop
     coeffs_I[nc / 2] += 1;
   }
 
-} // END calc_FIR_coeffs
+}
 
 //////////////////////////////////////////////////////////////////////
 //  Call to setup filter parameters
@@ -1241,8 +1219,7 @@ void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop
   Return value;
     void
 *****/
-void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float32_t FLoCut, float32_t FHiCut, float SampleRate)
-{
+void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float32_t FLoCut, float32_t FHiCut, float SampleRate) {
   //calculate some normalized filter parameters
   float32_t nFL = FLoCut / SampleRate;
   float32_t nFH = FHiCut / SampleRate;
@@ -1254,6 +1231,8 @@ void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float3
 
   memset(coeffs_I, 0.0, (size_t) sizeof(n_dec1_taps));    //zero entire buffer, important for variables from DMAMEM
   memset(coeffs_Q, 0.0, (size_t) sizeof(n_dec1_taps));
+//  memset(coeffs_I, 0.0, sizeof(float) * n_dec1_taps);    //zero entire buffer, important for variables from DMAMEM
+//  memset(coeffs_Q, 0.0, sizeof(float) * n_dec1_taps);
 
   //create LP FIR windowed sinc, sin(x)/x complex LP filter coefficients
   for (int i = 0; i < numCoeffs; i++)  {
@@ -1269,7 +1248,7 @@ void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float3
                - 0.01168 * cosf( (SIXPI * i) / (numCoeffs - 1) ) );
           break;
 
-        case 2:
+        case 2: // sine
           z = (float32_t)sinf(TWO_PI * x * nFc) / (PI * x) *
               (0.355768 - 0.487396 * cosf( (TWO_PI * i) / (numCoeffs - 1) )
                + 0.144232 * cosf( (FOURPI * i) / (numCoeffs - 1) )
@@ -1307,8 +1286,7 @@ void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float3
   Return value;
     void
 *****/
-void SetIIRCoeffs(float32_t f0, float32_t Q, float32_t sample_rate, uint8_t filter_type)
-{
+void SetIIRCoeffs(float32_t f0, float32_t Q, float32_t sample_rate, uint8_t filter_type) {
 
   /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     Cascaded biquad (notch, peak, lowShelf, highShelf) [DD4WH, april 2016]

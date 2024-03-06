@@ -1,14 +1,13 @@
 
 #include "SDT.h"
-#define ARM_MATH_CM7
 
 char atom, currentAtom;
 int8_t first_block = 1;
 uint8_t NB_on = 0;
 uint8_t wait_flag;
 float32_t audiotmp = 0.0f;
-//float32_t audioSpectBuffer[1024];  // This can't be DMAMEM.  It will break the S-Meter.  KF5N October 10, 2023
-float32_t* audioSpectBuffer = new float32_t[1024];  // Assign to the heap.
+float32_t audioSpectBuffer[1024]{0};  // This can't be DMAMEM.  It will break the S-Meter.  KF5N October 10, 2023
+//float32_t* audioSpectBuffer = new float32_t[1024]{0};  // Assign to the heap.  Possibly breaking the S-meter?
 float32_t sample_meanL = 0.0;
 float32_t sample_meanR = 0.0;
 float32_t wold = 0.0f;
@@ -65,16 +64,16 @@ void ProcessIQData()
     // Get audio samples from the audio  buffers and convert them to float.
     // Read in 16 blocks and 128 samples in I and Q.  16 * 128 = 2048  (N_BLOCKS = 16)
     for (unsigned i = 0; i < N_BLOCKS; i++) {
-      sp_L1 = Q_in_R.readBuffer();      // Teensy Audio component:  AudioRecordQueue, part of receiver.
-      sp_R1 = Q_in_L.readBuffer();      // Why does R go into L and L go into R???
+//      sp_L1 = Q_in_R.readBuffer();      // Teensy Audio component:  AudioRecordQueue, part of receiver.
+//      sp_R1 = Q_in_L.readBuffer();      // Why does R go into L and L go into R???
       // Find the maximum value and record.
     //  void arm_absmax_q15	(	const q15_t * 	pSrc, uint32_t 	blockSize, q15_t * 	pResult, uint32_t * 	pIndex);
       /**********************************************************************************  AFP 12-31-20
           Using arm_Math library, convert to float one buffer_size.
           Float_buffer samples are now standardized from > -1.0 to < 1.0
       **********************************************************************************/
-      arm_q15_to_float(sp_L1, &float_buffer_L[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit.  BUFFER_SIZE = 128.
-      arm_q15_to_float(sp_R1, &float_buffer_R[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
+      arm_q15_to_float(Q_in_R.readBuffer(), &float_buffer_L[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit.  BUFFER_SIZE = 128.
+      arm_q15_to_float(Q_in_L.readBuffer(), &float_buffer_R[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
       Q_in_L.freeBuffer();
       Q_in_R.freeBuffer();
     }  // end for loop
@@ -322,7 +321,7 @@ void ProcessIQData()
       for (int k = 0; k < 1024; k++) {
         audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
       }
-      for (int k = 0; k < 256; k++) {
+      for (int k = 3; k < 256; k++) {
         if (bands[EEPROMData.currentBand].mode == 0  || bands[EEPROMData.currentBand].mode == DEMOD_AM || bands[EEPROMData.currentBand].mode == DEMOD_SAM) {  //AFP 10-26-22
           //audioYPixel[k] = 20+  map((int)displayScale[EEPROMData.currentScale].dBScale * log10f((audioSpectBuffer[1024 - k] + audioSpectBuffer[1024 - k + 1] + audioSpectBuffer[1024 - k + 2]) / 3), 0, 100, 0, 120);
           audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1024 - k] + audioSpectBuffer[1024 - k + 1] + audioSpectBuffer[1024 - k + 2]) / 3), 0, 100, 0, 120);
@@ -439,26 +438,25 @@ void ProcessIQData()
         break;
       case 1:                               // Kim NR
         Kim1_NR();
-        arm_scale_f32 (float_buffer_L, 30, float_buffer_L, FFT_length / 2);
-        arm_scale_f32 (float_buffer_R, 30, float_buffer_R, FFT_length / 2);
+        arm_scale_f32 (float_buffer_L, 3, float_buffer_L, FFT_length / 2);  // Scalin factor reduced; was blasting speaker.  KF5N February 20, 2024.
+        arm_scale_f32 (float_buffer_R, 3, float_buffer_R, FFT_length / 2);
         break;
       case 2:                               // Spectral NR
         SpectralNoiseReduction();
         break;
-      case 3:                               // LMS NR
-        ANR_notch = 0;
+      case 3:                               // LMS NR.  KF5N March 2, 2024.
         Xanr();
-        arm_scale_f32 (float_buffer_L, 1.5, float_buffer_L, FFT_length / 2);
-        arm_scale_f32 (float_buffer_R, 2, float_buffer_R, FFT_length / 2);
+//        arm_scale_f32 (float_buffer_L, 1.5, float_buffer_L, FFT_length / 2);  // Why is scaling different???
+//        arm_scale_f32 (float_buffer_R, 2, float_buffer_R, FFT_length / 2);
+          arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);  //  This is apparently required by the algorithm; it works on right channel only.
         break;
 
     }
     //==================  End NR ============================
     // ===========================Automatic Notch ==================
-    if (ANR_notchOn == 1) {
-      ANR_notch = 1;
+    if (ANR_notch) {    // KF5N March 2, 2024.
       Xanr();
-      arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);  //AFP 10-21-22
+      arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);  //  This is apparently required by the algorithm; it works on right channel only.
     }
     // ====================End notch =================================
     /**********************************************************************************
@@ -533,15 +531,28 @@ void ProcessIQData()
     /**********************************************************************************  AFP 12-31-20
       CONVERT TO INTEGER AND PLAY AUDIO
     **********************************************************************************/
-
+    
+    q15_t q15_buffer_LTemp[2048];  //KF5N
+    q15_t q15_buffer_RTemp[2048];  //KF5N
+//    Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING);
+//    Q_out_R.setBehaviour(AudioPlayQueue::NON_STALLING);
+    arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
+    arm_float_to_q15 (float_buffer_R, q15_buffer_RTemp, 2048);
+    Q_out_L.play(q15_buffer_LTemp, 2048);
+    Q_out_R.play(q15_buffer_RTemp, 2048);
+//    Q_out_L.setBehaviour(AudioPlayQueue::ORIGINAL);
+//    Q_out_R.setBehaviour(AudioPlayQueue::ORIGINAL);
+/*
     for (unsigned  i = 0; i < N_BLOCKS; i++) {
-      sp_L1 = Q_out_L.getBuffer();
-      sp_R1 = Q_out_R.getBuffer();
-      arm_float_to_q15 (&float_buffer_L[BUFFER_SIZE * i], sp_L1, BUFFER_SIZE);
-      arm_float_to_q15 (&float_buffer_R[BUFFER_SIZE * i], sp_R1, BUFFER_SIZE);
+//      sp_L1 = Q_out_L.getBuffer();
+//      sp_R1 = Q_out_R.getBuffer();
+      arm_float_to_q15 (&float_buffer_L[BUFFER_SIZE * i], Q_out_L.getBuffer(), BUFFER_SIZE);
+      arm_float_to_q15 (&float_buffer_R[BUFFER_SIZE * i], Q_out_R.getBuffer(), BUFFER_SIZE);
       Q_out_L.playBuffer(); // play it !
       Q_out_R.playBuffer(); // play it !
     }
+    */
+
 
 //      Codec_gain();
 

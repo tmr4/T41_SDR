@@ -2,7 +2,7 @@
 
 //======================================== User section that might need to be changed ===================================
 #include "MyConfigurationFile.h"  // This file name should remain unchanged
-#define VERSION "T41EEE.3"        // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
+#define VERSION "T41EEE.4"        // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
 
 struct maps {
   char mapNames[50];
@@ -449,10 +449,10 @@ struct config_t {
   float NR_beta = 0.85;     // 4 bytes
   float omegaN = 200.0;     // 4 bytes
   float pll_fmax = 4000.0;  // 4 bytes
-  float powerOutCW[NUMBER_OF_BANDS] = { 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 };
-  float powerOutSSB[NUMBER_OF_BANDS] = { 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03 };
-  float CWPowerCalibrationFactor[NUMBER_OF_BANDS] = { 0.019, 0.019, .0190, .019, .019, .019, .019 };       // 0.019;
-  float SSBPowerCalibrationFactor[NUMBER_OF_BANDS] = { 0.008, 0.008, 0.008, 0.008, 0.008, 0.008, 0.008 };  // 0.008
+  float powerOutCW[NUMBER_OF_BANDS] =  { 0.035, 0.035, 0.035, 0.035, 0.035, 0.035, 0.035 };  // powerOutCW and powerOutSSB are derived from the TX power setting and calibration factors.
+  float powerOutSSB[NUMBER_OF_BANDS] = { 0.035, 0.035, 0.035, 0.035, 0.035, 0.035, 0.035 };
+  float CWPowerCalibrationFactor[NUMBER_OF_BANDS] = { 0.05, 0.05, .05, .05, .05, .05, .05 };        // Increased to 0.04, was 0.019; KF5N February 20, 2024
+  float SSBPowerCalibrationFactor[NUMBER_OF_BANDS] = { 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05 };  // Increased to 0.04, was 0.008; KF5N February 21, 2024
   float IQAmpCorrectionFactor[NUMBER_OF_BANDS] = { 1, 1, 1, 1, 1, 1, 1 };
   float IQPhaseCorrectionFactor[NUMBER_OF_BANDS] = { 0, 0, 0, 0, 0, 0, 0 };
   float IQXAmpCorrectionFactor[NUMBER_OF_BANDS] = { 1, 1, 1, 1, 1, 1, 1 };
@@ -483,6 +483,10 @@ struct config_t {
   int buttonThresholdPressed = 944;   // switchValues[0] + WIGGLE_ROOM
   int buttonThresholdReleased = 964;  // buttonThresholdPressed + WIGGLE_ROOM
   int buttonRepeatDelay = 300000;     // Increased to 300000 from 200000 to better handle cheap, wornout buttons.
+  #ifdef QSE2
+  q15_t iDCoffset[NUMBER_OF_BANDS] = { 0, 0, 0, 0, 0, 0, 0 };
+  q15_t qDCoffset[NUMBER_OF_BANDS] = { 0, 0, 0, 0, 0, 0, 0 };
+  #endif
 };
 
 extern struct config_t EEPROMData;
@@ -696,8 +700,7 @@ extern const char *zoomOptions[];
 extern byte currentDashJump;
 extern byte currentDecoderIndex;
 extern int8_t menuStatus;  // 0 = no primary or secondary menu, 1 = primary, 2 = secondary
-extern uint8_t ANR_notch;
-extern uint8_t ANR_notchOn;
+extern bool ANR_notch;  // KF5N March 2, 2024
 extern uint8_t display_S_meter_or_spectrum_state;
 extern uint8_t keyPressedOn;  //AFP 09-01-22
 extern uint8_t NR_first_time;
@@ -713,10 +716,6 @@ extern int16_t pixelnew[];
 extern int16_t pixelold[];
 extern int16_t pixelCurrent[];
 extern int16_t pixelold[];
-extern q15_t* sp_L1;
-extern q15_t* sp_R1;
-extern q15_t* sp_L2;
-extern q15_t* sp_R2;
 extern int16_t y_old, y_new, y1_new, y1_old, y_old2;
 extern const uint16_t gradient[];
 extern const uint32_t IIR_biquad_Zoom_FFT_N_stages;
@@ -727,6 +726,7 @@ extern int mute;
 extern bool agc_action;
 extern int attenuator;
 extern int audioYPixel[];
+//extern int* audioYPixel;
 extern int bandswitchPins[];
 extern int calibrateFlag;
 extern int chipSelect;
@@ -736,7 +736,7 @@ extern int fHiCutOld;
 extern volatile int filterEncoderMove;
 extern volatile long fineTuneEncoderMove;
 extern int freqIncrement;
-extern int (*functionPtr[])();
+extern void (*functionPtr[])();
 extern int idx;
 extern int IQChoice;
 extern int keyType;
@@ -933,7 +933,7 @@ extern double elapsed_micros_sum;
 
 void AGC();
 void AGCLoadValues();  // AGC fix.  G0ORX September 5, 2023
-int AGCOptions();
+void AGCOptions();
 void AGCPrep();
 float32_t AlphaBetaMag(float32_t inphase, float32_t quadrature);
 void AltNoiseBlanking(float *insamp, int Nsam, float *E);
@@ -945,7 +945,7 @@ void arm_clip_f32(const float32_t * pSrc,
   uint32_t numSamples);
 int BandOptions();
 float BearingHeading(char *dxCallPrefix);
-int BearingMaps();
+void BearingMaps();
 void bmpDraw(const char *filename, int x, int y);
 void ButtonBandDecrease();
 void ButtonBandIncrease();
@@ -959,23 +959,24 @@ void ButtonMenuDecrease();
 void ButtonMode();
 void ButtonNotchFilter();
 void ButtonNR();
-int ButtonSetNoiseFloor();
+void ButtonSetNoiseFloor();
 void ButtonZoom();
 
 void CalcZoom1Magn();
 void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop, int type, float dfc, float Fsamprate);
 void CalcCplxFIRCoeffs(float *coeffs_I, float *coeffs_Q, int numCoeffs, float32_t FLoCut, float32_t FHiCut, float SampleRate);
 void CaptureKeystrokes();
-int CalibrateOptions();    // AFP 10-22-22, changed JJP 2/3/23
+void CalibrateOptions();    // AFP 10-22-22, changed JJP 2/3/23
 //void Codec_gain();
 uint16_t Color565(uint8_t r, uint8_t g, uint8_t b);
 void ControlFilterF();
 int CreateMapList(char ptrMaps[10][50], int *count);
-int CWOptions();
+void CWOptions();
 
 #define CW_SHAPING_NONE 0
 #define CW_SHAPING_RISE 1
 #define CW_SHAPING_FALL 2
+#define CW_SHAPING_ZERO 3
 
 void CW_ExciterIQData(int shaping);  // AFP 08-18-22
 void DisplayAGC();
@@ -990,7 +991,8 @@ void DoSignalHistogram(long val);
 void DoGapHistogram(long val);
 int DoSplitVFO();
 void DoPaddleFlip();
-void DoXmitCalibrate(int toneFreq);
+void DoXmitCalibrate(int toneFreqIndex);
+void DoXmitCarrierCalibrate(int toneFreqIndex);
 void DoReceiveCalibrate();
 void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight);
 void DrawBandWidthIndicatorBar();  // AFP 03-27-22 Layers
@@ -1002,7 +1004,7 @@ void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int k
 void DrawSMeterContainer();
 void DrawSpectrumDisplayContainer();
 void DrawAudioSpectContainer();
-int EEPROMOptions();
+void EEPROMOptions();
 void EEPROMRead();
 void EEPROMDataDefaults();
 void EEPROMStartup();
@@ -1012,8 +1014,8 @@ void EncoderFineTune();
 void EncoderFilter();
 void EncoderCenterTune();
 void EncoderVolume();
-int EqualizerRecOptions();
-int EqualizerXmtOptions();
+void EqualizerRecOptions();
+void EqualizerXmtOptions();
 void EraseMenus();
 void ErasePrimaryMenu();
 void EraseSpectrumDisplayContainer();
@@ -1030,6 +1032,7 @@ void FreqShift2();
 float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, float *data);
 int GetEncoderValue(int minValue, int maxValue, int startValue, int increment, char prompt[]);
 float GetEncoderValueLive(float minValue, float maxValue, float startValue, float increment, char prompt[]);  //AFP 10-22-22
+int GetEncoderValueLiveQ15t(int minValue, int maxValue, int startValue, int increment, char prompt[]);
 void GetFavoriteFrequency();
 
 float HaversineDistance(float dxLat, float dxLon);
@@ -1038,7 +1041,9 @@ int InitializeSDCard();
 void InitializeDataArrays();
 void InitFilterMask();
 void InitLMSNoiseReduction();
+void initPowerCoefficients();
 void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp);
+void initUserDefinedStuff();  // KF5N February 21, 2024
 void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t factor, uint32_t blocksize);
 float32_t Izero(float32_t x);
 void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, int32_t *maxIndex, int32_t *firstDit, int32_t spread);
@@ -1049,7 +1054,7 @@ void KeyTipOn();
 void LMSNoiseReduction(int16_t blockSize, float32_t *nrbuffer);
 void loadCalToneBuffers();
 float32_t log10f_fast(float32_t X);
-int MicOptions();
+void MicOptions();
 int ModeOptions();
 //DB2OO, 29-AUG-23: added
 void MorseCharacterDisplay(char currentLetter);
@@ -1058,14 +1063,19 @@ void MyDrawFloat(float val, int decimals, int x, int y, char *buff);
 float MSinc(int m, float fc);
 void NoActiveMenu();
 void NoiseBlanker(float32_t *inputsamples, float32_t *outputsamples);
-int NROptions();
-float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins);
+void NROptions();
+
+float PlotCalSpectrum(int x1, int cal_bins[3], int capture_bins);
+
 void printFile(const char *filename);
 void EnableButtonInterrupts();
+void playTransmitData();  // KF5N February 23, 2024
 int ProcessButtonPress(int valPin);
 void ProcessEqualizerChoices(int EQType, char *title);
 void ProcessIQData();
-void ProcessIQData2(float toneFreq);
+
+void ProcessIQData2(int toneFreqIndex);
+
 uint16_t read16(File &f);
 uint32_t read32(File &f);
 int ReadSelectedPushButton();
@@ -1073,20 +1083,20 @@ void RedrawDisplayScreen();
 void ResetFlipFlops();
 void ResetHistograms();
 void ResetTuning();  // AFP 10-11-22
-int RFOptions();
+void RFOptions();
 void ResetZoom(int zoomIndex1);  // AFP 11-06-22
-int SampleOptions();
+//int SampleOptions();
 int SDPresentCheck();
 void SetCompressionLevel();
 void SetCompressionRatio();
 void SetCompressionAttack();
 void SetCompressionRelease();
-int MicGainSet();
+void MicGainSet();
 void SaveAnalogSwitchValues();
 void SelectCalFreq();   // AFP 10-18-22
 void SelectCWFilter();  // AFP 10-18-22
 void SelectCWOffset();  // KF5N December 13, 2023
-extern "C" uint32_t set_arm_clock(uint32_t frequency);
+//extern "C" uint32_t set_arm_clock(uint32_t frequency);
 void SetBand();
 void SetBandRelay(int state);
 void SetDecIntFilters();
@@ -1109,7 +1119,7 @@ void ShowCurrentPowerSetting();
 void ShowDecoderMessage();
 void sineTone(int numCycles);
 void initCWShaping();
-int SpectrumOptions();
+void SpectrumOptions();
 void UpdateInfoWindow();
 void SetFreqCal(int calFreqShift);
 extern "C" {
@@ -1120,7 +1130,7 @@ void ShowFrequency();
 void ShowMenu(const char *menu[], int where);
 void ShowName();
 void ShowSpectrum();
-void ShowSpectrum2(int toneFreq);
+void ShowSpectrum2();
 void ShowSpectrumdBScale();
 void ShowTempAndLoad();
 void ShowTransmitReceiveStatus();
@@ -1145,7 +1155,7 @@ void UpdateVolumeField();
 void UpdateWPMField();
 void UpdateZoomField();
 
-int VFOSelect();
+void VFOSelect();
 
 void WaitforWRComplete();
 int WhichOneToUse(char ptrMaps[][50], int count);

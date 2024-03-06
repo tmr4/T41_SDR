@@ -1,6 +1,37 @@
 #include "SDT.h"
+#include "Display.h"
+#include "FIR.h"
+#include "Utility.h"
 
-/*****  AFP 11-03-22
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+// new synchronous AM PLL & PHASE detector
+// wdsp Warren Pratt, 2016
+int zeta_help = 65;
+float32_t zeta = (float32_t)zeta_help / 100.0;  // PLL step response: smaller, slower response 1.0 - 0.1
+float32_t omega_min = TPI * -pll_fmax * 1 / 24000;
+float32_t omega_max = TPI * pll_fmax * 1 / 24000;
+float32_t g1 = 1.0 - exp(-2.0 * omegaN * zeta * 1 / 24000);
+float32_t g2 = -g1 + 2.0 * (1 - exp(-omegaN * zeta * 1 / 24000) * cosf(omegaN * 1 / 24000 * sqrtf(1.0 - zeta * zeta)));
+float32_t phzerror = 0.0;
+float32_t det = 0.0;
+float32_t fil_out = 0.0;
+float32_t del_out = 0.0;
+float32_t omega2 = 0.0;
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+float ApproxAtan2(float y, float x);
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
+
+/*****
   Purpose: AMDecodeSAM()
   Parameter list:
     void
@@ -12,6 +43,22 @@
   // http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp/
 *****/
 void AMDecodeSAM() {
+  float32_t tauR = 0.02;  // original 0.02;
+  float32_t tauI = 1.4;   // original 1.4;
+  float32_t dc = 0.0;
+  float32_t dc_insert = 0.0;
+  float32_t dcu = 0.0;
+  float32_t dc_insertu = 0.0;
+  float32_t mtauR = exp(-1 / 24000 * tauR);
+  float32_t onem_mtauR = 1.0 - mtauR;
+  float32_t mtauI = exp(-1 / 24000 * tauI);
+  float32_t onem_mtauI = 1.0 - mtauI;
+  uint8_t fade_leveler = 1;
+  float32_t SAM_carrier = 0.0;
+  float32_t SAM_lowpass = 2700.0;
+  float32_t SAM_carrier_freq_offset = 0.0;
+  float32_t SAM_carrier_freq_offsetOld = 0.0;
+
   // taken from Warren Pratt´s WDSP, 2016
   // http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp/
   // http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp/
@@ -25,6 +72,11 @@ void AMDecodeSAM() {
   for (unsigned i = 0; i < FFT_length / 2 ; i++)
   {
     float32_t Sin, Cos;
+    float32_t ai, bi, aq, bq;
+    float32_t audio;
+    float32_t audiou = 0;
+    float32_t corr[2];
+
     Sin = arm_sin_f32(phzerror);
     Cos = arm_cos_f32(phzerror);
 
@@ -37,7 +89,6 @@ void AMDecodeSAM() {
     corr[1] = -bi + aq;
 
     audio = (ai - bi) + (aq + bq);
-    // audio = (ai_ps - bi_ps) + (aq_ps + bq_ps);
 
     if (fade_leveler)
     {
@@ -92,15 +143,14 @@ void AMDecodeSAM() {
   SAM_carrier_freq_offsetOld=SAM_carrier_freq_offset;
 }
 
-/*****  AFP 11-03-22
+/*****
   Purpose: ApproxAtan2
   Parameter list:
     void
   Return value;
     void
 *****/
-float ApproxAtan2(float y, float x)
-{
+float ApproxAtan2(float y, float x) {
   if (x != 0.0f)
   {
     if (fabsf(x) > fabsf(y))

@@ -145,7 +145,7 @@ void DoCWReceiveProcessing() {  // All New AFP 09-19-22
     goertzelMagnitude2 = goertzel_mag(256, freq[EEPROMData.CWOffset], 24000, float_buffer_R_CW);  //AFP 10-25-22
     goertzelMagnitude = (goertzelMagnitude1 + goertzelMagnitude2) / 2;
     //Combine Correlation and Gowetzel Coefficients
-    combinedCoeff = 40 * aveCorrResult * goertzelMagnitude;
+    combinedCoeff = 200 * aveCorrResult * goertzelMagnitude;
 //    Serial.printf("combinedCoeff = %f\n", combinedCoeff);  // Use this to tune decoder.
     // ==========  Changed CW decode "lock" indicator
     if (combinedCoeff > 50) {  // AFP 10-26-22
@@ -347,7 +347,7 @@ void SetSideToneVolume() {
       tft.print(sidetoneDisplay);
       filterEncoderMove = 0;
     }
-    modeSelectOutL.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);  // Sidetone  AFP 10-01-22
+    modeSelectOutL.gain(0, volumeLog[(int)EEPROMData.sidetoneVolume]);  // Sidetone  AFP 10-01-22
                                                                         //    modeSelectOutR.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);  // Right side not used.  KF5N September 1, 2023
     val = ReadSelectedPushButton();                                     // Read pin that controls all switches
     val = ProcessButtonPress(val);

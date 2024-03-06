@@ -1,4 +1,39 @@
 #include "SDT.h"
+#include "Button.h"
+#include "ButtonProc.h"
+#include "CWProcessing.h"
+#include "Display.h"
+#include "EEPROM.h"
+#include "Encoders.h"
+#include "Filter.h"
+#include "Menu.h"
+#include "MenuProc.h"
+#include "Tune.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define MAX_WPM                  60
+#define MAX_AUDIO_VOLUME        100
+#define MIN_AUDIO_VOLUME         16 // adjust to where the band noise disappears
+
+#define MENU_F_LO_CUT            40
+
+//------------------------- Global Variables ----------
+bool volumeChangeFlag = false;
+int resetTuningFlag = 0;
+int centerTuneFlag = 0;
+
+//------------------------- Local Variables ----------
+long filter_pos = 0;
+long last_filter_pos = 0;
+int8_t Menu2 = MENU_F_LO_CUT;
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: EncoderFilter
@@ -8,10 +43,10 @@
 
   Return value;
     void
-    Modified AFP21-12-15
 *****/
-void FilterSetSSB() {
+void FilterSetSSB(int *FW) {
   long filter_change;
+  int filterWidth = *FW;
 
   // SSB
   if (filter_pos != last_filter_pos) {
@@ -37,22 +72,18 @@ void FilterSetSSB() {
         if (switchFilterSideband == 0)  // "0" = normal, "1" means change opposite filter
         {
           bands[currentBand].FLoCut = bands[currentBand].FLoCut + filter_change * 50 * ENCODER_FACTOR;
-          //fHiCutOld= bands[currentBand].FHiCut;
           FilterBandwidth();
         } else if (switchFilterSideband == 1) {
           //if (abs(bands[currentBand].FHiCut) < 500) {
           bands[currentBand].FHiCut = bands[currentBand].FHiCut + filter_change * 50 * ENCODER_FACTOR;
-          fLoCutOld = bands[currentBand].FLoCut;
         }
         break;
       case DEMOD_USB:
         if (switchFilterSideband == 0) {
           bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
-          //bands[currentBand].FLoCut= fLoCutOld;
           FilterBandwidth();
         } else if (switchFilterSideband == 1) {
           bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
-          // bands[currentBand].FHiCut= fHiCutOld;
         }
         break;
       case DEMOD_AM:
@@ -68,21 +99,15 @@ void FilterSetSSB() {
         InitFilterMask();
         break;
     }
-    // =============  AFP 10-27-22
 
-    //ControlFilterF();
     Menu2 = MENU_F_LO_CUT;  // set Menu2 to MENU_F_LO_CUT
     FilterBandwidth();
     ShowBandwidth();
     DrawFrequencyBarValue();
-    //    centerTuneFlag = 1; //AFP 10-03-22
-    //SetFreq();               //  AFP 10-04-22
-    //  ShowFrequency();
   }
-  //notchPosOld = filter_pos;
+
   tft.writeTo(L1);  // Exit function in layer 1.  KF5N August 3, 2023
 }
-
 
 /*****
   Purpose: EncoderCenterTune
@@ -100,9 +125,7 @@ void EncoderCenterTune() {
   if (result == 0)  // Nothing read
     return;
 
-  //centerTuneFlag = 1;  //AFP 10-03-22  Not used in revised tuning scheme.  KF5N July 22, 2023
-
-  if (xmtMode == CW_MODE && decoderFlag == DECODE_ON) {  // No reason to reset if we're not doing decoded CW AFP 09-27-22
+  if (xmtMode == CW_MODE && decoderFlag == ON) {  // No reason to reset if we're not doing decoded CW AFP 09-27-22
     ResetHistograms();
   }
 
@@ -119,21 +142,13 @@ void EncoderCenterTune() {
 
   centerFreq += ((long)freqIncrement * tuneChange);  // tune the master vfo
 
-
-  //  if (centerFreq != oldFreq) {           // If the frequency has changed...
-  //=== AFP 10-19-22
-
   TxRxFreq = centerFreq + NCOFreq;
   SetFreq();  //  Change to receiver tuning process.  KF5N July 22, 2023
   //currentFreqA= centerFreq + NCOFreq;
   DrawBandWidthIndicatorBar();  // AFP 10-20-22
-  //FilterOverlay(); // AFP 10-20-22
   ShowFrequency();
   BandInformation();
-
-  //  }
 }
-
 
 /*****
   Purpose: Encoder volume control
@@ -144,10 +159,11 @@ void EncoderCenterTune() {
   Return value;
     int               0 means encoder didn't move; otherwise it moved
 *****/
-void EncoderVolume()  //============================== AFP 10-22-22  Begin new
-{
+void EncoderVolume() {
   char result;
   int increment [[maybe_unused]] = 0;
+  static float adjustVolEncoder = 1;
+
 
   result = volumeEncoder.process();  // Read the encoder
 
@@ -183,9 +199,7 @@ void EncoderVolume()  //============================== AFP 10-22-22  Begin new
   }
 
   volumeChangeFlag = true;  // Need this because of unknown timing in display updating.
-
-}  //============================== AFP 10-22-22  End new
-
+}
 
 /*****
   Purpose: Use the encoder to change the value of a number in some other function
@@ -199,8 +213,7 @@ void EncoderVolume()  //============================== AFP 10-22-22  Begin new
   Return value;
     int                         the new value
 *****/
-float GetEncoderValueLive(float minValue, float maxValue, float startValue, float increment, char prompt[])  //AFP 10-22-22
-{
+float GetEncoderValueLive(float minValue, float maxValue, float startValue, float increment, char prompt[]) {
   float currentValue = startValue;
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_WHITE);
@@ -233,8 +246,6 @@ float GetEncoderValueLive(float minValue, float maxValue, float startValue, floa
   //tft.setTextColor(RA8875_WHITE);
   return currentValue;
 }
-
-
 
 /*****
   Purpose: Use the encoder to change the value of a number in some other function
@@ -335,7 +346,6 @@ int SetWPM() {
   }
 
   tft.setTextColor(RA8875_WHITE);
-//  EraseMenus();
   return currentWPM;
 }
 
@@ -348,8 +358,7 @@ int SetWPM() {
   Return value;
     long            the delay length in milliseconds
 *****/
-long SetTransmitDelay()  // new function JJP 9/1/22
-{
+long SetTransmitDelay() {
   int val;
   long lastDelay = cwTransmitDelay;
   long increment = 250;  // Means a quarter second change per detent
@@ -389,6 +398,7 @@ long SetTransmitDelay()  // new function JJP 9/1/22
   EraseMenus();
   return cwTransmitDelay;
 }
+
 /*****
   Purpose: Fine tune control.
 
@@ -398,9 +408,7 @@ long SetTransmitDelay()  // new function JJP 9/1/22
   Return value;
     void               cannot return value from interrupt
 *****/
-FASTRUN  // Causes function to be allocated in RAM1 at startup for fastest performance.
-  void
-  EncoderFineTune() {
+FASTRUN void EncoderFineTune() {
   char result;
 
   result = fineTuneEncoder.process();  // Read the encoder
@@ -437,13 +445,10 @@ FASTRUN  // Causes function to be allocated in RAM1 at startup for fastest perfo
     }
   }
   fineTuneEncoderMove = 0L;
-  TxRxFreq = centerFreq + NCOFreq;  // KF5N
+  TxRxFreq = centerFreq + NCOFreq;
 }
 
-
-FASTRUN  // Causes function to be allocated in RAM1 at startup for fastest performance.
-  void
-  EncoderFilter() {
+FASTRUN void EncoderFilter() {
   char result;
 
   result = filterEncoder.process();  // Read the encoder
@@ -464,11 +469,6 @@ FASTRUN  // Causes function to be allocated in RAM1 at startup for fastest perfo
       // filter_pos = last_filter_pos - 5 * filterEncoderMove;   // AFP 10-22-22
       break;
   }
-
-  #ifdef DEBUG
-    Serial.print("filterEncoderMove = ");
-    Serial.println(filterEncoderMove);
-  #endif
 
   if (calibrateFlag == 0) {                                // AFP 10-22-22
     filter_pos = last_filter_pos - 5 * filterEncoderMove;  // AFP 10-22-22

@@ -1,4 +1,66 @@
 #include "SDT.h"
+#include "Button.h"
+#include "Display.h"
+#include "EEPROM.h"
+#include "Filter.h"
+#include "FIR.h"
+#include "Tune.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define NOTHING_TO_SEE_HERE         950     // If the analog pin is greater than this value, nothing's going on
+#define TMS0_POWER_DOWN_MASK        (0x1U)
+#define TMS1_MEASURE_FREQ(x)        (((uint32_t)(((uint32_t)(x)) << 0U)) & 0xFFFFU)
+#define TEMPMON_ROOMTEMP    25.0f
+
+uint8_t display_dbm = DISPLAY_S_METER_DBM; // DISPLAY_S_METER_DBM or DISPLAY_S_METER_DBMHZ
+int old_demod_mode = -99;
+
+// T41 Switch Labels
+const char *labels[] = { "Select", "Menu Up", "Band Up",
+                         "Zoom", "Menu Dn", "Band Dn",
+                         "Filter", "DeMod", "Mode",
+                         "NR", "Notch", "Noise Floor",
+                         "Fine Tune", "Decoder", "Tune Increment",
+                         "Reset Tuning", "Frequ Entry", "User 2" };
+
+float32_t cosBuffer2[256];
+float32_t cosBuffer3[256];
+float32_t cosBuffer4[256];
+
+float32_t sinBuffer[256];
+float32_t sinBuffer2[256];
+float32_t sinBuffer3[256];
+float32_t sinBuffer4[256];
+
+float TGetTemp();
+
+// Voltage in one-hundred 1 dB steps for volume control.
+const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016, 0.000018, 0.000020, 0.000022, 0.000025, 0.000028,
+                                0.000032, 0.000035, 0.000040, 0.000045, 0.000050, 0.000056, 0.000063, 0.000071, 0.000079, 0.000089,
+                                0.000100, 0.000112, 0.000126, 0.000141, 0.000158, 0.000178, 0.000200, 0.000224, 0.000251, 0.000282,
+                                0.000316, 0.000355, 0.000398, 0.000447, 0.000501, 0.000562, 0.000631, 0.000708, 0.000794, 0.000891,
+                                0.001000, 0.001122, 0.001259, 0.001413, 0.001585, 0.001778, 0.001995, 0.002239, 0.002512, 0.002818,
+                                0.003162, 0.003548, 0.003981, 0.004467, 0.005012, 0.005623, 0.006310, 0.007079, 0.007943, 0.008913,
+                                0.010000, 0.011220, 0.012589, 0.014125, 0.015849, 0.017783, 0.019953, 0.022387, 0.025119, 0.028184,
+                                0.031623, 0.035481, 0.039811, 0.044668, 0.050119, 0.056234, 0.063096, 0.070795, 0.079433, 0.089125,
+                                0.100000, 0.112202, 0.125893, 0.141254, 0.158489, 0.177828, 0.199526, 0.223872, 0.251189, 0.281838,
+                                0.316228, 0.354813, 0.398107, 0.446684, 0.501187, 0.562341, 0.630957, 0.707946, 0.794328, 0.891251, 1.000000 };
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+// the following functions are not used anywhere
+// float32_t arm_atan2_f32(float32_t y, float32_t x);
+// int Xmit_IQ_Cal();
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: Generate Array with variable sinewave frequency tone AFP 05-17-22
@@ -7,14 +69,15 @@
   Return value;
     void
 *****/
-void sineTone(int numCycles)
-{
+void sineTone(int numCycles) {
   float theta;
   float freqSideTone2;
   float freqSideTone3 = 3000;         // Refactored 32 * 24000 / 256; //AFP 2-7-23
   float freqSideTone4 = 375;   
   freqSideTone2 = numCycles * 24000 / 256;
   for (int kf = 0; kf < 256; kf++) { //Calc: numCycles=8, 750 hz sine wave.
+    theta = kf * 0.19634950849362;    // Simplify terms: theta = kf * 2 * PI * freqSideTone / 24000  JJP 6/28/23
+    sinBuffer[kf] = sin(theta);
     theta = kf * 2 * PI * freqSideTone2 / 24000;
     sinBuffer2[kf] = sin(theta);
     cosBuffer2[kf] = cos(theta);
@@ -121,8 +184,7 @@ const float32_t atanTable[68] = {
   Return value;
     void
 *****/
-void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t factor, uint32_t blocksize)
-{
+void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t factor, uint32_t blocksize) {
   float32_t temp_buffer[blocksize];
   if (factor < 0.0) {                                                             // mix a bit of I into Q
     arm_scale_f32 (I_buffer, factor, temp_buffer, blocksize);
@@ -141,8 +203,7 @@ void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t facto
   Return value;
     void
 *****/
-float MSinc(int m, float fc)
-{
+float MSinc(int m, float fc) {
   float x = m * PIH;
   if (m == 0)
     return 1.0f;
@@ -158,8 +219,7 @@ float MSinc(int m, float fc)
   Return value;
     void
 *****/
-float32_t Izero(float32_t x)
-{
+float32_t Izero(float32_t x) {
   float32_t x2          = x / 2.0;
   float32_t summe       = 1.0;
   float32_t ds          = 1.0;
@@ -177,7 +237,6 @@ float32_t Izero(float32_t x)
   } while (ds >= errorlimit * summe);
   return (summe);
 }  // END Izero
-
 
 /*****
   Purpose:    Fast algorithm for log10
@@ -208,105 +267,6 @@ float32_t log10f_fast(float32_t X) {
 }
 
 /*****
-  Purpose: void Calculatedbm()
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void Calculatedbm()
-{
-
-  // calculation of the signal level inside the filter bandwidth
-  // taken from the spectrum display FFT
-  // taking into account the analog gain before the ADC
-  // analog gain is adjusted in steps of 1.5dB
-  // bands[currentBand].RFgain = 0 --> 0dB gain
-  // bands[currentBand].RFgain = 15 --> 22.5dB gain
-
-  // spectrum display is generated from 256 samples based on 1024 samples of the FIR FFT . . .
-  // could this cause errors in the calculation of the signal strength ?
-  int posbin              = 0;
-
-  float32_t Lbin, Ubin;
-  float32_t slope         = 10.0;
-  float32_t cons          = -92;
-  float32_t bw_LSB        = 0.0;
-  float32_t bw_USB        = 0.0;
-  float32_t sum_db        = 0.0; // FIXME: mabye this slows down the FPU, because the FPU does only process 32bit floats ???
-  float32_t bin_bandwidth = (float32_t) (SR[SampleRate].rate / (256.0));
-
-  // width of a 256 tap FFT bin @ 96ksps = 375Hz
-  // we have to take into account the magnify mode
-  // --> recalculation of bin_BW
-  bin_bandwidth = bin_bandwidth / (1 << spectrum_zoom); // correct bin bandwidth is determined by the Zoom FFT display setting
-
-  // in all magnify cases (2x up to 16x) the posbin is in the centre of the spectrum display
-  if (spectrum_zoom != 0) {
-    posbin = 128; // right in the middle!
-  } else {
-    posbin = 64;
-  }
-
-  //  determine Lbin and Ubin from ts.dmod_mode and FilterInfo.width
-  //  = determine bandwith separately for lower and upper sideband
-
-
-  bw_LSB = bands[currentBand].FLoCut;
-  bw_USB = bands[currentBand].FHiCut;
-  // calculate upper and lower limit for determination of signal strength
-  // = filter passband is between the lower bin Lbin and the upper bin Ubin
-  Lbin  = (float32_t)posbin + roundf(bw_LSB / bin_bandwidth); // bin on the lower/left side
-  Ubin  = (float32_t)posbin + roundf(bw_USB / bin_bandwidth); // bin on the upper/right side
-
-  // take care of filter bandwidths that are larger than the displayed FFT bins
-  if (Lbin < 0) {
-    Lbin = 0;
-  }
-  if (Ubin > 255) {
-    Ubin = 255;
-  }
-  if ((int)Lbin == (int)Ubin) {
-    Ubin = 1.0 + Lbin;
-  }
-  // determine the sum of all the bin values in the passband
-  for (int c = (int)Lbin; c <= (int)Ubin; c++) {  // sum up all the values of all the bins in the passband
-    sum_db = sum_db + FFT_spec_old[c];
-  }
-
-  //#ifdef USE_W7PUA
-  if (sum_db > 0.0) {
-    //#ifdef USE_LOG10FAST
-    switch (display_dbm) {
-      case DISPLAY_S_METER_DBM:
-        dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator +
-              slope * log10f_fast(sum_db) + cons - (float32_t)bands[currentBand].RFgain * 1.5;
-        dbmhz = 0;
-        break;
-      case DISPLAY_S_METER_DBMHZ:
-        dbmhz = dbm - 10.0 * log10f_fast((float32_t)(((int)Ubin - (int)Lbin) * bin_BW));
-        dbm = 0;
-        break;
-    }
-  }
-
-
-  // lowpass IIR filter
-  // Wheatley 2011: two averagers with two time constants
-  // IIR filter with one element analog to 1st order RC filter
-  // but uses two different time constants (ALPHA = 1 - e^(-T/Tau)) depending on
-  // whether the signal is increasing (attack) or decreasing (decay)
-  // m_AttackAlpha = 0.8647; //  ALPHA = 1 - e^(-T/Tau), T = 0.02s (because dbm routine is called every 20ms!)
-  // Tau = 10ms = 0.01s attack time
-  // m_DecayAlpha = 0.0392; // 500ms decay time
-  //
-
-}
-
-
-/*****
   Purpose: Fast approximation to the trigonometric atan2 function for floating-point data.
 
   Parameter list:
@@ -316,8 +276,7 @@ void Calculatedbm()
   Return value;
     atan2(y, x) = atan(y/x) as radians.
 *****/
-float32_t arm_atan2_f32(float32_t y, float32_t x)
-{
+float32_t arm_atan2_f32(float32_t y, float32_t x) {
   float32_t atan2Val, fract, in;                 /* Temporary variables for input, output */
   uint32_t index;                                /* Index variable */
   uint32_t tableSize = (uint32_t) TABLE_SIZE_64; /* Initialise tablesize */
@@ -400,8 +359,9 @@ float32_t arm_atan2_f32(float32_t y, float32_t x)
   Return value;
     float32_t
 *****/
-float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature)   // (c) András Retzler
-{ // taken from libcsdr: https://github.com/simonyiszk/csdr
+float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature) {
+  // (c) András Retzler
+  // taken from libcsdr: https://github.com/simonyiszk/csdr
   // Min RMS Err      0.947543636291 0.392485425092
   // Min Peak Err     0.960433870103 0.397824734759
   // Min RMS w/ Avg=0 0.948059448969 0.392699081699
@@ -417,7 +377,6 @@ float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature)   // (c) Andr�
   }
 }
 
-
 /*****
   Purpose: copied from https://www.dsprelated.com/showarticle/1052.php
            Polynomial approximating arctangenet on the range -1,1.
@@ -429,14 +388,11 @@ float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature)   // (c) Andr�
   Return value;
     float           atan vakye
 *****/
-float ApproxAtan(float z)
-{
+float ApproxAtan(float z) {
   const float n1 = 0.97239411f;
   const float n2 = -0.19194795f;
   return (n1 + n2 * z * z) * z;
 }
-
-
 
 /*****
   Purpose: function reads the analog value for each matrix switch and stores that value in EEPROM.
@@ -448,15 +404,6 @@ float ApproxAtan(float z)
     void
 *****/
 void SaveAnalogSwitchValues() {
-  /*
-    const char *labels[]        = {"Select",       "Menu Up",  "Band Up",
-                                 "Zoom",         "Menu Dn",  "Band Dn",
-                                 "Filter",       "DeMod",    "Mode",
-                                 "NR",           "Notch",    "Noise Floor",
-                                 "Fine Tune",    "Decoder",  "Tune incrment",
-                                 "User 1",       "User 2",   "User 3"
-                                };
-  */
   int index;
   int minVal;
   int value;
@@ -539,8 +486,7 @@ void SaveAnalogSwitchValues() {
   Return value;
     void
 *****/
-void DisplayClock()
-{
+void DisplayClock() {
   char timeBuffer[15];
   char temp[5];
 
@@ -580,9 +526,7 @@ void DisplayClock()
   tft.print(timeBuffer);
 }                                                   // end function displayTime
 
-
 // ============== Mode stuff
-
 
 /*****
   Purpose: SetupMode sets default mode for the selected band
@@ -593,8 +537,7 @@ void DisplayClock()
   Return value;
     void
 *****/
-void SetupMode(int sideBand)
-{
+void SetupMode(int sideBand) {
   int temp;
                                     // AFP 10-27-22
   if (old_demod_mode != -99)                                    // first time radio is switched on and when changing bands
@@ -617,14 +560,10 @@ void SetupMode(int sideBand)
     }
   }
   ShowBandwidth();
-  // tft.fillRect(pos_x_frequency + 10, pos_y_frequency + 24, 210, 16, RA8875_BLACK);
-  //tft.fillRect(OPERATION_STATS_X + 170, FREQUENCY_Y + 30, tft.getFontWidth() * 5, tft.getFontHeight(), RA8875_BLACK);        // Clear top-left menu area
   old_demod_mode = bands[currentBand].mode; // set old_mode flag for next time, at the moment only used for first time radio is switched on . . .
-} // end void setup_mode
+}
 
-
-int Xmit_IQ_Cal() //AFP 09-21-22
-{
+int Xmit_IQ_Cal() {
   return -1;
 }
 
@@ -636,15 +575,13 @@ int Xmit_IQ_Cal() //AFP 09-21-22
   Return value;
     void
 *****/
-void SetBand()
-{
+void SetBand() {
   old_demod_mode = -99; // used in setup_mode and when changing bands, so that LoCut and HiCut are not changed!
   SetupMode(bands[currentBand].mode);
   SetFreq();
   ShowFrequency();
   FilterBandwidth();
 }
-
 
 /*****
   Purpose: Tries to open the EEPROM SD file to see if an SD card is present in the system
@@ -655,32 +592,151 @@ void SetBand()
   Return value;
     int               0 = SD not initialized, 1 = has data
 *****/
-int SDPresentCheck()
-{
-  if (!SD.begin(chipSelect))
-  {
-    /*
+int SDPresentCheck() {
+  int retVal = 0;
+
+  if(SD.begin(BUILTIN_SDCARD)) {
+    // open the file.
+    File dataFile = SD.open("SDEEPROMData.txt");
+
+    if(dataFile) {
+      retVal = 1;
+    }
+
+    dataFile.close();
+  } else {
     Serial.print("No SD card or cannot be initialized.");
-    tft.setFontScale((enum RA8875tsize) 1);
+    tft.setFontScale((enum RA8875tsize)1);
     tft.setForegroundColor(RA8875_RED);
     tft.setCursor(20, 300);
     tft.print("No SD card or not initialized.");
     tft.setForegroundColor(RA8875_WHITE);
-    MyDelay(4000L);                                       // Show for 4 seconds
-    */
-    tft.fillRect(15, 290, 500, 100, RA8875_BLACK);        // Erase it.
-//    tft.setCursor(20, 300);
-//    tft.print("                               ");
-   
-    return 0;
-  }
-  // open the file.
-  File dataFile = SD.open("SDEEPROMData.txt");
-  
-  if (dataFile) {
-    return 1;
-  } else {
-    return 0;
   }
 
+  return retVal;
+}
+
+double elapsed_micros_idx_t = 0;
+double elapsed_micros_sum;
+
+/*****
+  Purpose: Display the current temperature and load figures for T4.1
+
+  Parameter list:
+    int notchF        the notch to use
+    int MODE          the current MODE
+
+  Return value;
+    void
+*****/
+void ShowTempAndLoad() {
+  char buff[10];
+  int valueColor = RA8875_GREEN;
+  double block_time;
+  double processor_load;
+  float CPU_temperature;
+  double elapsed_micros_mean;
+
+  elapsed_micros_mean = elapsed_micros_sum / elapsed_micros_idx_t;
+
+  block_time = 128.0 / (double)SampleRate;  // one audio block is 128 samples and uses this in seconds
+  block_time = block_time * N_BLOCKS;
+
+  block_time *= 1000000.0;                                  // now in µseconds
+  processor_load = elapsed_micros_mean / block_time * 100;  // take audio processing time divide by block_time, convert to %
+
+  if (processor_load >= 100.0) {
+    processor_load = 100.0;
+    valueColor = RA8875_RED;
+  }
+
+  tft.setFontScale((enum RA8875tsize)0);
+
+  CPU_temperature = TGetTemp();
+
+  tft.fillRect(TEMP_X_OFFSET, TEMP_Y_OFFSET, MAX_WATERFALL_WIDTH, tft.getFontHeight(), RA8875_BLACK);  // Erase current data
+  tft.setCursor(TEMP_X_OFFSET, TEMP_Y_OFFSET);
+  tft.setTextColor(RA8875_WHITE);
+  tft.print("Temp:");
+  tft.setCursor(TEMP_X_OFFSET + 120, TEMP_Y_OFFSET);
+  tft.print("Load:");
+
+  tft.setTextColor(valueColor);
+  MyDrawFloat(CPU_temperature, 1, TEMP_X_OFFSET + tft.getFontWidth() * 3, TEMP_Y_OFFSET, buff);
+
+  tft.drawCircle(TEMP_X_OFFSET + 80, TEMP_Y_OFFSET + 5, 3, RA8875_GREEN);
+  MyDrawFloat(processor_load, 1, TEMP_X_OFFSET + 150, TEMP_Y_OFFSET, buff);
+  tft.print("%");
+  elapsed_micros_idx_t = 0;
+  elapsed_micros_sum = 0;
+  elapsed_micros_mean = 0;
+  tft.setTextColor(RA8875_WHITE);
+}
+
+/*****
+  Purpose: to cause a delay in program execution
+
+  Parameter list:
+    unsigned long millisWait    // the number of millseconds to wait
+
+  Return value:
+    void
+*****/
+void MyDelay(unsigned long millisWait) 
+{
+  unsigned long now = millis();
+
+  while (millis() - now < millisWait)
+    ;  // Twiddle thumbs until delay ends...
+}
+
+uint32_t roomCount;      // !< The value of TEMPMON_TEMPSENSE0[TEMP_VALUE] at the hot temperature
+uint32_t s_roomC_hotC;   // !< The value of s_roomCount minus s_hotCount
+uint32_t s_hotTemp;      // !< The value of TEMPMON_TEMPSENSE0[TEMP_VALUE] at room temperature 
+uint32_t s_hotCount;     // !< The value of TEMPMON_TEMPSENSE0[TEMP_VALUE] at the hot temperature
+float s_hotT_ROOM;       // !< The value of s_hotTemp minus room temperature(25¡æ)
+
+/*****
+  Purpose: Read the Teensy's temperature. Get worried over 50C
+
+  Parameter list:
+    void
+
+  Return value:
+    float           temperature Centigrade
+*****/
+float TGetTemp() {
+  uint32_t nmeas;
+  float tmeas;
+  while (!(TEMPMON_TEMPSENSE0 & 0x4U)) {
+    ;
+  }
+  /* ready to read temperature code value */
+  nmeas = (TEMPMON_TEMPSENSE0 & 0xFFF00U) >> 8U;
+  tmeas = s_hotTemp - (float)((nmeas - s_hotCount) * s_hotT_ROOM / s_roomC_hotC);  // Calculate temperature
+  return tmeas;
+}
+
+/*****
+  Purpose: void initTempMon
+
+  Parameter list:
+    void
+  Return value;
+    void
+*****/
+void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp) {
+
+  uint32_t calibrationData;
+  uint32_t roomCount;
+  //first power on the temperature sensor - no register change
+  TEMPMON_TEMPSENSE0 &= ~TMS0_POWER_DOWN_MASK;
+  TEMPMON_TEMPSENSE1 = TMS1_MEASURE_FREQ(freq);
+
+  calibrationData = HW_OCOTP_ANA1;
+  s_hotTemp = (uint32_t)(calibrationData & 0xFFU) >> 0x00U;
+  s_hotCount = (uint32_t)(calibrationData & 0xFFF00U) >> 0X08U;
+  roomCount = (uint32_t)(calibrationData & 0xFFF00000U) >> 0x14U;
+  s_hotT_ROOM = s_hotTemp - TEMPMON_ROOMTEMP;
+  s_roomC_hotC = roomCount - s_hotCount;
 }

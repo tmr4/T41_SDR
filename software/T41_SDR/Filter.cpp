@@ -1,4 +1,121 @@
 #include "SDT.h"
+#include "Display.h"
+#include "EEPROM.h"
+#include "Filter.h"
+#include "FIR.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define IIR_ORDER 8
+#define IIR_NUMSTAGES (IIR_ORDER / 2)
+
+uint32_t m_NumTaps = (FFT_LENGTH / 2) + 1;
+float32_t recEQ_LevelScale[14];
+
+float32_t rec_EQ_Band1_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //declare and zero biquad state variables
+float32_t rec_EQ_Band2_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band3_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band4_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band5_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band6_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band7_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band8_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //declare and zero biquad state variables
+float32_t rec_EQ_Band9_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band10_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band11_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band12_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band13_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t rec_EQ_Band14_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+//EQ filter instances
+arm_biquad_cascade_df2T_instance_f32 S1_Rec = { IIR_NUMSTAGES, rec_EQ_Band1_state, EQ_Band1Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S2_Rec = { IIR_NUMSTAGES, rec_EQ_Band2_state, EQ_Band2Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S3_Rec = { IIR_NUMSTAGES, rec_EQ_Band3_state, EQ_Band3Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S4_Rec = { IIR_NUMSTAGES, rec_EQ_Band4_state, EQ_Band4Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S5_Rec = { IIR_NUMSTAGES, rec_EQ_Band5_state, EQ_Band5Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S6_Rec = { IIR_NUMSTAGES, rec_EQ_Band6_state, EQ_Band6Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S7_Rec = { IIR_NUMSTAGES, rec_EQ_Band7_state, EQ_Band7Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S8_Rec = { IIR_NUMSTAGES, rec_EQ_Band8_state, EQ_Band8Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S9_Rec = { IIR_NUMSTAGES, rec_EQ_Band9_state, EQ_Band9Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S10_Rec = { IIR_NUMSTAGES, rec_EQ_Band10_state, EQ_Band10Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S11_Rec = { IIR_NUMSTAGES, rec_EQ_Band11_state, EQ_Band11Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S12_Rec = { IIR_NUMSTAGES, rec_EQ_Band12_state, EQ_Band12Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S13_Rec = { IIR_NUMSTAGES, rec_EQ_Band13_state, EQ_Band13Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S14_Rec = { IIR_NUMSTAGES, rec_EQ_Band14_state, EQ_Band14Coeffs };
+
+float32_t rec_EQ1_float_buffer_L[256];
+float32_t rec_EQ2_float_buffer_L[256];
+float32_t rec_EQ3_float_buffer_L[256];
+float32_t rec_EQ4_float_buffer_L[256];
+float32_t rec_EQ5_float_buffer_L[256];
+float32_t rec_EQ6_float_buffer_L[256];
+float32_t rec_EQ7_float_buffer_L[256];
+float32_t rec_EQ8_float_buffer_L[256];
+float32_t rec_EQ9_float_buffer_L[256];
+float32_t rec_EQ10_float_buffer_L[256];
+float32_t rec_EQ11_float_buffer_L[256];
+float32_t rec_EQ12_float_buffer_L[256];
+float32_t rec_EQ13_float_buffer_L[256];
+float32_t rec_EQ14_float_buffer_L[256];
+
+float32_t xmt_EQ_Band1_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //declare and zero biquad state variables
+float32_t xmt_EQ_Band2_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band3_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band4_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band5_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band6_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band7_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band8_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band9_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band10_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band11_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band12_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band13_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float32_t xmt_EQ_Band14_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+arm_biquad_cascade_df2T_instance_f32 S1_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band1_state, EQ_Band1Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S2_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band2_state, EQ_Band2Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S3_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band3_state, EQ_Band3Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S4_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band4_state, EQ_Band4Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S5_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band5_state, EQ_Band5Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S6_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band6_state, EQ_Band6Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S7_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band7_state, EQ_Band7Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S8_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band8_state, EQ_Band8Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S9_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band9_state, EQ_Band9Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S10_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band10_state, EQ_Band10Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S11_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band11_state, EQ_Band11Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S12_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band12_state, EQ_Band12Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S13_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band13_state, EQ_Band13Coeffs };
+arm_biquad_cascade_df2T_instance_f32 S14_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band14_state, EQ_Band14Coeffs };
+
+//EQBuffers
+float32_t DMAMEM xmt_EQ1_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ2_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ3_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ4_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ5_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ6_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ7_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ8_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ9_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ10_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ11_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ12_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ13_float_buffer_L[256];
+float32_t DMAMEM xmt_EQ14_float_buffer_L[256];
+
+float32_t DMAMEM FIR_Coef_I[(FFT_LENGTH / 2) + 1];
+float32_t DMAMEM FIR_Coef_Q[(FFT_LENGTH / 2) + 1];
+float32_t DMAMEM FIR_int1_coeffs[48];
+float32_t DMAMEM FIR_int2_coeffs[32];
+float32_t DMAMEM FIR_filter_mask[FFT_LENGTH * 2] __attribute__((aligned(4)));
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: void DoReceiveEQ  Parameter list:
@@ -6,8 +123,7 @@
   Return value;
     void
 *****/
-void DoReceiveEQ() //AFP 08-09-22
-{
+void DoReceiveEQ() {
   for (int i = 0; i < 14; i++) {
     recEQ_LevelScale[i] = (float)EEPROMData.equalizerRec[i] / 100.0;
   }
@@ -65,10 +181,9 @@ void DoReceiveEQ() //AFP 08-09-22
   Return value;
     void
 *****/
-void DoExciterEQ() //AFP 10-02-22
-{
+void DoExciterEQ() {
   for (int i = 0; i < 14; i++) {
-    xmtEQ_Level[i] = (float)EEPROMData.equalizerXmt[i] / 100.0;
+    equalizerXmt[i] = (float)EEPROMData.equalizerXmt[i] / 100.0;
   }
   arm_biquad_cascade_df2T_f32(&S1_Xmt,  float_buffer_L_EX, xmt_EQ1_float_buffer_L, 256);
   arm_biquad_cascade_df2T_f32(&S2_Xmt,  float_buffer_L_EX, xmt_EQ2_float_buffer_L, 256);
@@ -85,20 +200,20 @@ void DoExciterEQ() //AFP 10-02-22
   arm_biquad_cascade_df2T_f32(&S13_Xmt, float_buffer_L_EX, xmt_EQ13_float_buffer_L, 256);
   arm_biquad_cascade_df2T_f32(&S14_Xmt, float_buffer_L_EX, xmt_EQ14_float_buffer_L, 256);
 
-  arm_scale_f32(xmt_EQ1_float_buffer_L,  -xmtEQ_Level[0],  xmt_EQ1_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ2_float_buffer_L,   xmtEQ_Level[1],  xmt_EQ2_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ3_float_buffer_L,  -xmtEQ_Level[2],  xmt_EQ3_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ4_float_buffer_L,   xmtEQ_Level[3],  xmt_EQ4_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ5_float_buffer_L,  -xmtEQ_Level[4],  xmt_EQ5_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ6_float_buffer_L,   xmtEQ_Level[5],  xmt_EQ6_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ7_float_buffer_L,  -xmtEQ_Level[6],  xmt_EQ7_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ8_float_buffer_L,   xmtEQ_Level[7],  xmt_EQ8_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ9_float_buffer_L,  -xmtEQ_Level[8],  xmt_EQ9_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ10_float_buffer_L,  xmtEQ_Level[9],  xmt_EQ10_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ11_float_buffer_L, -xmtEQ_Level[10], xmt_EQ11_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ12_float_buffer_L,  xmtEQ_Level[11], xmt_EQ12_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ13_float_buffer_L, -xmtEQ_Level[12], xmt_EQ13_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ14_float_buffer_L,  xmtEQ_Level[13], xmt_EQ14_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ1_float_buffer_L,  -equalizerXmt[0],  xmt_EQ1_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ2_float_buffer_L,   equalizerXmt[1],  xmt_EQ2_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ3_float_buffer_L,  -equalizerXmt[2],  xmt_EQ3_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ4_float_buffer_L,   equalizerXmt[3],  xmt_EQ4_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ5_float_buffer_L,  -equalizerXmt[4],  xmt_EQ5_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ6_float_buffer_L,   equalizerXmt[5],  xmt_EQ6_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ7_float_buffer_L,  -equalizerXmt[6],  xmt_EQ7_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ8_float_buffer_L,   equalizerXmt[7],  xmt_EQ8_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ9_float_buffer_L,  -equalizerXmt[8],  xmt_EQ9_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ10_float_buffer_L,  equalizerXmt[9],  xmt_EQ10_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ11_float_buffer_L, -equalizerXmt[10], xmt_EQ11_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ12_float_buffer_L,  equalizerXmt[11], xmt_EQ12_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ13_float_buffer_L, -equalizerXmt[12], xmt_EQ13_float_buffer_L, 256);
+  arm_scale_f32(xmt_EQ14_float_buffer_L,  equalizerXmt[13], xmt_EQ14_float_buffer_L, 256);
 
   arm_add_f32(xmt_EQ1_float_buffer_L , xmt_EQ2_float_buffer_L, float_buffer_L_EX , 256 ) ;
 
@@ -122,19 +237,11 @@ void DoExciterEQ() //AFP 10-02-22
   Return value;
     void
 *****/
-void FilterBandwidth()
-{
+void FilterBandwidth() {
   AudioNoInterrupts();
 
-  CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SR[SampleRate].rate / DF);
+  CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SampleRate / DF);
   InitFilterMask();
-
-  // also adjust IIR AM filter
-  //int filter_BW_highest = bands[currentBand].FHiCut;
-  //if (filter_BW_highest < -bands[currentBand].FLoCut) {
-  // filter_BW_highest = -bands[currentBand].FLoCut;
-  // }
-  //SetIIRCoeffs((float32_t)filter_BW_highest, 1.3, (float32_t)SR[SampleRate].rate / DF, 0); // 1st stage
 
   for (int i = 0; i < 5; i++) {
     biquad_lowpass1_coeffs[i] = coefficient_set[i];
@@ -143,10 +250,9 @@ void FilterBandwidth()
   // and adjust decimation and interpolation filters
   SetDecIntFilters();
   ShowBandwidth();
-//BandInformation();
   MyDelay(1L);
   AudioInterrupts();
-} // end filter_bandwidth
+}
 
 /*****
   Purpose: InitFilterMask()
@@ -157,8 +263,7 @@ void FilterBandwidth()
   Return value;
     void
 *****/
-void InitFilterMask()
-{
+void InitFilterMask() {
 
   /****************************************************************************************
      Calculate the FFT of the FIR filter coefficients once to produce the FIR filter mask
@@ -191,11 +296,9 @@ void InitFilterMask()
   Return value;
     void
 *****/
-void ControlFilterF()
-{
+void ControlFilterF() {
   // low Fcut must never be larger than high Fcut and vice versa
 
-  //== AFP 10-27-22
   switch (bands[currentBand].mode) {
     case DEMOD_IQ:
       bands[currentBand].FLoCut = - bands[currentBand].FHiCut;
@@ -214,8 +317,9 @@ void ControlFilterF()
     case DEMOD_SAM:               //== AFP 11-04-22
       bands[currentBand].FLoCut = - bands[currentBand].FHiCut;
       break;
-  }   //== AFP 10-27-22
+  }
 }
+
 /*****
   Purpose: void SetDecIntFilters()
   Parameter list:
@@ -223,12 +327,12 @@ void ControlFilterF()
   Return value;
     void
 *****/
-void SetDecIntFilters()
-{
+void SetDecIntFilters() {
   /****************************************************************************************
      Recalculate decimation and interpolation FIR filters
   ****************************************************************************************/
   int filter_BW_highest = bands[currentBand].FHiCut;
+  int LP_F_help;
 
   if (filter_BW_highest < - bands[currentBand].FLoCut) {
     filter_BW_highest = - bands[currentBand].FLoCut;
@@ -238,10 +342,10 @@ void SetDecIntFilters()
   if (LP_F_help > 10000) {
     LP_F_help = 10000;
   }
-  CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SR[SampleRate].rate));
-  CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SR[SampleRate].rate / DF1));
+  CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate));
+  CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
 
-  CalcFIRCoeffs(FIR_int1_coeffs, 48, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SR[SampleRate].rate / DF1));
-  CalcFIRCoeffs(FIR_int2_coeffs, 32, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)SR[SampleRate].rate);
-  bin_BW = 1.0 / (DF * FFT_length) * (float32_t)SR[SampleRate].rate;
+  CalcFIRCoeffs(FIR_int1_coeffs, 48, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
+  CalcFIRCoeffs(FIR_int2_coeffs, 32, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)SampleRate);
+  bin_BW = 1.0 / (DF * FFT_length) * (float32_t)SampleRate;
 }
