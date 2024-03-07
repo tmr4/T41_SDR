@@ -497,7 +497,11 @@ void ExecuteButtonPress(int val) {
       break;
 
     case NOISE_FLOOR:  // 11
+#if USE_LIVE_NOISE_FLOOR
+      ToggleLiveNoiseFloorFlag();
+#else
       ButtonSetNoiseFloor();
+#endif
       break;
 
     case FINE_TUNE_INCREMENT:  // 12

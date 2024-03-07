@@ -479,6 +479,7 @@ float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
   int16_t adjAmplitude = 0;  // Was float; cast to float in dB calculation.  KF5N
   int16_t refAmplitude = 0;  // Was float; cast to float in dB calculation.  KF5N
   uint32_t index_of_max;     // This variable is not currently used, but it is required by the ARM max function.  KF5N
+  int16_t y_old, y_new, y1_new, y_old2;
 
   if (x1 == (cal_bins[0] - capture_bins)) {  // Set flag at revised beginning.  KF5N
     updateDisplayFlag = 1;                   //Set flag so the display data are saved only once during each display refresh cycle at the start of the cycle, not 512 times

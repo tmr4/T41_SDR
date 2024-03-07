@@ -633,7 +633,6 @@ void GetFavoriteFrequency() {
     if (val == MENU_OPTION_SELECT) {
 
       EraseSpectrumDisplayContainer();
-      //currentMode = bands[currentBand].mode;
       DrawSpectrumDisplayContainer();
       DrawFrequencyBarValue();
       SetBand();

@@ -35,7 +35,6 @@ int16_t pixelnew[SPECTRUM_RES];
 int16_t pixelold[SPECTRUM_RES];
 int16_t pixelnew2[MAX_WATERFALL_WIDTH + 1];
 int16_t pixelold2[MAX_WATERFALL_WIDTH];
-int16_t y_old, y_new, y1_new, y1_old, y_old2;
 int newCursorPosition = 0;
 int oldCursorPosition = 256;
 int updateDisplayFlag = 1;
@@ -57,6 +56,8 @@ dispSc displayScale[] =
   { "2 dB/", 100.0, 20, 120, 0.10 },
   { "1 dB/", 200.0, 40, 200, 0.05 }
 };
+
+int newSpectrumFlag = 0; // 0 - oldNF needs initialized in ShowSpectrum(), 1 - it doesn't need initialized
 
 //------------------------- Local Variables ----------
 uint8_t twinpeaks_tested = 2;  // this is never changed
@@ -109,7 +110,6 @@ void UpdateSDIndicator(int present);
 
 // the following functions are not used anywhere
 // void ShowNotch();
-// void EraseSpectrumWindow();
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -164,11 +164,15 @@ void ShowName() {
 
 /*****
   Purpose: Show Spectrum display
-            Note that this routine calls the Audio process Function during each display cycle,
-            for each of the 512 display frequency bins.  This means that the audio is refreshed at the maximum rate
-            and does not have to wait for the display to complete drawinf the full spectrum.
-            However, the display data are only updated ONCE during each full display cycle,
-            ensuring consistent data for the erase/draw cycle at each frequency point.
+            oldNF must be initialized to currentNoiseFloor[currentBand] prior to first
+            call to ShowSpectrum()
+
+            This routine calls the Audio process Function during each display cycle,
+            for each of the 512 display frequency bins.  This means that the audio is
+            refreshed at the maximum rate and does not have to wait for the display to
+            complete drawing the full spectrum.  However, the display data are only
+            updated ONCE during each full display cycle, ensuring consistent data for
+            the erase/draw cycle at each frequency point.
 
   Parameter list:
     void
@@ -177,17 +181,22 @@ void ShowName() {
     void
 *****/
 FASTRUN void ShowSpectrum() {
-  //int centerLine = (MAX_WATERFALL_WIDTH + SPECTRUM_LEFT_X) / 2;
-  //int middleSlice = centerLine / 2;  // Approximate center element
-  //int j2;  KF5N
   int filterLoPositionMarker;
   int filterHiPositionMarker;
   int y_new_plot, y1_new_plot, y_old_plot, y_old2_plot;
+  static int oldNF;
+  const int currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
 
   pixelnew[0] = 0;
   pixelnew[1] = 0;
   pixelCurrent[0] = 0;
   pixelCurrent[1] = 0;
+
+  // initialize old noise floor if this is a new spectrum
+  if(newSpectrumFlag == 0) {
+    oldNF = currentNF;
+    newSpectrumFlag = 1;
+  }
 
   for (int x1 = 1; x1 < MAX_WATERFALL_WIDTH - 1; x1++)  //AFP, JJP changed init from 0 to 1 for x1: out of bounds addressing in line 112
   //Draws the main Spectrum, Waterfall and Audio displays
@@ -199,20 +208,18 @@ FASTRUN void ShowSpectrum() {
       updateDisplayFlag = 0;  //  Do not save the the display data for the remainder of the
     }
 
-    FilterSetSSB(&filterWidth);                                           // Insert Filter encoder update here  AFP 06-22-22
-    if (T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {  // AFP 08-24-22
-      ProcessIQData();                                        // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
+    FilterSetSSB(&filterWidth); // Insert Filter encoder update here
+    if (T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
+      // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
+      ProcessIQData();
     }
-    EncoderCenterTune();  //Moved the tuning encoder to reduce lag times and interference during tuning.
-    y_new = pixelnew[x1];
-    y1_new = pixelnew[x1 - 1];
-    y_old = pixelold[x1];  // pixelold spectrum is saved by the FFT function prior to a new FFT which generates the pixelnew spectrum.  KF5N
-    y_old2 = pixelold[x1 - 1];
+    EncoderCenterTune();  // Moved the tuning encoder to reduce lag times and interference during tuning.
 
-    y_new_plot = spectrumNoiseFloor - y_new - currentNoiseFloor[currentBand];
-    y1_new_plot = spectrumNoiseFloor - y1_new - currentNoiseFloor[currentBand];
-    y_old_plot = spectrumNoiseFloor - y_old - currentNoiseFloor[currentBand];
-    y_old2_plot = spectrumNoiseFloor - y_old2 - currentNoiseFloor[currentBand];
+    // pixelold spectrum is saved by the FFT function prior to a new FFT which generates the pixelnew spectrum
+    y_new_plot = spectrumNoiseFloor - pixelnew[x1] - currentNF;
+    y1_new_plot = spectrumNoiseFloor - pixelnew[x1 - 1] - currentNF;
+    y_old_plot = spectrumNoiseFloor - pixelold[x1] - oldNF;
+    y_old2_plot = spectrumNoiseFloor - pixelold[x1 - 1] - oldNF;
 
     // Prevent spectrum from going below the bottom of the spectrum area.  KF5N
     if (y_new_plot > 247) y_new_plot = 247;
@@ -241,10 +248,10 @@ FASTRUN void ShowSpectrum() {
     //  In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum.
     pixelCurrent[x1] = pixelnew[x1];  //  This is the actual "old" spectrum!  This is required due to CW interrupts.  pixelCurrent gets copied to pixelold by the FFT function.  KF5N
 
-    if (x1 < 253) {                                                                              //AFP 09-01-22
-      if (keyPressedOn == 1) {                                                                   //AFP 09-01-22
-        return;                                                                                  //AFP 09-01-22
-      } else {                                                                                   //AFP 09-01-22
+    if (x1 < 253) {
+      if (keyPressedOn == 1) {
+        return;
+      } else {
         tft.drawFastVLine(BAND_INDICATOR_X - 8 + x1, SPECTRUM_BOTTOM - 116, 115, RA8875_BLACK);  //AFP Erase old AUDIO spectrum line
         if (audioYPixel[x1] != 0) {
           if (audioYPixel[x1] > CLIP_AUDIO_PEAK)  // audioSpectrumHeight = 118
@@ -276,9 +283,11 @@ FASTRUN void ShowSpectrum() {
     waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array.  KF5N
     tft.writeTo(L1);
   }
-  // End for(...) Draw MAX_WATERFALL_WIDTH spectral points
-  // Use the Block Transfer Engine (BTE) to move waterfall down a line
 
+  oldNF = currentNF; // save the noise floor we used for this spectrum
+
+  // Draw MAX_WATERFALL_WIDTH spectral points
+  // Use the Block Transfer Engine (BTE) to move waterfall down a line
   if (keyPressedOn == 1) {
     return;
   } else {
@@ -950,6 +959,7 @@ void UpdateInfoWindow() {
   UpdateCompressionField();
   UpdateDecoderField();
   UpdateNoiseField();
+  UpdateNoiseFloorField();
   UpdateNotchField();
   UpdateSDIndicator(sdCardPresent);
   UpdateWPMField();
@@ -1077,7 +1087,7 @@ void DisplayIncrementField() {
   tft.print(freqIncrement);
 
   tft.fillRect(INCREMENT_X + 210, INCREMENT_Y, tft.getFontWidth() * 4, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(FIELD_OFFSET_X + 120, INCREMENT_Y);
+  tft.setCursor(IB_COL2_DATA_X, INCREMENT_Y);
   tft.setTextColor(RA8875_GREEN);
   tft.print(stepFineTune);
 }
@@ -1250,6 +1260,34 @@ void UpdateNoiseField() {
   tft.setTextColor(RA8875_GREEN);
   tft.setCursor(FIELD_OFFSET_X, NOISE_REDUCE_Y);
   tft.print(filter[nrOptionSelect]);
+}
+
+/*****
+  Purpose: Updates the noise field on the display
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void UpdateNoiseFloorField() {
+  const char *filter[] = { "Off", "On" };
+
+  tft.setFontScale((enum RA8875tsize)0);
+
+  tft.fillRect(IB_COL2_DATA_X, NOISE_REDUCE_Y, tft.getFontWidth() * 3, tft.getFontHeight(), RA8875_BLACK);
+  tft.setTextColor(RA8875_WHITE);
+  tft.setCursor(INCREMENT_X + 148, NOISE_REDUCE_Y);
+  tft.print("NF Set:");
+  if(liveNoiseFloorFlag) {
+    tft.setTextColor(RA8875_GREEN);
+  } else {
+    tft.setTextColor(RA8875_WHITE);
+  }
+
+  tft.setCursor(IB_COL2_DATA_X, NOISE_REDUCE_Y);
+  tft.print(filter[liveNoiseFloorFlag]);
 }
 
 /*****
@@ -1430,6 +1468,7 @@ FASTRUN void DrawBandWidthIndicatorBar() {
     void
 *****/
 void EraseSpectrumDisplayContainer() {
+  newSpectrumFlag = 0; // old noise floor needs reset
   tft.fillRect(SPECTRUM_LEFT_X - 2, SPECTRUM_TOP_Y - 1, MAX_WATERFALL_WIDTH + 6, SPECTRUM_HEIGHT + 8, RA8875_BLACK);  // Spectrum box
 }
 

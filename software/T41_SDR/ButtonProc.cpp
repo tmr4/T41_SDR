@@ -20,6 +20,7 @@
 #define MAX_ZOOM_ENTRIES      5
 
 int switchFilterSideband = 0;
+int liveNoiseFloorFlag = OFF;
 
 //------------------------- Local Variables ----------
 bool save_last_frequency = false;
@@ -385,6 +386,7 @@ void ButtonMode() {
   DrawAudioSpectContainer();
   SpectralNoiseReductionInit();
   UpdateNoiseField();
+  UpdateNoiseFloorField();
   ShowName();
   ShowSpectrumdBScale();
   ShowTransmitReceiveStatus();
@@ -475,8 +477,6 @@ int ButtonSetNoiseFloor() {
     if (val == MENU_OPTION_SELECT)  // If they made a choice...
     {
       currentNoiseFloor[currentBand]             = floor;
-//      spectrumNoiseFloor                         = floor;
-//      EEPROMData.spectrumNoiseFloor              = floor;
       EEPROMData.currentNoiseFloor[currentBand]  = floor;
       EEPROMWrite();
       break;
@@ -493,6 +493,29 @@ int ButtonSetNoiseFloor() {
   DrawFrequencyBarValue();
   tft.writeTo(L1);
   return spectrumNoiseFloor;
+}
+
+/*****
+  Purpose:  Toggles flag to allow quick setting of noise floor in spectrum display.
+            Saves current noise floor to EEPROM when toggled to Off.  A band's
+            current noise floor isn't preserved in EEPROM if you switch bands while
+            toggle is On.
+
+  Parameter list:
+    void
+
+  Return value;
+    int     The current noise floor value
+*****/
+int ToggleLiveNoiseFloorFlag() {
+  // save final noise floor setting if toggling flag off
+  if(liveNoiseFloorFlag) {
+    EEPROMData.currentNoiseFloor[currentBand]  = currentNoiseFloor[currentBand];
+    EEPROMWrite();
+  }
+  liveNoiseFloorFlag = !liveNoiseFloorFlag;
+  UpdateNoiseFloorField();
+  return liveNoiseFloorFlag;
 }
 
 /*****

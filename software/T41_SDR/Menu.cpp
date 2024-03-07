@@ -25,7 +25,11 @@ const char *topMenus[] = { "CW Options", "RF Set", "VFO Select",
 
 int (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
                            &EEPROMOptions, &AGCOptions, &SpectrumOptions,
+#if USE_LIVE_NOISE_FLOOR
+                           &ToggleLiveNoiseFloorFlag, &MicGainSet, &MicOptions,
+#else
                            &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
+#endif
                            &EqualizerRecOptions, &EqualizerXmtOptions, &IQOptions, &BearingMaps, &Cancel };
 
 const char *secondaryChoices[][8] = {

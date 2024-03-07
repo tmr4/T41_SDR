@@ -32,6 +32,18 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
 * dev/v0.1 - SDR.1 with:
 
   * feature/menu
+  * feature/liveNoiseFloor
+
+* feature/liveNoiseFloor - modifies Noise Floor pushbutton to toggle live setting of noise floor.  Requires configuration setting USE_LIVE_NOISE_FLOOR set to 1.  Includes feature/menu.
+
+* feature/menu - SDR.1 with option to select top line menu functionality (similar to T41EEE) or retain full screen menu (SDTVer049.2K).
+
+## Previous changes
+
+* previous dev/v0.1 changes
+
+  * SDR.1 with the following changes:
+  * feature/menu
   * restructured program:
     * moving code from SDT.h and T41_SDR.ino to individual header and code files/functions *(need a second pass; much more to do with both files; likely more work to do moving local variables to functions)*
     * removing unused variables and some functions *(and noting others that aren't used)*
@@ -43,10 +55,6 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * removed many DEBUG sections that seem outdated
   * some clean up (removing useless and out of date comments)
   * *KIM NR gain is higher as a result of these changes.  Will investigate.*
-
-* feature/menu - SDR.1 with option to select top line menu functionality (similar to T41EEE) or retain full screen menu (SDTVer049.2K).
-
-  * currently dev/v0.1
 
 * previous feature/menu changes
 

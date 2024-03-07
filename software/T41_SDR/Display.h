@@ -76,6 +76,7 @@
 #define FREQUENCY_PIXEL_HI    45
 #define SPLIT_INCREMENT       500L
 
+#define IB_COL2_DATA_X        WATERFALL_RIGHT_X + 238
 #define FIELD_OFFSET_X        WATERFALL_RIGHT_X + 118                     // X coordinate for field
 #define NOTCH_X               WATERFALL_RIGHT_X + 58
 #define NOTCH_Y               WATERFALL_TOP_Y   + 90
@@ -137,7 +138,6 @@ extern int16_t pixelnew[SPECTRUM_RES];
 extern int16_t pixelold[SPECTRUM_RES];
 extern int16_t pixelnew2[];
 extern int16_t pixelold2[];
-extern int16_t y_old, y_new, y1_new, y1_old, y_old2;
 extern int newCursorPosition;
 extern int oldCursorPosition;
 extern int updateDisplayFlag;
@@ -154,13 +154,14 @@ typedef struct {
 
 extern dispSc displayScale[];
 
+extern int newSpectrumFlag;
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
 void DrawAudioSpectContainer();
 void ShowName();
-void ShowSpectrum();
 void ShowSpectrum();
 void ShowBandwidth();
 void DrawSMeterContainer();
@@ -197,3 +198,5 @@ void SetZoom(int zoomIndex);
 void EraseSpectrumWindow();
 
 int  SetI2SFreq(int freq);
+
+void UpdateNoiseFloorField();

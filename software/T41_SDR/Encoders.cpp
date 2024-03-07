@@ -448,6 +448,15 @@ FASTRUN void EncoderFineTune() {
   TxRxFreq = centerFreq + NCOFreq;
 }
 
+/*****
+  Purpose: Process Menu/Change/Filter encoder movement
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
 FASTRUN void EncoderFilter() {
   char result;
 
@@ -461,16 +470,22 @@ FASTRUN void EncoderFilter() {
   switch (result) {
     case DIR_CW:  // Turned it clockwise, 16
       filterEncoderMove = 1;
-      //filter_pos = last_filter_pos - 5 * filterEncoderMove;  // AFP 10-22-22
       break;
 
     case DIR_CCW:  // Turned it counter-clockwise
       filterEncoderMove = -1;
-      // filter_pos = last_filter_pos - 5 * filterEncoderMove;   // AFP 10-22-22
       break;
   }
 
-  if (calibrateFlag == 0) {                                // AFP 10-22-22
-    filter_pos = last_filter_pos - 5 * filterEncoderMove;  // AFP 10-22-22
-  }                                                        // AFP 10-22-22
+  // interpret encoder according to flag settings
+  if(liveNoiseFloorFlag) {
+    // we're setting noise floor
+    currentNoiseFloor[currentBand] += filterEncoderMove;
+    filterEncoderMove = 0;
+  } else {
+    // we're adjusting audio spectrum filter if not calibrating
+    if (calibrateFlag == 0) {
+      filter_pos = last_filter_pos - 5 * filterEncoderMove;
+    }
+  }
 }

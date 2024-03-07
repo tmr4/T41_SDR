@@ -4,6 +4,7 @@
 //-------------------------------------------------------------------------------------------------------------
 
 extern int switchFilterSideband;
+extern int liveNoiseFloorFlag;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -21,3 +22,4 @@ void ButtonNR();
 void ButtonNotchFilter();
 int ButtonSetNoiseFloor();
 void ButtonFrequencyEntry();
+int ToggleLiveNoiseFloorFlag();
