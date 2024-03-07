@@ -37,8 +37,26 @@
 #define INCREMENT_Y           WATERFALL_TOP_Y   + 70
 #define SPECTRUMCORNER_X      INCREMENT_X
 #define SPECTRUMCORNER_Y      INCREMENT_Y
-#define INFORMATION_WINDOW_X  WATERFALL_RIGHT_X + 25                        // 512 + 25 = 537
-#define INFORMATION_WINDOW_Y  WATERFALL_TOP_Y + 37                          // 255 + 37 = 292
+
+// info box coordinates
+#define INFO_WINDOW_L         WATERFALL_RIGHT_X + 15
+#define INFO_WINDOW_T         WATERFALL_TOP_Y + 35
+#define INFO_WINDOW_W         260
+#define INFO_WINDOW_H         200
+#define IB_COL_1_X          WATERFALL_RIGHT_X + 118 // X coordinate for info box 1st column field
+#define IB_COL_2_X          WATERFALL_RIGHT_X + 238 // X coordinate for info box 2nd column field
+
+#define IB_ROW_1_Y            INFO_WINDOW_T + 35
+#define IB_ROW_2_Y            IB_ROW_1_Y + 20
+#define IB_ROW_3_Y            IB_ROW_2_Y + 20
+#define IB_ROW_4_Y            IB_ROW_3_Y + 20
+#define IB_ROW_5_Y            IB_ROW_4_Y + 20
+#define IB_ROW_6_Y            IB_ROW_5_Y + 20
+#define IB_ROW_7_Y            IB_ROW_6_Y + 20
+#define IB_ROW_8_Y            IB_ROW_7_Y + 20
+
+
+
 #define BAND_INDICATOR_X      WATERFALL_RIGHT_X + 25
 #define BAND_INDICATOR_Y      WATERFALL_TOP_Y + 37                          // 292
 #define OPERATION_STATS_X     130
@@ -76,12 +94,9 @@
 #define FREQUENCY_PIXEL_HI    45
 #define SPLIT_INCREMENT       500L
 
-#define IB_COL2_DATA_X        WATERFALL_RIGHT_X + 238
-#define FIELD_OFFSET_X        WATERFALL_RIGHT_X + 118                     // X coordinate for field
 #define NOTCH_X               WATERFALL_RIGHT_X + 58
 #define NOTCH_Y               WATERFALL_TOP_Y   + 90
-#define NOISE_REDUCE_X        WATERFALL_RIGHT_X + 58
-#define NOISE_REDUCE_Y        WATERFALL_TOP_Y   + 110
+
 #define ZOOM_X                WATERFALL_RIGHT_X + 65
 #define ZOOM_Y                WATERFALL_TOP_Y   + 130
 #define SD_X                  707

@@ -182,7 +182,6 @@ void Dit();
 // the following functions are not used anywhere
 // void Send(char myChar);
 // void MorseCharacterClear(void);
-// void DisplayDitLength();
 // void Lookup(char currentAtom);
 // void DrawSignalPlotFrame();
 // void DoSignalPlot(float val);
@@ -608,28 +607,6 @@ void MorseCharacterDisplay(char currentLetter) {
   tft.setTextColor(RA8875_WHITE);
   tft.setCursor(CW_TEXT_START_X, CW_TEXT_START_Y);
   tft.print(decodeBuffer);
-}
-
-/*****
-  Purpose: When the CW decoder is active, this function allows the user to set the ditLenght, which updates
-           the display for the new WPM.
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void DisplayDitLength() {
-  tft.setFontScale((enum RA8875tsize)0);  // Erase old WPM value
-  tft.fillRect(FIELD_OFFSET_X + 6 * tft.getFontWidth(), DECODER_Y, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(FIELD_OFFSET_X + 6 * tft.getFontWidth(), DECODER_Y);  // Show estimated WPM
-  tft.setTextColor(RA8875_WHITE);
-  tft.print("[ ");
-  tft.setTextColor(RA8875_GREEN);
-  tft.print(1200 / ditLength);
-  tft.setTextColor(RA8875_WHITE);
-  tft.print(" ]");
 }
 
 /*****

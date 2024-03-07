@@ -947,8 +947,8 @@ void MyDrawFloat(float val, int decimals, int x, int y, char *buff) {
     void
 *****/
 void UpdateInfoWindow() {
-  tft.fillRect(INFORMATION_WINDOW_X - 8, INFORMATION_WINDOW_Y, 250, 170, RA8875_BLACK);    // Clear fields
-  tft.drawRect(BAND_INDICATOR_X - 10, BAND_INDICATOR_Y - 2, 260, 200, RA8875_LIGHT_GREY);  // Redraw Info Window Box
+  tft.fillRect(INFO_WINDOW_L + 2, INFO_WINDOW_T + 2, INFO_WINDOW_W - 4, INFO_WINDOW_H - 4, RA8875_BLACK); // Clear info box
+  tft.drawRect(INFO_WINDOW_L, INFO_WINDOW_T, INFO_WINDOW_W, INFO_WINDOW_H, RA8875_LIGHT_GREY); // Redraw Info Window Box
 
   tft.setFontScale((enum RA8875tsize)1);
   UpdateVolumeField();
@@ -983,7 +983,7 @@ void UpdateVolumeField() {
   tft.print("Vol:");
   tft.setTextColor(RA8875_GREEN);
   tft.fillRect(BAND_INDICATOR_X + 90, BAND_INDICATOR_Y, tft.getFontWidth() * 3 + 2, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(FIELD_OFFSET_X, BAND_INDICATOR_Y);
+  tft.setCursor(IB_COL_1_X, BAND_INDICATOR_Y);
   tft.print(audioVolume);
 }
 
@@ -1082,12 +1082,12 @@ void DisplayIncrementField() {
   tft.print("FT Inc: ");
 
   tft.fillRect(INCREMENT_X + 90, INCREMENT_Y, tft.getFontWidth() * 7, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(FIELD_OFFSET_X - 3, INCREMENT_Y);
+  tft.setCursor(IB_COL_1_X - 3, INCREMENT_Y);
   tft.setTextColor(RA8875_GREEN);
   tft.print(freqIncrement);
 
   tft.fillRect(INCREMENT_X + 210, INCREMENT_Y, tft.getFontWidth() * 4, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(IB_COL2_DATA_X, INCREMENT_Y);
+  tft.setCursor(IB_COL_2_X, INCREMENT_Y);
   tft.setTextColor(RA8875_GREEN);
   tft.print(stepFineTune);
 }
@@ -1112,7 +1112,7 @@ void UpdateNotchField() {
   tft.fillRect(NOTCH_X + 60, NOTCH_Y, 150, tft.getFontHeight() + 5, RA8875_BLACK);
   tft.setCursor(NOTCH_X - 32, NOTCH_Y);
   tft.print("AutoNotch:");
-  tft.setCursor(FIELD_OFFSET_X, NOTCH_Y);
+  tft.setCursor(IB_COL_1_X, NOTCH_Y);
   tft.setTextColor(RA8875_GREEN);
   if (ANR_notchOn == 0) {
     tft.print("Off");
@@ -1138,7 +1138,7 @@ void UpdateZoomField(int zoomIndex) {
   tft.setTextColor(RA8875_WHITE);  // Display zoom factor
   tft.setCursor(ZOOM_X, ZOOM_Y);
   tft.print("Zoom:");
-  tft.setCursor(FIELD_OFFSET_X, ZOOM_Y);
+  tft.setCursor(IB_COL_1_X, ZOOM_Y);
   tft.setTextColor(RA8875_GREEN);
   tft.print(zoomOptions[zoomIndex]);
 }
@@ -1158,13 +1158,13 @@ void UpdateCompressionField() {
   tft.setTextColor(RA8875_WHITE);  // Display zoom factor
   tft.setCursor(COMPRESSION_X, COMPRESSION_Y);
   tft.print("Compress:");
-  tft.setCursor(FIELD_OFFSET_X, COMPRESSION_Y);
+  tft.setCursor(IB_COL_1_X, COMPRESSION_Y);
   tft.setTextColor(RA8875_GREEN);
   if (compressorFlag == 1) {  // JJP 8/26/2023
     tft.print("On  ");
     tft.print(currentMicThreshold);
   } else {
-    tft.setCursor(FIELD_OFFSET_X, COMPRESSION_Y);
+    tft.setCursor(IB_COL_1_X, COMPRESSION_Y);
     tft.print("Off");
   }
 }
@@ -1186,7 +1186,7 @@ void UpdateDecoderField() {
   tft.print("Decoder:");
   tft.setTextColor(RA8875_GREEN);
   tft.fillRect(DECODER_X + 60, DECODER_Y, tft.getFontWidth() * 20, tft.getFontHeight() + 5, RA8875_BLACK);
-  tft.setCursor(FIELD_OFFSET_X, DECODER_Y);
+  tft.setCursor(IB_COL_1_X, DECODER_Y);
   if (decoderFlag == ON) {  // AFP 09-27-22
     tft.print("On ");
   } else {
@@ -1195,10 +1195,10 @@ void UpdateDecoderField() {
   if (xmtMode == CW_MODE && decoderFlag == ON) {  // In CW mode with decoder on? AFP 09-27-22
     tft.setFontScale((enum RA8875tsize)0);
     tft.setTextColor(RA8875_LIGHT_GREY);
-    tft.setCursor(FIELD_OFFSET_X, DECODER_Y + 15);
+    tft.setCursor(IB_COL_1_X, DECODER_Y + 15);
     tft.print("CW Fine Adjust");
   } else {
-    tft.fillRect(FIELD_OFFSET_X, DECODER_Y + 15, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
+    tft.fillRect(IB_COL_1_X, DECODER_Y + 15, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
   }
 }
 
@@ -1219,7 +1219,7 @@ void UpdateWPMField() {
   tft.print("Keyer:");
   tft.setTextColor(RA8875_GREEN);
   tft.fillRect(WPM_X + 60, WPM_Y, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(FIELD_OFFSET_X, WPM_Y);
+  tft.setCursor(IB_COL_1_X, WPM_Y);
   EEPROMData.currentWPM = currentWPM;
   if (EEPROMData.keyType == KEYER) {
     //tft.print("Paddles -- "); // KD0RC
@@ -1250,20 +1250,23 @@ void UpdateWPMField() {
 *****/
 void UpdateNoiseField() {
   const char *filter[] = { "Off", "Kim", "Spectral", "LMS" };
+  const char *label = "Noise:";
+  int label_x;
 
   tft.setFontScale((enum RA8875tsize)0);
 
-  tft.fillRect(FIELD_OFFSET_X, NOISE_REDUCE_Y, 70, tft.getFontHeight(), RA8875_BLACK);
+  tft.fillRect(IB_COL_1_X, IB_ROW_3_Y, 70, tft.getFontHeight(), RA8875_BLACK);
   tft.setTextColor(RA8875_WHITE);  // Noise reduction
-  tft.setCursor(NOISE_REDUCE_X, NOISE_REDUCE_Y);
-  tft.print("Noise:");
+  label_x = IB_COL_1_X - 10 - strlen(label) * tft.getFontWidth();
+  tft.setCursor(label_x, IB_ROW_3_Y);
+  tft.print(label);
   tft.setTextColor(RA8875_GREEN);
-  tft.setCursor(FIELD_OFFSET_X, NOISE_REDUCE_Y);
+  tft.setCursor(IB_COL_1_X, IB_ROW_3_Y);
   tft.print(filter[nrOptionSelect]);
 }
 
 /*****
-  Purpose: Updates the noise field on the display
+  Purpose: Updates the noise floor field on the display
 
   Parameter list:
     void
@@ -1273,20 +1276,23 @@ void UpdateNoiseField() {
 *****/
 void UpdateNoiseFloorField() {
   const char *filter[] = { "Off", "On" };
+  const char *label = "NF Set:";
+  int label_x;
 
   tft.setFontScale((enum RA8875tsize)0);
 
-  tft.fillRect(IB_COL2_DATA_X, NOISE_REDUCE_Y, tft.getFontWidth() * 3, tft.getFontHeight(), RA8875_BLACK);
+  tft.fillRect(IB_COL_2_X, IB_ROW_3_Y, tft.getFontWidth() * 3, tft.getFontHeight(), RA8875_BLACK);
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(INCREMENT_X + 148, NOISE_REDUCE_Y);
-  tft.print("NF Set:");
+  label_x = IB_COL_2_X - 10 - strlen(label) * tft.getFontWidth();
+  tft.setCursor(label_x, IB_ROW_3_Y);
+  tft.print(label);
   if(liveNoiseFloorFlag) {
     tft.setTextColor(RA8875_GREEN);
   } else {
     tft.setTextColor(RA8875_WHITE);
   }
 
-  tft.setCursor(IB_COL2_DATA_X, NOISE_REDUCE_Y);
+  tft.setCursor(IB_COL_2_X, IB_ROW_3_Y);
   tft.print(filter[liveNoiseFloorFlag]);
 }
 
@@ -1329,7 +1335,7 @@ void ShowNotch() {
     void
 *****/
 void DrawInfoWindowFrame() {
-  tft.drawRect(BAND_INDICATOR_X - 10, BAND_INDICATOR_Y - 2, 260, 200, RA8875_LIGHT_GREY);
+  tft.drawRect(INFO_WINDOW_L, INFO_WINDOW_T, INFO_WINDOW_W, INFO_WINDOW_H, RA8875_LIGHT_GREY);
   tft.fillRect(TEMP_X_OFFSET, TEMP_Y_OFFSET + 80, 80, tft.getFontHeight() + 10, RA8875_BLACK);  // Clear volume field
 }
 

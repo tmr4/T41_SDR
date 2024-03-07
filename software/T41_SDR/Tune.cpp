@@ -157,30 +157,32 @@ void CenterFastTune() {
   CAUTION: SI5351_FREQ_MULT is set in the si5253.h header file and is 100UL
 *****/
 int DoSplitVFO() {
+  int centerTxt;
   char freqBuffer[15];
   int val;
   long chunk = SPLIT_INCREMENT;
   long splitOffset;
 
-  tft.drawRect(INFORMATION_WINDOW_X - 10, INFORMATION_WINDOW_Y - 2, 260, 200, RA8875_MAGENTA);
-  tft.fillRect(INFORMATION_WINDOW_X - 8, INFORMATION_WINDOW_Y, 250, 185, RA8875_BLACK);  // Clear volume field
+  tft.fillRect(INFO_WINDOW_L + 2, INFO_WINDOW_T + 2, INFO_WINDOW_W - 4, INFO_WINDOW_H - 4, RA8875_BLACK);  // Clear info box
+  tft.drawRect(INFO_WINDOW_L, INFO_WINDOW_T, INFO_WINDOW_W, INFO_WINDOW_H, RA8875_MAGENTA);
   tft.setFontScale( (enum RA8875tsize) 1);
-  tft.setCursor(INFORMATION_WINDOW_X + 10, INFORMATION_WINDOW_Y + 5);
-  tft.print("xmit offset: ");
+  centerTxt = (INFO_WINDOW_W - strlen("xmit offset:") * tft.getFontWidth()) / 2 + INFO_WINDOW_L;
+  tft.setCursor(centerTxt, INFO_WINDOW_T + 10);
+  tft.print("xmit offset:");
 
   splitOffset = chunk;                                                    // Set starting offset to 500Hz
   tft.setTextColor(RA8875_GREEN);
-  tft.setCursor(INFORMATION_WINDOW_X + 60, INFORMATION_WINDOW_Y + 90);
+  tft.setCursor(centerTxt, INFO_WINDOW_T + 90);
   tft.print(splitOffset);
-  tft.print("Hz  ");
+  tft.print(" Hz  ");
 
   while (true) {
     if (filterEncoderMove != 0) {                     // Changed encoder?
       splitOffset += filterEncoderMove * chunk;
-      tft.fillRect(INFORMATION_WINDOW_X + 60, INFORMATION_WINDOW_Y + 90, 150, 50, RA8875_BLACK);
-      tft.setCursor(INFORMATION_WINDOW_X + 60, INFORMATION_WINDOW_Y + 90);
+      tft.fillRect(centerTxt, INFO_WINDOW_T + 90, 150, 50, RA8875_BLACK);
+      tft.setCursor(centerTxt, INFO_WINDOW_T + 90);
       tft.print(splitOffset);
-      tft.print("Hz  ");
+      tft.print(" Hz  ");
     }
     filterEncoderMove = 0L;
 
