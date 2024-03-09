@@ -43,3 +43,7 @@ void ShowTempAndLoad();
 
 void MyDelay(unsigned long millisWait);
 void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp);
+
+void FormatFrequency(long freq, char *freqBuffer);
+
+float TGetTemp();

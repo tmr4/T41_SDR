@@ -36,8 +36,6 @@ float32_t sinBuffer2[256];
 float32_t sinBuffer3[256];
 float32_t sinBuffer4[256];
 
-float TGetTemp();
-
 // Voltage in one-hundred 1 dB steps for volume control.
 const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016, 0.000018, 0.000020, 0.000022, 0.000025, 0.000028,
                                 0.000032, 0.000035, 0.000040, 0.000045, 0.000050, 0.000056, 0.000063, 0.000071, 0.000079, 0.000089,
@@ -739,4 +737,61 @@ void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, u
   roomCount = (uint32_t)(calibrationData & 0xFFF00000U) >> 0x14U;
   s_hotT_ROOM = s_hotTemp - TEMPMON_ROOMTEMP;
   s_roomC_hotC = roomCount - s_hotCount;
+}
+
+/*****
+  Purpose: Format frequency for printing
+  Parameter list:
+    void
+  Return value;
+    void
+    // show frequency
+*****/
+void FormatFrequency(long freq, char *freqBuffer) {
+  char outBuffer[15];
+  int i;
+  int len;
+  ltoa((long)freq, outBuffer, 10);
+  len = strlen(outBuffer);
+
+  switch (len) {
+    case 6:  // below 530.999 KHz
+      freqBuffer[0] = outBuffer[0];
+      freqBuffer[1] = outBuffer[1];
+      freqBuffer[2] = outBuffer[2];
+      freqBuffer[3] = FREQ_SEP_CHARACTER;  // Add separation charcter
+      for (i = 4; i < len; i++) {
+        freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
+      }
+      freqBuffer[i] = '0';       // trailing 0
+      freqBuffer[i + 1] = '\0';  // Make it a string
+      break;
+
+    case 7:  // 1.0 - 9.999 MHz
+      freqBuffer[0] = outBuffer[0];
+      freqBuffer[1] = FREQ_SEP_CHARACTER;  // Add separation charcter
+      for (i = 2; i < 5; i++) {
+        freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
+      }
+      freqBuffer[5] = FREQ_SEP_CHARACTER;  // Add separation charcter
+      for (i = 6; i < 9; i++) {
+        freqBuffer[i] = outBuffer[i - 2];  // Last 3 digit chars
+      }
+      freqBuffer[i] = '\0';  // Make it a string
+      break;
+
+    case 8:  // 10 MHz - 30MHz
+      freqBuffer[0] = outBuffer[0];
+      freqBuffer[1] = outBuffer[1];
+      freqBuffer[2] = FREQ_SEP_CHARACTER;  // Add separation charcter
+      for (i = 3; i < 6; i++) {
+        freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
+      }
+      freqBuffer[6] = FREQ_SEP_CHARACTER;  // Add separation charcter
+      for (i = 7; i < 10; i++) {
+        freqBuffer[i] = outBuffer[i - 2];  // Last 3 digit chars
+      }
+      freqBuffer[i] = '\0';  // Make it a string
+      break;
+  }
 }

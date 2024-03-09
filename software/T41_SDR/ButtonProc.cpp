@@ -7,6 +7,7 @@
 #include "Encoders.h"
 #include "FFT.h"
 #include "Filter.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "Noise.h"
 #include "Process.h"
@@ -303,7 +304,7 @@ void ButtonZoom() {
     spectrum_zoom = 0;
   }
 
-  SetZoom(spectrum_zoom);
+  SetZoom();
 }
 
 /*****
@@ -369,33 +370,32 @@ void ButtonMode() {
     xmtMode = CW_MODE;
   }
 
-  SetFreq();  // Required due to RX LO shift from CW to SSB modes.  KF5N
-  //tft.fillWindow();  // This was erasing the waterfall when switching modes.  Removed by KF5N.
+  SetFreq();  // Required due to RX LO shift from CW to SSB modes
   DrawSpectrumDisplayContainer();
   DrawFrequencyBarValue();
-  DrawInfoWindowFrame();
-  DisplayIncrementField();
   AGCPrep();
-  UpdateAGCField();
   EncoderVolume();
-  UpdateInfoWindow();
   ControlFilterF();
   BandInformation();
   FilterBandwidth();
   DrawSMeterContainer();
   DrawAudioSpectContainer();
   SpectralNoiseReductionInit();
-  UpdateNoiseField();
-  UpdateNoiseFloorField();
   ShowName();
   ShowSpectrumdBScale();
   ShowTransmitReceiveStatus();
   ShowFrequency();
-  // Draw or not draw CW filter graphics to audio spectrum area.  KF5N July 30, 2023
+
+  UpdateInfoBox();
+
+  // Draw or not draw CW filter graphics to audio spectrum area
   if(xmtMode == SSB_MODE) {
-  tft.writeTo(L2);
-  tft.clearMemory();
-  } else BandInformation();
+    tft.writeTo(L2);
+    tft.clearMemory();
+  } else {
+    BandInformation();
+  }
+    
   DrawBandWidthIndicatorBar();
 }
 
@@ -416,7 +416,8 @@ void ButtonNR() {
   if (nrOptionSelect > NR_OPTIONS) {
     nrOptionSelect = 0;
   }
-  UpdateNoiseField();
+
+  UpdateInfoBoxItem(&infoBox[IB_ITEM_FILTER]);
 }
 
 /*****
@@ -513,8 +514,9 @@ int ToggleLiveNoiseFloorFlag() {
     EEPROMData.currentNoiseFloor[currentBand]  = currentNoiseFloor[currentBand];
     EEPROMWrite();
   }
+
   liveNoiseFloorFlag = !liveNoiseFloorFlag;
-  UpdateNoiseFloorField();
+  UpdateInfoBoxItem(&infoBox[IB_ITEM_FLOOR]);
   return liveNoiseFloorFlag;
 }
 

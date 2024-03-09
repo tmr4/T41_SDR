@@ -4,6 +4,7 @@
 #include "ButtonProc.h"
 #include "Display.h"
 #include "EEPROM.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Process.h"
@@ -22,7 +23,6 @@
 int buttonRead = 0;
 int minPinRead = 1024;
 int secondaryMenuChoiceMade;
-long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
 
 /*
 The button interrupt routine implements a first-order recursive filter, or "leaky integrator,"
@@ -94,6 +94,7 @@ static volatile int buttonADCOut;
 //-------------------------------------------------------------------------------------------------------------
 
 void ButtonFreqIncrement();
+void ButtonFTIncrement();
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -493,7 +494,7 @@ void ExecuteButtonPress(int val) {
 
     case NOTCH_FILTER:  // 10
       ButtonNotchFilter();
-      UpdateNotchField();
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_NOTCH]);
       break;
 
     case NOISE_FLOOR:  // 11
@@ -505,22 +506,21 @@ void ExecuteButtonPress(int val) {
       break;
 
     case FINE_TUNE_INCREMENT:  // 12
-      UpdateIncrementField();
+      ButtonFTIncrement();
       break;
 
     case DECODER_TOGGLE:  // 13
       decoderFlag = !decoderFlag;
-      UpdateDecoderField();
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_DECODER]);
       break;
 
     case MAIN_TUNE_INCREMENT:  // 14
       ButtonFreqIncrement();
-      //UpdateEEPROMSyncIndicator(0);
       break;
 
-    case RESET_TUNING:  // 15   AFP 10-11-22
-      ResetTuning();    // AFP 10-11-22
-      break;            // AFP 10-11-22
+    case RESET_TUNING:  // 15
+      ResetTuning();
+      break;
 
     case UNUSED_1:  // 16
       if (calOnFlag == 0) {
@@ -578,7 +578,7 @@ void ExecuteButtonPress(int val) {
 }
 
 /*****
-  Purpose: To process a band decrease button push
+  Purpose: To process a frequency increment button push
 
   Parameter list:
     void
@@ -587,12 +587,35 @@ void ExecuteButtonPress(int val) {
     void
 *****/
 void ButtonFreqIncrement() {
+  long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
+
   tuneIndex--;
   if (tuneIndex < 0)
     tuneIndex = MAX_FREQ_INDEX - 1;
   freqIncrement = incrementValues[tuneIndex];
 
-  DisplayIncrementField();
+  UpdateInfoBoxItem(&infoBox[IB_ITEM_TUNE]);
+}
+
+/*****
+  Purpose: To process a fine tune frequency increment button push
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void ButtonFTIncrement() {
+  long selectFT[] = { 10, 50, 250, 500 };
+
+  ftIndex++;
+  if (ftIndex > 3) {
+    ftIndex = 0;
+  }
+  ftIncrement = selectFT[ftIndex];
+
+  UpdateInfoBoxItem(&infoBox[IB_ITEM_FINE]);
 }
 
 /*****

@@ -38,6 +38,10 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
 
 * feature/menu - SDR.1 with option to select top line menu functionality (similar to T41EEE) or retain full screen menu (SDTVer049.2K).
 
+* feature/infoBoxCons - consolidates all information box functions into separate code and header files.  Addes info box item structure to facilitate creation and updating of info box.
+
+  * also removes some unused functions and some cleanup
+
 ## Previous changes
 
 * previous dev/v0.1 changes

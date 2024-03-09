@@ -36,29 +36,35 @@
 
 #define PADDLE_FLIP								0						                              // 0 = right paddle = DAH, 1 = DIT
 #define STRAIGHT_KEY_OR_PADDLES		0						                              // 0 = straight, 1 = paddles
-#define SDCARD_MESSAGE_LENGTH     3000L                                     // The number of milliseconds to leave error message on screen
 
-//====================== System specific ===============
 #define CURRENT_FREQ_A            7048000                                   // VFO_A
 #define CURRENT_FREQ_B            7030000                                   // VFO_B
+
                                                                             //            0   1   2     3     4      5       6        7
 #define DEFAULTFREQINDEX          7                                         // Default: (10, 50, 100, 250, 1000, 10000, 100000, 1000000)
+                                                                            //            0   1   2     3
+#define DEFAULT_FT_INDEX          3                                         // Default: (10, 50, 250, 500)
+
 #define DEFAULT_POWER_LEVEL       10                                        // Startup power level. Probably 20 for most people
-#define FAST_TUNE_INCREMENT    	  500			 		                    // Default from above for fine tune
-#define SPLASH_DELAY              4000L                                     // How long to show Splash screen. Use 1000 for testing, 4000 normally
-#define STARTUP_BAND        			1                                   // This is the 40M band (EEPROM.h)
+
+#define SPLASH_DELAY              4000L                                     // How long to show Splash screen
+
+#define STARTUP_BAND        			1                                         // This is the 40M band (EEPROM.h)
 
 #define CENTER_SCREEN_X           400
 #define CENTER_SCREEN_Y           245
 #define IMAGE_CORNER_X            190                                       // ImageWidth = 378 Therefore 800 - 378 = 422 / 2 = 211
 #define IMAGE_CORNER_Y            40                                        // ImageHeight = 302 Therefore 480 - 302 = 178 / 2 = 89
 #define RAY_LENGTH                190
+
 // ==== Pick one of the following encoder configurations
 //#define                           NORM_ENCODER
 #define                           FOURSQRP
 
 #define USE_FULL_MENU             0   // 0 - use top line menus; 1 - use full screen menus
 #define USE_LIVE_NOISE_FLOOR      1   // 0 - don't use, 1 - use live display when setting noise floor
+
+#define SDCARD_MESSAGE_LENGTH     3000L                                     // The number of milliseconds to leave error message on screen
 
 struct maps {
   char mapNames[50];

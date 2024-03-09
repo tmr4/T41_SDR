@@ -17,7 +17,7 @@ int audioVolume = 30;
 int rfGainAllBands = 1;
 int spectrumNoiseFloor = 247; // SPECTRUM_NOISE_FLOOR;
 int tuneIndex = DEFAULTFREQINDEX;
-long stepFineTune = FAST_TUNE_INCREMENT;
+int ftIndex = DEFAULT_FT_INDEX;
 float32_t transmitPowerLevel = DEFAULT_POWER_LEVEL;
 int xmtMode = SSB_MODE;  // 0 = SSB, 1 = CW
 int nrOptionSelect = 0;
@@ -35,7 +35,9 @@ float32_t sidetoneVolume = 20;
 uint32_t cwTransmitDelay = 750;
 
 int activeVFO = 0;
-int freqIncrement = 100000;
+
+int freqIncrement = 100000; // *** these need to be automated according to defines in config file ***
+int ftIncrement = 500;
 
 int currentBand = BAND_40M;
 int currentBandA = BAND_40M;
@@ -109,7 +111,7 @@ void LoadOpVars() {
   rfGainAllBands = EEPROMData.rfGainAllBands;
   spectrumNoiseFloor = EEPROMData.spectrumNoiseFloor;
   tuneIndex = EEPROMData.tuneIndex;
-  stepFineTune = EEPROMData.stepFineTune;
+  ftIndex = EEPROMData.ftIndex;
   transmitPowerLevel = EEPROMData.transmitPowerLevel;
   xmtMode = EEPROMData.xmtMode;
   nrOptionSelect = EEPROMData.nrOptionSelect;
@@ -127,7 +129,7 @@ void LoadOpVars() {
   cwTransmitDelay = EEPROMData.cwTransmitDelay;
 
   activeVFO = EEPROMData.activeVFO;
-  freqIncrement = EEPROMData.freqIncrement;
+  freqIncrement = EEPROMData.freqIncrement; // *** this isn't needed if tuneIndex is used to set initial value ***
 
   currentBand = EEPROMData.currentBand;
   currentBandA = EEPROMData.currentBandA;

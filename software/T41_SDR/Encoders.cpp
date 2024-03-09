@@ -6,6 +6,7 @@
 #include "EEPROM.h"
 #include "Encoders.h"
 #include "Filter.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Tune.h"
@@ -340,7 +341,7 @@ int SetWPM() {
       currentWPM = lastWPM;
       EEPROMData.currentWPM = currentWPM;
       EEPROMWrite();
-      UpdateWPMField();
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
       break;
     }
   }
@@ -422,13 +423,12 @@ FASTRUN void EncoderFineTune() {
       fineTuneEncoderMove = -1L;
     }
   }
-  NCOFreq += stepFineTune * fineTuneEncoderMove;  //AFP 11-01-22
+  NCOFreq += ftIncrement * fineTuneEncoderMove;
   centerTuneFlag = 1;
-  // ============  AFP 10-28-22
   if (activeVFO == VFO_A) {
-    currentFreqA = centerFreq + NCOFreq;  //AFP 10-05-22
+    currentFreqA = centerFreq + NCOFreq;
   } else {
-    currentFreqB = centerFreq + NCOFreq;  //AFP 10-05-22
+    currentFreqB = centerFreq + NCOFreq;
   }
   // ===============  Recentering at band edges ==========
   if (spectrum_zoom != 0) {

@@ -52,6 +52,12 @@ extern const char *CWFilter[];
 extern unsigned long ditLength;
 extern unsigned long transmitDitLength;
 
+extern int dahLength;
+
+extern float32_t combinedCoeff;
+extern float CWLevelTimer;
+extern float CWLevelTimerOld;
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------

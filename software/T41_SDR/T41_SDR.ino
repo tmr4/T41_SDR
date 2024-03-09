@@ -32,6 +32,7 @@
 #include "Filter.h"
 #include "FIR.h"
 #include "Freq_Shift.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Noise.h"
@@ -884,7 +885,7 @@ void setup() {
   filterEncoderMove = 0;
   fineTuneEncoderMove = 0L;
   xrState = RECEIVE_STATE;  // Enter loop() in receive state.  KF5N July 22, 2023
-  UpdateInfoWindow();
+  UpdateInfoBox();
   DrawSpectrumDisplayContainer();
   RedrawDisplayScreen();
 
@@ -898,7 +899,7 @@ void setup() {
 //  ShowFrequency();
 //  SetFreq();
   ResetTuning();
-  SetZoom(spectrum_zoom);
+  SetZoom();
   knee_dBFS = -15.0;   // Is this variable actually used???
   comp_ratio = 5.0;
   attack_sec = .1;
@@ -1196,16 +1197,15 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
   }
   //  ShowTransmitReceiveStatus();
 
-#ifdef DEBUG1
+
   if (elapsed_micros_idx_t > (SampleRate / 960)) {
-    ShowTempAndLoad();
-    // Used to monitor CPU temp and load factors
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_TEMP]);
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_LOAD]);
   }
-#endif
 
   if (volumeChangeFlag == true) {
     volumeChangeFlag = false;
-    UpdateVolumeField();
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_VOL]);
   }
 
 #ifdef DEBUG_LOOP

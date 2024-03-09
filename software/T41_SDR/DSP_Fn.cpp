@@ -4,6 +4,7 @@
 #include "DSP_Fn.h"
 #include "EEPROM.h"
 #include "Menu.h"
+#include "InfoBox.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -703,7 +704,7 @@ void SetCompressionLevel() {
       // micCompression = currentMicThreshold;
       EEPROMData.currentMicThreshold = currentMicThreshold;
       EEPROMWrite();
-      UpdateCompressionField();
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_COMPRESS]);
       break;
     }
   }

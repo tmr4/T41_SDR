@@ -23,7 +23,7 @@ void EnterLoop() {
   oldEEPROMData.rfGainAllBands = rfGainAllBands;
   oldEEPROMData.spectrumNoiseFloor = spectrumNoiseFloor;
   oldEEPROMData.tuneIndex = tuneIndex;
-  oldEEPROMData.stepFineTune = stepFineTune;
+  //oldEEPROMData.ftIncrement = ftIncrement;
   oldEEPROMData.transmitPowerLevel = transmitPowerLevel;
   oldEEPROMData.xmtMode = xmtMode;
   oldEEPROMData.nrOptionSelect = nrOptionSelect;
@@ -135,7 +135,7 @@ void ExitLoop() {
   if(oldEEPROMData.rfGainAllBands != rfGainAllBands) { Serial.println("  rfGainAllBands changed"); }
   if(oldEEPROMData.spectrumNoiseFloor != spectrumNoiseFloor) { Serial.println("  spectrumNoiseFloor changed"); }
   if(oldEEPROMData.tuneIndex != tuneIndex) { Serial.println("  tuneIndex changed"); }
-  if(oldEEPROMData.stepFineTune != stepFineTune) { Serial.println("  stepFineTune changed"); }
+  //if(oldEEPROMData.ftIncrement != ftIncrement) { Serial.println("  ftIncrement changed"); }
   if(oldEEPROMData.transmitPowerLevel != transmitPowerLevel) { Serial.println("  transmitPowerLevel changed"); }
   if(oldEEPROMData.xmtMode != xmtMode) { Serial.println("  xmtMode changed"); }
   if(oldEEPROMData.nrOptionSelect != nrOptionSelect) { Serial.println("  nrOptionSelect changed"); }
@@ -234,7 +234,7 @@ void EnterLoop() {
   oldEEPROMData.rfGainAllBands = EEPROMData.rfGainAllBands;
   oldEEPROMData.spectrumNoiseFloor = EEPROMData.spectrumNoiseFloor;
   oldEEPROMData.tuneIndex = EEPROMData.tuneIndex;
-  oldEEPROMData.stepFineTune = EEPROMData.stepFineTune;
+  oldEEPROMData.ftIncrement = EEPROMData.ftIncrement;
   oldEEPROMData.transmitPowerLevel = EEPROMData.transmitPowerLevel;
   oldEEPROMData.xmtMode = EEPROMData.xmtMode;
   oldEEPROMData.nrOptionSelect = EEPROMData.nrOptionSelect;
@@ -333,7 +333,7 @@ void ExitLoop() {
   if(oldEEPROMData.rfGainAllBands != EEPROMData.rfGainAllBands) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("rfGainAllBands changed"); }
   if(oldEEPROMData.spectrumNoiseFloor != EEPROMData.spectrumNoiseFloor) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("spectrumNoiseFloor changed"); }
   if(oldEEPROMData.tuneIndex != EEPROMData.tuneIndex) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("tuneIndex changed"); }
-  if(oldEEPROMData.stepFineTune != EEPROMData.stepFineTune) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("stepFineTune changed"); }
+  if(oldEEPROMData.ftIncrement != EEPROMData.ftIncrement) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("ftIncrement changed"); }
   if(oldEEPROMData.transmitPowerLevel != EEPROMData.transmitPowerLevel) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("transmitPowerLevel changed"); }
   if(oldEEPROMData.xmtMode != EEPROMData.xmtMode) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("xmtMode changed"); }
   if(oldEEPROMData.nrOptionSelect != EEPROMData.nrOptionSelect) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("nrOptionSelect changed"); }

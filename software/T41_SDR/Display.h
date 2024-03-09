@@ -30,46 +30,12 @@
 
 #define TEMP_X_OFFSET         15
 #define TEMP_Y_OFFSET         465                                           // 480 * 0.97 = 465
-#define AGC_Y_OFFSET          292
-#define AGC_X_OFFSET          680
-#define VOLUME_Y_OFFSET       180
-#define INCREMENT_X           WATERFALL_RIGHT_X + 25
-#define INCREMENT_Y           WATERFALL_TOP_Y   + 70
-#define SPECTRUMCORNER_X      INCREMENT_X
-#define SPECTRUMCORNER_Y      INCREMENT_Y
-
-// info box coordinates
-#define INFO_WINDOW_L         WATERFALL_RIGHT_X + 15
-#define INFO_WINDOW_T         WATERFALL_TOP_Y + 35
-#define INFO_WINDOW_W         260
-#define INFO_WINDOW_H         200
-#define IB_COL_1_X          WATERFALL_RIGHT_X + 118 // X coordinate for info box 1st column field
-#define IB_COL_2_X          WATERFALL_RIGHT_X + 238 // X coordinate for info box 2nd column field
-
-#define IB_ROW_1_Y            INFO_WINDOW_T + 35
-#define IB_ROW_2_Y            IB_ROW_1_Y + 20
-#define IB_ROW_3_Y            IB_ROW_2_Y + 20
-#define IB_ROW_4_Y            IB_ROW_3_Y + 20
-#define IB_ROW_5_Y            IB_ROW_4_Y + 20
-#define IB_ROW_6_Y            IB_ROW_5_Y + 20
-#define IB_ROW_7_Y            IB_ROW_6_Y + 20
-#define IB_ROW_8_Y            IB_ROW_7_Y + 20
-
-
 
 #define BAND_INDICATOR_X      WATERFALL_RIGHT_X + 25
-#define BAND_INDICATOR_Y      WATERFALL_TOP_Y + 37                          // 292
 #define OPERATION_STATS_X     130
-#define OPERATION_STATS_Y     75
-#define BAND_SUMMARY_X        BAND_INDICATOR_X
-#define BAND_SUMMARY_Y        150
-#define START_BAND_DATA_X     TEMP_X_OFFSET
-#define START_BAND_DATA_Y     YPIXELS * 0.25
 
 #define X_R_STATUS_X          730
 #define X_R_STATUS_Y          70
-#define RECEIVE_STATE         1
-#define TRANSMIT_STATE        0
 
 #define SMETER_X              WATERFALL_RIGHT_X + 16
 #define SMETER_Y              YPIXELS * 0.22                // 480 * 0.22 = 106
@@ -78,8 +44,6 @@
 #define SPECTRUM_NOISE_FLOOR  (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 3)
 #define TIME_X                (XPIXELS * 0.73)                            // Upper-left corner for time
 #define TIME_Y                (YPIXELS * 0.07)
-#define WHICH_SIDEBAND_X      (XPIXELS * 0.70)
-#define WHICH_SIDEBAND_Y      (YPIXELS * 0.20)
 #define FILTER_PARAMETERS_X   (XPIXELS * 0.22)
 #define FILTER_PARAMETERS_Y   (YPIXELS * 0.213)
 #define DEFAULT_EQUALIZER_BAR 100                                         // Default equalizer bar height
@@ -93,24 +57,6 @@
 #define VFOB_PIXEL_LENGTH     280
 #define FREQUENCY_PIXEL_HI    45
 #define SPLIT_INCREMENT       500L
-
-#define NOTCH_X               WATERFALL_RIGHT_X + 58
-#define NOTCH_Y               WATERFALL_TOP_Y   + 90
-
-#define ZOOM_X                WATERFALL_RIGHT_X + 65
-#define ZOOM_Y                WATERFALL_TOP_Y   + 130
-#define SD_X                  707
-#define SD_Y                  385
-#define COMPRESSION_X         WATERFALL_RIGHT_X + 33
-#define COMPRESSION_Y         WATERFALL_TOP_Y   + 150
-#define DECODER_X             WATERFALL_RIGHT_X + 43                      // 512 +  43 = 555
-#define DECODER_Y             WATERFALL_TOP_Y   + 190                     // 255 + 190 = 345
-#define WPM_X                 WATERFALL_RIGHT_X + 58
-#define WPM_Y                 WATERFALL_TOP_Y   + 170
-#define NR_X_OFF              WATERFALL_RIGHT_X + 80
-#define NR_Y_OFF              WATERFALL_TOP_Y   + 190
-#define VOLUME_INFO_FIELD_X   540
-#define VOLUME_INFO_FIELD_Y   292
 
 // commented out colors are predefined
 #define  BLACK                    0x0000      /*   0,   0,   0 */
@@ -146,7 +92,6 @@
 
 extern int filterWidth;
 extern int centerLine;
-extern const char *zoomOptions[];
 
 extern int16_t pixelCurrent[SPECTRUM_RES];
 extern int16_t pixelnew[SPECTRUM_RES];
@@ -185,22 +130,9 @@ void DrawSpectrumDisplayContainer();
 void DrawFrequencyBarValue();
 void ShowAnalogGain();
 void BandInformation();
-void FormatFrequency(long freq, char *freqBuffer);
 void ShowFrequency();
 void DisplaydbM(float32_t audioMaxSquaredAve);
 void MyDrawFloat(float val, int decimals, int x, int y, char *buff);
-void UpdateInfoWindow();
-void UpdateVolumeField();
-void UpdateAGCField();
-void UpdateIncrementField();
-void DisplayIncrementField();
-void UpdateNotchField();
-void UpdateZoomField(int zoomIndex);
-void UpdateCompressionField();
-void UpdateDecoderField();
-void UpdateWPMField();
-void UpdateNoiseField();
-void DrawInfoWindowFrame();
 void RedrawDisplayScreen();
 void DrawBandWidthIndicatorBar();
 void EraseSpectrumDisplayContainer();
@@ -209,9 +141,9 @@ void ErasePrimaryMenu();
 void EraseSecondaryMenu();
 void ShowTransmitReceiveStatus();
 
-void SetZoom(int zoomIndex);
+void SetZoom();
 void EraseSpectrumWindow();
 
 int  SetI2SFreq(int freq);
 
-void UpdateNoiseFloorField();
+void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, int width);

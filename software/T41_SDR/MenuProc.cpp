@@ -10,6 +10,7 @@
 #include "Encoders.h"
 #include "Exciter.h"
 #include "Filter.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Process2.h"
@@ -183,7 +184,7 @@ int CWOptions() {
     case 1:          // Type of key:
       SetKeyType();  // Straight key or keyer? Stored in EEPROMData.keyType; no heap/stack variable
       SetKeyPowerUp();
-      UpdateWPMField();
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
       break;
 
     case 2:              // CW Filter BW:      // AFP 10-18-22
@@ -282,7 +283,7 @@ int AGCOptions() {
 
   EEPROMData.AGCMode = AGCMode;                 // Store in EEPROM and...
   EEPROMWrite();  // ...save it
-  UpdateAGCField();
+  UpdateInfoBoxItem(&infoBox[IB_ITEM_AGC]);
   return AGCMode;
 }
 
@@ -591,12 +592,12 @@ int MicOptions() {
 //  switch (micChoice) {
   switch (secondaryMenuIndex) {
     case 0:                // On
-      compressorFlag = 1;  // AFP 09-22-22
-      UpdateCompressionField();     // JJP 8/26/2023
+      compressorFlag = 1;
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_COMPRESS]);
       break;
     case 1:  // Off
       compressorFlag = 0;
-      UpdateCompressionField();     // JJP 8/26/2023
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_COMPRESS]);
       break;
     case 2:
       SetCompressionLevel();
@@ -715,7 +716,7 @@ void DoPaddleFlip() {
         EEPROMData.paddleDit = paddleDit;
         EEPROMData.paddleDah = paddleDah;
         EraseMenus();
-        UpdateWPMField(); // KD0RC
+        UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
         return;
       }
     }
@@ -822,7 +823,6 @@ int EEPROMOptions() {
   switch (secondaryMenuIndex) {   
     case 0:  // Save current values
       EEPROMWrite();
-      //UpdateEEPROMSyncIndicator(1);  //  JJP 7/25/23
       break;
 
     case 1:

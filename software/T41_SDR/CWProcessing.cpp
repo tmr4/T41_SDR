@@ -7,6 +7,7 @@
 #include "EEPROM.h"
 #include "Encoders.h"
 #include "FFT.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Utility.h"
@@ -26,6 +27,10 @@ unsigned long ditLength;
 unsigned long transmitDitLength;
 long signalElapsedTime;
 long gapLength;    // Time for noise measures
+float32_t combinedCoeff;
+float CWLevelTimer = 0.0;
+float CWLevelTimerOld = 0.0;
+
 
 // Morse Code Tables
 char letterTable[] = {
@@ -132,12 +137,9 @@ float32_t corrResultR;
 uint32_t corrResultIndexR;
 float32_t corrResultL;
 uint32_t corrResultIndexL;
-float32_t combinedCoeff;
 float32_t combinedCoeff2;
 float32_t combinedCoeff2Old;
 int CWCoeffLevelOld = 0.0;
-float CWLevelTimer = 0.0;
-float CWLevelTimerOld = 0.0;
 
 int endGapFlag = 0;
 int topGapIndex;
@@ -209,7 +211,7 @@ void Dit();
 void SelectCWFilter() {
   CWFilterIndex = SubmenuSelect(CWFilter, 6, 0);
 
-  // Clear the current CW filter graphics and then restore the bandwidth indicator bar.  KF5N July 30, 2023
+  // Clear the current CW filter graphics and then restore the bandwidth indicator bar
   tft.writeTo(L2);
   tft.clearMemory();
   BandInformation();
@@ -235,14 +237,14 @@ void DoCWReceiveProcessing() {
   //arm_biquad_cascade_df2T_f32(&S1_CW_Filter, float_buffer_R, float_buffer_R_CW, 256);//AFP 09-01-22
   //arm_biquad_cascade_df2T_f32(&S1_CW_Filter, float_buffer_L, float_buffer_L_CW, 256);//AFP 09-01-22
 
-  arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_L_CW, 256);  // AFP 10-25-22  Park McClellan FIR filter const Group delay
-  arm_fir_f32(&FIR_CW_DecodeR, float_buffer_R, float_buffer_R_CW, 256);  // AFP 10-25-22
+  arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_L_CW, 256); // Park McClellan FIR filter const Group delay
+  arm_fir_f32(&FIR_CW_DecodeR, float_buffer_R, float_buffer_R_CW, 256);
 
-  if (decoderFlag == ON) {  // JJP 7/20/23
+  if (decoderFlag == ON) {
 
     //=== end CW Filter ===
 
-    // ----------------------  Correlation calculation  AFP 02-04-22 -------------------------
+    // ----------------------  Correlation calculation  -------------------------
 
     //Calculate correlation between calc sine and incoming signal
 
@@ -263,16 +265,9 @@ void DoCWReceiveProcessing() {
     //Combine Correlation and Gowetzel Coefficients
     combinedCoeff = 10 * aveCorrResult * 100 * goertzelMagnitude;
     combinedCoeff2 = combinedCoeff;
-    // ==========  Changed CW decode "lock" indicator
-    if (combinedCoeff > 50) {  // AFP 10-26-22
-      tft.fillRect(745, 448, 15, 15, RA8875_GREEN);
-    } else if (combinedCoeff < 50) {  // AFP 10-26-22
-      CWLevelTimer = millis();
-      if (CWLevelTimer - CWLevelTimerOld > 2000) {
-        CWLevelTimerOld = millis();
-        tft.fillRect(744, 447, 17, 17, RA8875_BLACK);
-      }
-    }
+
+    UpdateDecodeLockIndicator();
+
     combinedCoeff2Old = combinedCoeff2;
     tft.drawFastVLine(BAND_INDICATOR_X + 22, AUDIO_SPECTRUM_BOTTOM - 118, 118, RA8875_GREEN);  //CW lower freq indicator
     tft.drawFastVLine(BAND_INDICATOR_X + 30, AUDIO_SPECTRUM_BOTTOM - 118, 118, RA8875_GREEN);  //CW upper freq indicator
@@ -500,7 +495,7 @@ void SetKeyPowerUp() {
 }
 
 /*****
-  Purpose: Allow user to set the sidetone volume.  KF5N August 31, 2023
+  Purpose: Allow user to set the sidetone volume
 
   Parameter list:
     void
@@ -529,8 +524,8 @@ void SetSideToneVolume() {
   modeSelectOutExL.gain(0, 0);
   modeSelectOutExR.gain(0, 0);
   digitalWrite(MUTE, LOW);      // unmutes audio
-  modeSelectOutL.gain(1, 0.0);  // Sidetone  AFP 10-01-22
-  modeSelectOutR.gain(1, 0.0);  // Sidetone  AFP 10-01-22
+  modeSelectOutL.gain(1, 0.0);  // Sidetone
+  modeSelectOutR.gain(1, 0.0);  // Sidetone
 
   while (true) {
     if (digitalRead(paddleDit) == LOW || digitalRead(paddleDah) == LOW) CW_ExciterIQData();
@@ -663,11 +658,12 @@ void ResetHistograms() {
   aveDahLength = dahLength;
   valRef1 = 0;
   valRef2 = 0;
+
   // Clear graph arrays
   memset(signalHistogram, 0, HISTOGRAM_ELEMENTS * sizeof(uint32_t));
   memset(gapHistogram, 0, HISTOGRAM_ELEMENTS * sizeof(uint32_t));
   currentWPM = 1200 / ditLength;
-  UpdateWPMField();
+  UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
 }
 
 /*****
@@ -841,17 +837,9 @@ void DoCWDecoding(int audioValue) {
 
     case state6:                                                //  Blank printing state.
       MorseCharacterDisplay(' ');
-
-      tft.setFontScale((enum RA8875tsize)0);                    // Show estimated WPM
-      tft.setTextColor(RA8875_GREEN);
-      tft.fillRect(DECODER_X + 104, DECODER_Y, tft.getFontWidth() * 10, tft.getFontHeight(), RA8875_BLACK);
-      tft.setCursor(DECODER_X + 105, DECODER_Y);
-      tft.print("(");
-      tft.print(1200L / (dahLength / 3));
-      tft.print(" WPM)");
-      tft.setTextColor(RA8875_WHITE);
-      tft.setFontScale((enum RA8875tsize)3);
-
+      UpdateIBWPM();
+      //tft.setTextColor(RA8875_WHITE);
+      //tft.setFontScale((enum RA8875tsize)3);
       blankFlag = true;
       decodeStates = state0;  // Start process for next incoming character.
       break;
@@ -860,70 +848,6 @@ void DoCWDecoding(int audioValue) {
       break;
   }
 }
-
-/*
-void DoCWDecoding(int audioValue) {
-  long gapEnd, gapLength, gapStart;    // Time for noise measures
-
-  if (audioValue == 1 && signalStart == 0L) {  // This is the start of the signal
-    signalStart = millis();
-    gapEnd = signalStart;           // Must be at noise end
-    gapLength = gapEnd - gapStart;  // How long was the gap between signals?
-
-    if (gapLength > LOWEST_ATOM_TIME && (uint32_t)gapLength < (uint32_t)(thresholdGeometricMean * 3)) {  // range
-      DoGapHistogram(gapLength);                                                                         // Map the gap in the signal
-    }
-    signalEnd = 0L;          // Allows us to know timing started, but not ended
-    signalElapsedTime = 0L;  // Signal is just starting
-    gapStart = 0L;           // Reset noise measures
-  }
-
-  if (audioValue == 0 && signalStart != 0L) {     // Has signal has just ended?
-    signalEnd = millis();                         // Yep, mark end of signal, but also...
-    gapStart = signalEnd;                         // ...mark the start of the gap
-    signalElapsedTime = signalEnd - signalStart;  // How long was signal on?
-
-    if (signalElapsedTime < LOWEST_ATOM_TIME) {  // A hiccup or a real signal?
-      signalElapsedTime = 0L;
-    }
-    signalStart = 0L;
-    if (signalElapsedTime > LOWEST_ATOM_TIME && signalElapsedTime < HISTOGRAM_ELEMENTS) {  // Valid elapsed time?
-      DoSignalHistogram(signalElapsedTime);                                                //Yep
-    }
-
-    if (gapLength > ditLength * 1.95) {  // Is a char done??
-      MorseCharacterDisplay(bigMorseCodeTree[currentDecoderIndex]);
-      if (gapLength > ditLength * 4.5) {  // good over 15WPM on W1AW; no Fransworth
-        MorseCharacterDisplay(' ');
-        tft.setFontScale((enum RA8875tsize)0);  // Show estimated WPM
-        tft.setTextColor(RA8875_GREEN);
-        tft.fillRect(DECODER_X + 104, DECODER_Y, tft.getFontWidth() * 10, tft.getFontHeight(), RA8875_BLACK);
-        tft.setCursor(DECODER_X + 105, DECODER_Y);
-        tft.print("(");
-        tft.print(1200L / (dahLength / 3));
-        tft.print(" WPM)");
-        tft.setTextColor(RA8875_WHITE);
-        tft.setFontScale((enum RA8875tsize)3);
-      }
-      currentDecoderIndex = 0;  //Reset everything if char or word
-      currentDashJump = DECODER_BUFFER_SIZE;
-      gapLength = 0L;
-    }
-
-    //================
-    if (signalElapsedTime > (0.5 * ditLength) && signalElapsedTime < (1.5 * dahLength)) {  // If not a char delimiter
-      currentDashJump = currentDashJump >> 1;                                              // Fast divide by 2
-      if (signalElapsedTime < thresholdGeometricMean) {                                    // It was a dit
-        currentDecoderIndex++;
-      } else {
-        if (signalElapsedTime > thresholdGeometricMean && signalStart == 0L) {  // It was a dah
-          currentDecoderIndex += currentDashJump;
-        }
-      }
-    }
-  }
-}
-*/
 
 /*****
   Purpose: This function creates a distribution of the gaps between signals, expressed

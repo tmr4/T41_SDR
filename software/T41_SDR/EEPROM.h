@@ -24,7 +24,7 @@ typedef struct {
   int rfGainAllBands;
   int spectrumNoiseFloor;
   int tuneIndex;
-  long stepFineTune;
+  int ftIndex;
   float32_t transmitPowerLevel;
   int xmtMode;
   int nrOptionSelect;
@@ -115,7 +115,6 @@ void SetFavoriteFrequency();
 void GetFavoriteFrequency();
 void EEPROMSaveDefaults2();
 int CopySDToEEPROM();
-//void UpdateEEPROMSyncIndicator(int inSync); // this fuction does nothing and I've commented it out where used
 int CopyEEPROMToSD();
 void SDEEPROMDump();
 void EEPROMStartup();

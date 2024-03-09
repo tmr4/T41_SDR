@@ -1,6 +1,7 @@
 #include "SDT.h"
 #include "Button.h"
 #include "Display.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "Tune.h"
 #include "Utility.h"
@@ -163,24 +164,24 @@ int DoSplitVFO() {
   long chunk = SPLIT_INCREMENT;
   long splitOffset;
 
-  tft.fillRect(INFO_WINDOW_L + 2, INFO_WINDOW_T + 2, INFO_WINDOW_W - 4, INFO_WINDOW_H - 4, RA8875_BLACK);  // Clear info box
-  tft.drawRect(INFO_WINDOW_L, INFO_WINDOW_T, INFO_WINDOW_W, INFO_WINDOW_H, RA8875_MAGENTA);
+  tft.fillRect(INFO_BOX_L + 2, INFO_BOX_T + 2, INFO_BOX_W - 4, INFO_BOX_H - 4, RA8875_BLACK);  // Clear info box
+  tft.drawRect(INFO_BOX_L, INFO_BOX_T, INFO_BOX_W, INFO_BOX_H, RA8875_MAGENTA);
   tft.setFontScale( (enum RA8875tsize) 1);
-  centerTxt = (INFO_WINDOW_W - strlen("xmit offset:") * tft.getFontWidth()) / 2 + INFO_WINDOW_L;
-  tft.setCursor(centerTxt, INFO_WINDOW_T + 10);
+  centerTxt = (INFO_BOX_W - strlen("xmit offset:") * tft.getFontWidth()) / 2 + INFO_BOX_L;
+  tft.setCursor(centerTxt, INFO_BOX_T + 10);
   tft.print("xmit offset:");
 
   splitOffset = chunk;                                                    // Set starting offset to 500Hz
   tft.setTextColor(RA8875_GREEN);
-  tft.setCursor(centerTxt, INFO_WINDOW_T + 90);
+  tft.setCursor(centerTxt, INFO_BOX_T + 90);
   tft.print(splitOffset);
   tft.print(" Hz  ");
 
   while (true) {
     if (filterEncoderMove != 0) {                     // Changed encoder?
       splitOffset += filterEncoderMove * chunk;
-      tft.fillRect(centerTxt, INFO_WINDOW_T + 90, 150, 50, RA8875_BLACK);
-      tft.setCursor(centerTxt, INFO_WINDOW_T + 90);
+      tft.fillRect(centerTxt, INFO_BOX_T + 90, 150, 50, RA8875_BLACK);
+      tft.setCursor(centerTxt, INFO_BOX_T + 90);
       tft.print(splitOffset);
       tft.print(" Hz  ");
     }
@@ -191,7 +192,7 @@ int DoSplitVFO() {
     MyDelay(150L);
     if (val == MENU_OPTION_SELECT) {                              // Make a choice??
       Clk1SetFreq += splitOffset;                                    // New transmit frequency // AFP 09-27-22
-      UpdateInfoWindow();
+      UpdateInfoBox();
       filterEncoderMove = 0L;
       break;
     }

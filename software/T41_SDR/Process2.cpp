@@ -52,18 +52,19 @@ float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins);
 void CalibratePreamble(int setZoom) {
   calOnFlag = 1;
   corrChange = 0;
-  correctionIncrement = 0.01;  //AFP 2-7-23
+  correctionIncrement = 0.01;
   IQCalType = 0;
-  radioState = CW_TRANSMIT_STRAIGHT_STATE;      // KF5N
-  transmitPowerLevelTemp = transmitPowerLevel;  //AFP 05-11-23
-  transmitPowerLevel = 5;                       //AFP 02-09-23
+  radioState = CW_TRANSMIT_STRAIGHT_STATE;
+  transmitPowerLevelTemp = transmitPowerLevel;
+  transmitPowerLevel = 5;
   powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
-  modeSelectOutExL.gain(0, powerOutCW[currentBand]);  //AFP 10-21-22
-  modeSelectOutExR.gain(0, powerOutCW[currentBand]);  //AFP 10-21-22
-  userXmtMode = xmtMode;          // Store the user's mode setting.  KF5N July 22, 2023
-  userZoomIndex = spectrum_zoom;  // Save the zoom index so it can be reset at the conclusion.  KF5N August 12, 2023
-  SetZoom(setZoom);
-  tft.writeTo(L2);  // Erase the bandwidth bar.  KF5N August 16, 2023
+  modeSelectOutExL.gain(0, powerOutCW[currentBand]);
+  modeSelectOutExR.gain(0, powerOutCW[currentBand]);
+  userXmtMode = xmtMode;          // Store the user's mode setting
+  userZoomIndex = spectrum_zoom;  // Save the zoom index so it can be reset at the conclusion
+  spectrum_zoom = setZoom;
+  SetZoom();
+  tft.writeTo(L2);  // Erase the bandwidth bar
   tft.clearMemory();
   tft.writeTo(L1);
   tft.setFontScale((enum RA8875tsize)0);
@@ -135,7 +136,7 @@ void CalibratePrologue() {
   transmitPowerLevel = transmitPowerLevelTemp;  // Restore the user's transmit power level setting.  KF5N August 15, 2023
   EEPROMWrite();                                // Save calibration numbers and configuration.  KF5N August 12, 2023
   spectrum_zoom = userZoomIndex; // Restore the user's zoom setting
-  SetZoom(spectrum_zoom); // ... and zoom display
+  SetZoom(); // ... and zoom display
   EEPROMWrite();                                // Save calibration numbers and configuration.  KF5N August 12, 2023
   tft.writeTo(L2);  // Clear layer 2.  KF5N July 31, 2023
   tft.clearMemory();

@@ -12,7 +12,7 @@ extern int audioVolume;
 extern int rfGainAllBands;
 extern int spectrumNoiseFloor;
 extern int tuneIndex;
-extern long stepFineTune;
+extern int ftIndex;
 extern float32_t transmitPowerLevel;
 extern int xmtMode;
 extern int nrOptionSelect;
@@ -31,6 +31,7 @@ extern uint32_t cwTransmitDelay;
 
 extern int activeVFO;
 extern int freqIncrement;
+extern int ftIncrement;
 
 extern int currentBand;
 extern int currentBandA;

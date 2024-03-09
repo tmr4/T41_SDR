@@ -29,7 +29,7 @@ config_t EEPROMData {
   1,                            // int rfGainAllBands
   SPECTRUM_NOISE_FLOOR,         // int spectrumNoiseFloor
   DEFAULTFREQINDEX,             // int tuneIndex
-  FAST_TUNE_INCREMENT,          // long stepFineTune
+  DEFAULT_FT_INDEX,             // int ftIndex
   DEFAULT_POWER_LEVEL,          // float32_t transmitPowerLevel
   0,                            // int xmtMode
   0,                            // int nrOptionSelect
@@ -234,8 +234,8 @@ void EEPROMShow() {
   Serial.println(EEPROMData.spectrumNoiseFloor);
   Serial.print("tuneIndex                       = ");
   Serial.println(EEPROMData.tuneIndex);
-  Serial.print("stepFineTne                     = ");
-  Serial.println(EEPROMData.stepFineTune);
+  //Serial.print("stepFineTne                     = ");
+  //Serial.println(EEPROMData.ftIncrement);
   Serial.print("transmitPowerLevel                      = ");
   Serial.println(EEPROMData.transmitPowerLevel);
   Serial.print("xmtMode                         = ");
@@ -701,7 +701,7 @@ void CopyEEPROM() {
   //  Note: switch values are read and written to EEPROM only
 
   tuneIndex = EEPROMData.tuneIndex;
-  stepFineTune = EEPROMData.stepFineTune;
+  //ftIncrement = EEPROMData.ftIncrement;
   transmitPowerLevel = EEPROMData.transmitPowerLevel;
   currentWPM = EEPROMData.currentWPM;
   xmtMode = EEPROMData.xmtMode;
@@ -793,7 +793,7 @@ void EEPROMSaveDefaults2() {
   EEPROMData.rfGainAllBands = 1;
   EEPROMData.spectrumNoiseFloor = SPECTRUM_NOISE_FLOOR;
   EEPROMData.tuneIndex = 5;
-  EEPROMData.stepFineTune = 50L;
+  //EEPROMData.ftIncrement = 50L;
   EEPROMData.transmitPowerLevel = 10;
   EEPROMData.xmtMode = 0;
   EEPROMData.nrOptionSelect = 0;  // 1 byte
@@ -1066,7 +1066,7 @@ int CopySDToEEPROM() {
         EEPROMData.tuneIndex = atoi(temp);
         break;
       case 6:
-        EEPROMData.stepFineTune = atol(temp);
+        //EEPROMData.ftIncrement = atol(temp);
         break;
       case 7:
         EEPROMData.transmitPowerLevel = atoi(temp);
@@ -1624,33 +1624,6 @@ int CopySDToEEPROM() {
 }
 
 /*****
-  Purpose: Provides a display indicator that the memory-based EEPROM is different than SD card EEPROM
-
-  Parameter list:
-    int inSync                    0 = no, memory and SD card not necessarily the same, 1 = same
-
-  Return value;
-    void
-
-*****/
-void UpdateEEPROMSyncIndicator(int inSync) {
-  return;  // Just go home   JJP  7/25/23
-  /*
-  if (inSync == 0) {                                                   // SD EEPROM different that memory EEPROM
-    tft.setFontScale( (enum RA8875tsize) 0);
-    //tft.fillRect(SD_X,      BAND_INDICATOR_Y + 70, tft.getFontWidth() * 7, tft.getFontHeight(), RA8875_RED);
-    tft.setCursor(SD_X + 2, BAND_INDICATOR_Y + 72);
-    tft.setTextColor(RA8875_RED, RA8875_RED);
-
-    tft.print((char) ' ');          // JJP 7/25/23
-    tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
-  } else {                                                                  // Erase message
-    tft.fillRect(SD_X, BAND_INDICATOR_Y + 70, tft.getFontWidth() * 2, tft.getFontHeight(), RA8875_BLACK);
-  }
-  */
-}
-
-/*****
   Purpose: Converts EEPROMData members and value to ASCII
 
   Parameter list:
@@ -1740,8 +1713,8 @@ int CopyEEPROMToSD() {
   itoa(tuneIndex, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
-  strcpy(buffer, "EEPROMData.stepFineTune = ");
-  ltoa(stepFineTune, temp, DEC);
+  //strcpy(buffer, "EEPROMData.ftIncrement = ");
+  //ltoa(ftIncrement, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
   strcpy(buffer, "EEPROMData.transmitPowerLevel = ");

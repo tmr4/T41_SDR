@@ -1,5 +1,6 @@
 #include "SDT.h"
 #include "Bearing.h"
+#include "Button.h"
 #include "ButtonProc.h"
 #include "CW_Excite.h"
 #include "CWProcessing.h"
@@ -9,6 +10,7 @@
 #include "EEPROM.h"
 #include "Exciter.h"
 #include "FFT.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "Noise.h"
 #include "Process.h"
@@ -20,15 +22,13 @@
 //-------------------------------------------------------------------------------------------------------------
 
 #define NEW_SI5351_FREQ_MULT  1UL
-#define KEYER                   1
-#define FLOAT_PRECISION         6                 // Assumed precision for a float
-#define RIGNAME_X_OFFSET    570             // Pixel count to rig name field
+#define FLOAT_PRECISION         6             // Assumed precision for a float
+#define RIGNAME_X_OFFSET      570             // Pixel count to rig name field
 
 //------------------------- Global Variables ----------
 
 int filterWidth;
 int centerLine = (MAX_WATERFALL_WIDTH + SPECTRUM_LEFT_X) / 2;
-const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
 
 int16_t pixelCurrent[SPECTRUM_RES];
 int16_t pixelnew[SPECTRUM_RES];
@@ -98,7 +98,6 @@ const DEMOD_Descriptor DEMOD[3] = {
   { DEMOD_USB, "(USB)" },
   { DEMOD_LSB, "(LSB)" },
   { DEMOD_AM, "(AM)" },  //AFP09-22-22
-
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -106,10 +105,6 @@ const DEMOD_Descriptor DEMOD[3] = {
 //-------------------------------------------------------------------------------------------------------------
 
 void ShowCurrentPowerSetting();
-void UpdateSDIndicator(int present);
-
-// the following functions are not used anywhere
-// void ShowNotch();
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -735,71 +730,13 @@ void ShowCurrentPowerSetting() {
 }
 
 /*****
-  Purpose: Format frequency for printing
-  Parameter list:
-    void
-  Return value;
-    void
-    // show frequency
-*****/
-void FormatFrequency(long freq, char *freqBuffer) {
-  char outBuffer[15];
-  int i;
-  int len;
-  ltoa((long)freq, outBuffer, 10);
-  len = strlen(outBuffer);
-
-  switch (len) {
-    case 6:  // below 530.999 KHz
-      freqBuffer[0] = outBuffer[0];
-      freqBuffer[1] = outBuffer[1];
-      freqBuffer[2] = outBuffer[2];
-      freqBuffer[3] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 4; i < len; i++) {
-        freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
-      }
-      freqBuffer[i] = '0';       // trailing 0
-      freqBuffer[i + 1] = '\0';  // Make it a string
-      break;
-
-    case 7:  // 1.0 - 9.999 MHz
-      freqBuffer[0] = outBuffer[0];
-      freqBuffer[1] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 2; i < 5; i++) {
-        freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
-      }
-      freqBuffer[5] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 6; i < 9; i++) {
-        freqBuffer[i] = outBuffer[i - 2];  // Last 3 digit chars
-      }
-      freqBuffer[i] = '\0';  // Make it a string
-      break;
-
-    case 8:  // 10 MHz - 30MHz
-      freqBuffer[0] = outBuffer[0];
-      freqBuffer[1] = outBuffer[1];
-      freqBuffer[2] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 3; i < 6; i++) {
-        freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
-      }
-      freqBuffer[6] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 7; i < 10; i++) {
-        freqBuffer[i] = outBuffer[i - 2];  // Last 3 digit chars
-      }
-      freqBuffer[i] = '\0';  // Make it a string
-      break;
-  }
-}
-
-/*****
-  Purpose: show Main frequency display at top
+  Purpose: Show main frequency display at top
 
   Parameter list:
     void
 
   Return value;
     void
-    // show frequency
 *****/
 FASTRUN void ShowFrequency() {
   char freqBuffer[15];
@@ -848,8 +785,10 @@ FASTRUN void ShowFrequency() {
 
 /*****
   Purpose: Display dBm
+
   Parameter list:
     void
+
   Return value;
     void
 *****/
@@ -929,414 +868,16 @@ void DisplaydbM(float32_t audioMaxSquaredAve) {
     void
 *****/
 void MyDrawFloat(float val, int decimals, int x, int y, char *buff) {
-  dtostrf(val, FLOAT_PRECISION, decimals, buff);  // Use 8 as that is the max prevision on a float
+  MyDrawFloatP(val, decimals, x, y, buff, FLOAT_PRECISION);
+}
 
-  tft.fillRect(x + 15, y, 12 * sizeof(buff), 15, RA8875_BLACK);
+void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, int width) {
+  dtostrf(val, width, decimals, buff);  // Use 8 as that is the max prevision on a float
+
+  tft.fillRect(x, y, width * tft.getFontWidth(), 15, RA8875_BLACK);
   tft.setCursor(x, y);
 
   tft.print(buff);
-}
-
-/*****
-  Purpose: Shows the startup settings for the information displayed in the lower-right box.
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateInfoWindow() {
-  tft.fillRect(INFO_WINDOW_L + 2, INFO_WINDOW_T + 2, INFO_WINDOW_W - 4, INFO_WINDOW_H - 4, RA8875_BLACK); // Clear info box
-  tft.drawRect(INFO_WINDOW_L, INFO_WINDOW_T, INFO_WINDOW_W, INFO_WINDOW_H, RA8875_LIGHT_GREY); // Redraw Info Window Box
-
-  tft.setFontScale((enum RA8875tsize)1);
-  UpdateVolumeField();
-  UpdateAGCField();
-
-  tft.setFontScale((enum RA8875tsize)0);
-  DisplayIncrementField();
-  UpdateCompressionField();
-  UpdateDecoderField();
-  UpdateNoiseField();
-  UpdateNoiseFloorField();
-  UpdateNotchField();
-  UpdateSDIndicator(sdCardPresent);
-  UpdateWPMField();
-  UpdateZoomField(spectrum_zoom);
-}
-
-/*****
-  Purpose: Updates the Volume setting on the display
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateVolumeField() {
-  tft.setFontScale((enum RA8875tsize)1);
-
-  tft.setCursor(BAND_INDICATOR_X + 20, BAND_INDICATOR_Y);  // Volume
-  tft.setTextColor(RA8875_WHITE);
-  tft.print("Vol:");
-  tft.setTextColor(RA8875_GREEN);
-  tft.fillRect(BAND_INDICATOR_X + 90, BAND_INDICATOR_Y, tft.getFontWidth() * 3 + 2, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(IB_COL_1_X, BAND_INDICATOR_Y);
-  tft.print(audioVolume);
-}
-
-/*****
-  Purpose: Updates the AGC on the display.  Long option added. G0ORX September 6, 2023
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateAGCField() {
-  tft.setFontScale((enum RA8875tsize)1);
-  tft.fillRect(AGC_X_OFFSET, AGC_Y_OFFSET, tft.getFontWidth() * 6, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(BAND_INDICATOR_X + 150, BAND_INDICATOR_Y);
-  switch (AGCMode) {  // The opted for AGC
-    case 0:           // Off
-      tft.setTextColor(DARKGREY);
-      tft.print("AGC");
-      tft.setFontScale((enum RA8875tsize)0);
-      tft.setCursor(BAND_INDICATOR_X + 200, BAND_INDICATOR_Y + 15);
-      tft.print(" off");
-      tft.setFontScale((enum RA8875tsize)1);
-      break;
-
-    case 1:  // Long
-      tft.setTextColor(RA8875_YELLOW);
-      tft.print("AGC L");
-      break;
-
-    case 2:  // Slow
-      tft.setTextColor(RA8875_WHITE);
-      tft.print("AGC S");
-      break;
-
-    case 3:  // Medium
-      tft.setTextColor(ORANGE);
-      tft.print("AGC M");
-      break;
-
-    case 4:  // Fast
-      tft.setTextColor(RA8875_GREEN);
-      tft.print("AGC F");
-      break;
-
-    default:
-      break;
-  }
-}
-
-/*****
-  Purpose: Updates the increment setting on the display
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateIncrementField() {
-  long selectFT[] = { 10, 50, 250, 500 };
-  static int selectFTIndex = 0;  // JJP 6/16/23
-
-  for (int i = 0; i < 4; i++) {  // Get index for current value
-    if (stepFineTune == selectFT[i]) {
-      selectFTIndex = i;
-      break;
-    }
-  }
-  selectFTIndex++;  // JJP 6/16/23
-  if (selectFTIndex > 3) {
-    selectFTIndex = 0;
-  }
-  stepFineTune = selectFT[selectFTIndex];
-
-  //UpdateEEPROMSyncIndicator(0);
-  DisplayIncrementField();
-}
-
-/*****
-  Purpose: Updates the increment setting on the display
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void DisplayIncrementField() {
-  tft.setFontScale((enum RA8875tsize)0);
-  tft.setTextColor(RA8875_WHITE);  // Frequency increment
-  tft.setCursor(INCREMENT_X, INCREMENT_Y);
-  tft.print("Increment: ");
-  tft.setCursor(INCREMENT_X + 148, INCREMENT_Y);
-  tft.print("FT Inc: ");
-
-  tft.fillRect(INCREMENT_X + 90, INCREMENT_Y, tft.getFontWidth() * 7, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(IB_COL_1_X - 3, INCREMENT_Y);
-  tft.setTextColor(RA8875_GREEN);
-  tft.print(freqIncrement);
-
-  tft.fillRect(INCREMENT_X + 210, INCREMENT_Y, tft.getFontWidth() * 4, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(IB_COL_2_X, INCREMENT_Y);
-  tft.setTextColor(RA8875_GREEN);
-  tft.print(stepFineTune);
-}
-
-/*****
-  Purpose: Updates the notch value on the display
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateNotchField() {
-  tft.setFontScale((enum RA8875tsize)0);
-
-  if (NR_first_time == 0) {  // Notch setting
-    tft.setTextColor(RA8875_LIGHT_GREY);
-  } else {
-    tft.setTextColor(RA8875_WHITE);
-  }
-  tft.fillRect(NOTCH_X + 60, NOTCH_Y, 150, tft.getFontHeight() + 5, RA8875_BLACK);
-  tft.setCursor(NOTCH_X - 32, NOTCH_Y);
-  tft.print("AutoNotch:");
-  tft.setCursor(IB_COL_1_X, NOTCH_Y);
-  tft.setTextColor(RA8875_GREEN);
-  if (ANR_notchOn == 0) {
-    tft.print("Off");
-  } else {
-    tft.print("On");
-    ANR_notchOn = 1;
-  }
-}
-
-/*****
-  Purpose: Updates the zoom setting on the display
-
-  Parameter list:
-    int zoomIndex - index to set
-
-  Return value;
-    void
-*****/
-void UpdateZoomField(int zoomIndex) {
-  tft.setFontScale((enum RA8875tsize)0);
-
-  tft.fillRect(ZOOM_X, ZOOM_Y, 100, tft.getFontHeight(), RA8875_BLACK);
-  tft.setTextColor(RA8875_WHITE);  // Display zoom factor
-  tft.setCursor(ZOOM_X, ZOOM_Y);
-  tft.print("Zoom:");
-  tft.setCursor(IB_COL_1_X, ZOOM_Y);
-  tft.setTextColor(RA8875_GREEN);
-  tft.print(zoomOptions[zoomIndex]);
-}
-
-/*****
-  Purpose: Updates the compression setting in Info Window
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateCompressionField() {
-  tft.fillRect(COMPRESSION_X, COMPRESSION_Y, 200, 15, RA8875_BLACK);
-  tft.setFontScale((enum RA8875tsize)0);
-  tft.setTextColor(RA8875_WHITE);  // Display zoom factor
-  tft.setCursor(COMPRESSION_X, COMPRESSION_Y);
-  tft.print("Compress:");
-  tft.setCursor(IB_COL_1_X, COMPRESSION_Y);
-  tft.setTextColor(RA8875_GREEN);
-  if (compressorFlag == 1) {  // JJP 8/26/2023
-    tft.print("On  ");
-    tft.print(currentMicThreshold);
-  } else {
-    tft.setCursor(IB_COL_1_X, COMPRESSION_Y);
-    tft.print("Off");
-  }
-}
-
-/*****
-  Purpose: Updates whether the decoder is on or off
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateDecoderField() {
-  tft.setFontScale((enum RA8875tsize)0);
-
-  tft.setTextColor(RA8875_WHITE);  // Display zoom factor
-  tft.setCursor(DECODER_X, DECODER_Y);
-  tft.print("Decoder:");
-  tft.setTextColor(RA8875_GREEN);
-  tft.fillRect(DECODER_X + 60, DECODER_Y, tft.getFontWidth() * 20, tft.getFontHeight() + 5, RA8875_BLACK);
-  tft.setCursor(IB_COL_1_X, DECODER_Y);
-  if (decoderFlag == ON) {  // AFP 09-27-22
-    tft.print("On ");
-  } else {
-    tft.print("Off");
-  }
-  if (xmtMode == CW_MODE && decoderFlag == ON) {  // In CW mode with decoder on? AFP 09-27-22
-    tft.setFontScale((enum RA8875tsize)0);
-    tft.setTextColor(RA8875_LIGHT_GREY);
-    tft.setCursor(IB_COL_1_X, DECODER_Y + 15);
-    tft.print("CW Fine Adjust");
-  } else {
-    tft.fillRect(IB_COL_1_X, DECODER_Y + 15, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
-  }
-}
-
-/*****
-  Purpose: Updates the WPM setting on the display
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateWPMField() {
-  tft.setFontScale((enum RA8875tsize)0);
-
-  tft.setTextColor(RA8875_WHITE);  // Display zoom factor
-  tft.setCursor(WPM_X, WPM_Y);
-  tft.print("Keyer:");
-  tft.setTextColor(RA8875_GREEN);
-  tft.fillRect(WPM_X + 60, WPM_Y, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(IB_COL_1_X, WPM_Y);
-  EEPROMData.currentWPM = currentWPM;
-  if (EEPROMData.keyType == KEYER) {
-    //tft.print("Paddles -- "); // KD0RC
-    // KD0RC start
-    tft.print("Paddles ");
-    if (paddleFlip == 0) {
-      tft.print("R");
-    } else {
-      tft.print("L");
-    }
-    tft.print(" ");
-    // KD0RC end
-    tft.print(EEPROMData.currentWPM);
-  } else {
-    tft.print("Straight Key");
-  }
-  EEPROMWrite();
-}
-
-/*****
-  Purpose: Updates the noise field on the display
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateNoiseField() {
-  const char *filter[] = { "Off", "Kim", "Spectral", "LMS" };
-  const char *label = "Noise:";
-  int label_x;
-
-  tft.setFontScale((enum RA8875tsize)0);
-
-  tft.fillRect(IB_COL_1_X, IB_ROW_3_Y, 70, tft.getFontHeight(), RA8875_BLACK);
-  tft.setTextColor(RA8875_WHITE);  // Noise reduction
-  label_x = IB_COL_1_X - 10 - strlen(label) * tft.getFontWidth();
-  tft.setCursor(label_x, IB_ROW_3_Y);
-  tft.print(label);
-  tft.setTextColor(RA8875_GREEN);
-  tft.setCursor(IB_COL_1_X, IB_ROW_3_Y);
-  tft.print(filter[nrOptionSelect]);
-}
-
-/*****
-  Purpose: Updates the noise floor field on the display
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void UpdateNoiseFloorField() {
-  const char *filter[] = { "Off", "On" };
-  const char *label = "NF Set:";
-  int label_x;
-
-  tft.setFontScale((enum RA8875tsize)0);
-
-  tft.fillRect(IB_COL_2_X, IB_ROW_3_Y, tft.getFontWidth() * 3, tft.getFontHeight(), RA8875_BLACK);
-  tft.setTextColor(RA8875_WHITE);
-  label_x = IB_COL_2_X - 10 - strlen(label) * tft.getFontWidth();
-  tft.setCursor(label_x, IB_ROW_3_Y);
-  tft.print(label);
-  if(liveNoiseFloorFlag) {
-    tft.setTextColor(RA8875_GREEN);
-  } else {
-    tft.setTextColor(RA8875_WHITE);
-  }
-
-  tft.setCursor(IB_COL_2_X, IB_ROW_3_Y);
-  tft.print(filter[liveNoiseFloorFlag]);
-}
-
-/*****
-  Purpose: Implement the notch filter
-
-  Parameter list:
-    int notchF        the notch to use
-    int MODE          the current MODE
-
-  Return value;
-    void
-*****/
-void ShowNotch() {
-  tft.fillRect(NOTCH_X, NOTCH_Y + 30, 150, tft.getFontHeight() + 5, RA8875_BLACK);
-  if (NR_first_time == 0)
-    tft.setTextColor(RA8875_LIGHT_GREY);
-  else
-    tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(NOTCH_X - 6, NOTCH_Y);
-  tft.print("Auto Notch:");
-  tft.setCursor(NOTCH_X + 90, NOTCH_Y);
-  tft.setTextColor(RA8875_GREEN);
-
-  if (ANR_notchOn) {
-    tft.print("On");
-  } else {
-    tft.print("Off");
-  }
-
-}  // end void show_notch
-
-/*****
-  Purpose: This function draws the Info Window frame
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void DrawInfoWindowFrame() {
-  tft.drawRect(INFO_WINDOW_L, INFO_WINDOW_T, INFO_WINDOW_W, INFO_WINDOW_H, RA8875_LIGHT_GREY);
-  tft.fillRect(TEMP_X_OFFSET, TEMP_Y_OFFSET + 80, 80, tft.getFontHeight() + 10, RA8875_BLACK);  // Clear volume field
 }
 
 /*****
@@ -1350,9 +891,7 @@ void DrawInfoWindowFrame() {
 *****/
 void RedrawDisplayScreen() {
   tft.fillWindow();
-  DisplayIncrementField();
   AGCPrep();
-  UpdateAGCField();
   EncoderVolume();
   SetBand();
   BandInformation();
@@ -1361,7 +900,6 @@ void RedrawDisplayScreen() {
   SetFreq();
   SetBandRelay(HIGH);
   SpectralNoiseReductionInit();
-  UpdateNoiseField();
   SetI2SFreq(SampleRate);
   DrawBandWidthIndicatorBar();
   ShowName();
@@ -1372,13 +910,14 @@ void RedrawDisplayScreen() {
   DrawFrequencyBarValue();
   ShowSpectrumdBScale();
 
-  UpdateInfoWindow();
+  UpdateInfoBox();
 }
 
 /*****
   Purpose: Draw Tuned Bandwidth on Spectrum Plot // AFP 03-27-22 Layers
 
   Parameter list:
+    void
 
   Return value;
     void
@@ -1422,7 +961,6 @@ FASTRUN void DrawBandWidthIndicatorBar() {
 
   pixel_per_khz = ((1 << spectrum_zoom) * SPECTRUM_RES * 1000.0 / SampleRate);
   filterWidth = (int)(((bands[currentBand].FHiCut - bands[currentBand].FLoCut) / 1000.0) * pixel_per_khz * 1.06);  // AFP 10-30-22
-  //======================= AFP 09-22-22
 
   switch (bands[currentBand].mode) {
     case DEMOD_LSB:
@@ -1553,44 +1091,18 @@ void ShowTransmitReceiveStatus() {
 }
 
 /*****
-  Purpose: Provides a display indicator that SD card is in the system
-
-  Parameter list:
-    int present                    0 = no SD card, 1 = SD
-
-  Return value;
-    void
-
-*****/
-void UpdateSDIndicator(int present) {
-  return;  // Just go home   JJP  7/25/23
-  /*
-  tft.setFontScale( (enum RA8875tsize) 0);
-  if (present == 1) {                                                   // SD card present
-    tft.fillRect(SD_X, SD_Y, tft.getFontWidth() * 7, tft.getFontHeight(), RA8875_GREEN);
-    tft.setTextColor(RA8875_BLACK);
-  } else {                                                                  // Erase message
-    tft.fillRect(SD_X, SD_Y, tft.getFontWidth() * 7, tft.getFontHeight(), RA8875_RED);
-    tft.setTextColor(RA8875_WHITE);
-  }
-  tft.setCursor(SD_X, SD_Y);
-  tft.print("  SD  ");  
-  */
-}
-
-/*****
   Purpose: Set frequency display to spectrum_zoom level
 
   Parameter list:
-    int zoomIndex - index to set
+    void
 
   Return value;
     void
 
 *****/
-void SetZoom(int zoomIndex) {
+void SetZoom() {
   ZoomFFTPrep();
-  UpdateZoomField(zoomIndex);
+  UpdateInfoBoxItem(&infoBox[IB_ITEM_ZOOM]);
   tft.writeTo(L2); // Clear layer 2
   tft.clearMemory();
   tft.writeTo(L1); // Always exit function in L1

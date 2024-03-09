@@ -75,6 +75,8 @@
 #define CW_RECEIVE_STATE 2
 #define CW_TRANSMIT_STRAIGHT_STATE 3
 #define CW_TRANSMIT_KEYER_STATE 4
+#define RECEIVE_STATE         1
+#define TRANSMIT_STATE        0
 
 //************************************* End: Clean up stuff to fix ************************
 
