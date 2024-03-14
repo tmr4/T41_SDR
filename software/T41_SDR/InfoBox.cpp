@@ -53,7 +53,7 @@ const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine wi
 PROGMEM const infoBoxItem infoBox[] = 
 { //                                                     font    # chars
   // label         Options      option                   size    to erase  flag  col            row,           follow-up function
-  { "Vol:",        NULL,        NULL,                     1,        2,      0,   IB_COL_1_X,    IB_ROW_1_Y,    &IBVolFollowup         }, // Tune Inc
+  { "Vol:",        NULL,        NULL,                     1,        3,      0,   IB_COL_1_X,    IB_ROW_1_Y,    &IBVolFollowup         }, // Tune Inc
   { "AGC",         agcOpts,     &AGCMode,                 1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
   { "Increment:",  tuneValues,  &tuneIndex,               0,        7,      0,   IB_COL_1_X,    IB_ROW_3_Y,    NULL                   }, // Tune Inc
   { "FT Inc:",     ftValues,    &ftIndex,                 0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    NULL                   }, // FT Inc

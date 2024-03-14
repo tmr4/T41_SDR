@@ -43,6 +43,10 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
 
   * also removes some unused functions and some cleanup
 
+* feature/NFMDecom - adds narrow-band FM demodulation
+
+  * also some cleanup
+
 ## Previous changes
 
 * previous dev/v0.1 changes

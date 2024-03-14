@@ -537,26 +537,29 @@ void DisplayClock() {
 *****/
 void SetupMode(int sideBand) {
   int temp;
-                                    // AFP 10-27-22
+
   if (old_demod_mode != -99)                                    // first time radio is switched on and when changing bands
   {
     switch (sideBand) {
-      case DEMOD_LSB :
+      case DEMOD_USB:
         temp = bands[currentBand].FHiCut;
         bands[currentBand].FHiCut = - bands[currentBand].FLoCut;
         bands[currentBand].FLoCut = - temp;
         break;
 
-      case DEMOD_USB :
+      case DEMOD_LSB:
         temp = bands[currentBand].FHiCut;
         bands[currentBand].FHiCut = - bands[currentBand].FLoCut;
         bands[currentBand].FLoCut = - temp;
         break;
-      case DEMOD_AM :
+
+      case DEMOD_AM:
+      case DEMOD_NFM:
         bands[currentBand].FHiCut =  -bands[currentBand].FLoCut;
         break;
     }
   }
+
   ShowBandwidth();
   old_demod_mode = bands[currentBand].mode; // set old_mode flag for next time, at the moment only used for first time radio is switched on . . .
 }

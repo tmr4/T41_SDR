@@ -45,9 +45,10 @@
 #define DEMOD_USB                   0
 #define DEMOD_LSB                   1
 #define DEMOD_AM                    2
-#define DEMOD_SAM                   3
-#define DEMOD_MAX                   3
-#define DEMOD_IQ                    4
+#define DEMOD_NFM                   3
+#define DEMOD_SAM                   4
+#define DEMOD_MAX                   4
+#define DEMOD_IQ                    5
 #define BUFFER_SIZE                 128
 
 //---- Global Teensy 4.1 Pin assignments

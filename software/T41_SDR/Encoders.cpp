@@ -67,8 +67,17 @@ void FilterSetSSB(int *FW) {
         filterWidth = 50;
     }
     last_filter_pos = filter_pos;
-    // =============  AFP 10-27-22
+
     switch (bands[currentBand].mode) {
+      case DEMOD_USB:
+        if (switchFilterSideband == 0) {
+          bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
+          FilterBandwidth();
+        } else if (switchFilterSideband == 1) {
+          bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
+        }
+        break;
+
       case DEMOD_LSB:
         if (switchFilterSideband == 0)  // "0" = normal, "1" means change opposite filter
         {
@@ -79,21 +88,10 @@ void FilterSetSSB(int *FW) {
           bands[currentBand].FHiCut = bands[currentBand].FHiCut + filter_change * 50 * ENCODER_FACTOR;
         }
         break;
-      case DEMOD_USB:
-        if (switchFilterSideband == 0) {
-          bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
-          FilterBandwidth();
-        } else if (switchFilterSideband == 1) {
-          bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
-        }
-        break;
+
       case DEMOD_AM:
-        bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
-        bands[currentBand].FLoCut = -bands[currentBand].FHiCut;
-        FilterBandwidth();
-        InitFilterMask();
-        break;
-      case DEMOD_SAM:  // AFP 11-03-22
+      case DEMOD_NFM:
+      case DEMOD_SAM:
         bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
         bands[currentBand].FLoCut = -bands[currentBand].FHiCut;
         FilterBandwidth();
