@@ -238,7 +238,7 @@ void DoExciterEQ() {
     void
 *****/
 void FilterBandwidth() {
-  AudioNoInterrupts();
+  //AudioNoInterrupts(); // these cause clicking when adjusting audio filters
 
   CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SampleRate / DF);
   InitFilterMask();
@@ -251,7 +251,7 @@ void FilterBandwidth() {
   SetDecIntFilters();
   ShowBandwidth();
   MyDelay(1L);
-  AudioInterrupts();
+  //AudioInterrupts();
 }
 
 /*****
@@ -342,10 +342,31 @@ void SetDecIntFilters() {
   if (LP_F_help > 10000) {
     LP_F_help = 10000;
   }
+
   CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate));
   CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
 
   CalcFIRCoeffs(FIR_int1_coeffs, 48, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
   CalcFIRCoeffs(FIR_int2_coeffs, 32, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)SampleRate);
   bin_BW = 1.0 / (DF * FFT_length) * (float32_t)SampleRate;
+}
+
+/*****
+  Purpose: Set the decimate coefs for the specified BW
+
+  Parameter list:
+    int filter_BW - desired bandwidth
+
+  Return value;
+    void
+*****/
+void SetDecIntFilters(int filter_BW) {
+  int LP_F_help = filter_BW;
+
+  if (LP_F_help > 10000) {
+    LP_F_help = 10000;
+  }
+
+  CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate));
+  CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
 }

@@ -45,7 +45,6 @@ int mute = 0; // 0 - normal volume, 1 - mute (*** this is never changed ***)
 
 float VolumeToAmplification(int volume);
 Metro ms_500 = Metro(500);  // Set up a Metro
-int loopCount = 0;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -54,7 +53,7 @@ int loopCount = 0;
 /*****
   Purpose: Read audio from Teensy Audio Library
              Calculate FFT for display
-             Process audio into SSB signalF
+             Process audio into SSB signal
              Output audio to amplifier
 
    Parameter List:
@@ -262,169 +261,177 @@ void ProcessIQData() {
         returns the spectrum to the correct orientation.
         Signal has now been shifted to base band, leaving aliases at higher frequencies,
         which are removed at each decimation step using the Arm combined decimate/filter function.
-        If the statring sample rate is 192K SPS after the combined decimation, the sample rate is
+        If the starting sample rate is 192K SPS,   after the combined decimation, the sample rate is
         now 192K/8 = 24K SPS.  The array size is also reduced by 8, making FFT calculations much faster.
         The effective bandwidth (up to Nyquist frequency) is 12KHz.
     **********************************************************************************/
-    // decimation-by-4 in-place!
-    arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-    arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
 
-    // decimation-by-2 in-place
-    arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
-    arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+    if(bands[currentBand].mode == DEMOD_NFM) {
+      // a NFM signal needs to be demodulated prior to audio processing so all we do here
+      // is decimate and prepare the audio signal buffers
 
+      // set NFM filter to decimate
+      // fixed at 6 kHz for now
+      // make variable (including separate visual BW on frequency spectrum and audio filter on audio spectrum)
+      SetDecIntFilters(6000);
 
-    // =================  Level Adjust ===========
-    float freqKHzFcut;
-    float volScaleFactor;
-    if (bands[currentBand].mode == DEMOD_LSB) {
-      freqKHzFcut = -(float32_t)bands[currentBand].FLoCut * 0.001;
-    } else {
-      freqKHzFcut = (float32_t)bands[currentBand].FHiCut * 0.001;
-    }
-    volScaleFactor = 7.0874 * pow(freqKHzFcut, -1.232);
-    arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, FFT_length / 2);
-    arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, FFT_length / 2);
+      // decimation-by-4 in-place!
+      arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+      arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
 
-    /**********************************************************************************
-        Digital FFT convolution
-        Filtering is accomplished by combining (multiplying) spectra in the frequency domain.
-        basis for this was Lyons, R. (2011): Understanding Digital Processing.
-        "Fast FIR Filtering using the FFT", pages 688 - 694.
-        Method used here: overlap-and-save.
+      // decimation-by-2 in-place
+      arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+      arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
 
-        First, Create Complex time signal for CFFT routine.
-        Fill first block with Zeros
-        Then interleave RE and IM parts to create signal for FFT
-    **********************************************************************************/
-    // Prepare the audio signal buffers:
-
-    //------------------------------ ONLY FOR the VERY FIRST FFT: fill first samples with zeros
-
-    if (first_block) { // fill real & imaginaries with zeros for the first BLOCKSIZE samples
-      for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF / 2.0); i++) {
-        FFT_buffer[i] = 0.0;
-      }
-      first_block = 0;
-    } else {
-      // All other FFTs
-
-      //------------------------------ fill FFT_buffer with last events audio samples for all other FFT instances
+      // Prepare the audio signal buffers
+      // fill recent audio samples into FFT_buffer (left channel: re, right channel: im)
+      // we'll use this to demodulate the NFM signal
       for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
-        FFT_buffer[i * 2] = last_sample_buffer_L[i]; // real
-        FFT_buffer[i * 2 + 1] = last_sample_buffer_R[i]; // imaginary
+        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
+        FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
       }
-    }
+    } else {
+      // prepare signals for all other modes
 
-    for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {   // copy recent samples to last_sample_buffer for next time!
-      last_sample_buffer_L [i] = float_buffer_L[i];
-      last_sample_buffer_R [i] = float_buffer_R[i];
-    }
+      // decimation-by-4 in-place!
+      arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+      arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
 
-    //------------------------------ now fill recent audio samples into FFT_buffer (left channel: re, right channel: im)
-    for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
-      FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
-      FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
-    }
+      // decimation-by-2 in-place
+      arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+      arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
 
-    /**********************************************************************************
-      Perform complex FFT on the audio time signals
-      calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
-    **********************************************************************************/
-    arm_cfft_f32(S, FFT_buffer, 0, 1);
-
-    /**********************************************************************************
-      Continuing FFT Convolution
-          Next, prepare the filter mask (done in the Filter.cpp file).  Only need to do this once for each filter setting.
-          Allows efficient real-time variable LP and HP audio filters, without the overhead of time-domain convolution filtering.
-
-          After the Filter mask in the frequency domain is created, complex multiply  filter mask with the frequency domain audio data.
-          Filter mask previously calculated in setup Array of filter mask coefficients:
-          FIR_filter_mask[]
-    **********************************************************************************/
-
-    arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
-    if (updateDisplayFlag == 1 && bands[currentBand].mode != DEMOD_NFM) {
-//    if (updateDisplayFlag == 1) {
-      for (int k = 0; k < 1024; k++) {
-        audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
+      // =================  Level Adjust ===========
+      float freqKHzFcut;
+      float volScaleFactor;
+      if (bands[currentBand].mode == DEMOD_LSB) {
+        freqKHzFcut = -(float32_t)bands[currentBand].FLoCut * 0.001;
+      } else {
+        freqKHzFcut = (float32_t)bands[currentBand].FHiCut * 0.001;
       }
-      for (int k = 0; k < 256; k++) {
-        if (bands[currentBand].mode == 0  || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM || bands[currentBand].mode == DEMOD_NFM) {
-          audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1024 - k] + audioSpectBuffer[1024 - k + 1] + audioSpectBuffer[1024 - k + 2]) / 3), 0, 100, 0, 120);
+
+      volScaleFactor = 7.0874 * pow(freqKHzFcut, -1.232);
+      arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, FFT_length / 2);
+      arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, FFT_length / 2);
+
+      // Prepare the audio signal buffers
+      //  First, Create Complex time signal for CFFT routine.
+      //  Fill first block with Zeros
+      //  Then interleave RE and IM parts to create signal for FFT
+      if (first_block) { 
+        // fill real & imaginaries with zeros for the first BLOCKSIZE samples
+        // ONLY FOR the VERY FIRST FFT: fill first samples with zeros
+        for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF / 2.0); i++) {
+          FFT_buffer[i] = 0.0;
         }
-        else {
-          if (bands[currentBand].mode == 1) {
-            audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, 120);
+        first_block = 0;
+      } else {
+        // All other FFTs
+        // fill FFT_buffer with last events audio samples for all other FFT instances
+        for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
+          FFT_buffer[i * 2] = last_sample_buffer_L[i]; // real
+          FFT_buffer[i * 2 + 1] = last_sample_buffer_R[i]; // imaginary
+        }
+      }
+
+      for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
+        // copy recent samples to last_sample_buffer for next time!
+        last_sample_buffer_L [i] = float_buffer_L[i];
+        last_sample_buffer_R [i] = float_buffer_R[i];
+
+        // fill recent audio samples into FFT_buffer (left channel: re, right channel: im)
+        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
+        FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
+      }
+
+      /**********************************************************************************
+          Digital FFT convolution
+          Filtering is accomplished by combining (multiplying) spectra in the frequency domain.
+          basis for this was Lyons, R. (2011): Understanding Digital Processing.
+          "Fast FIR Filtering using the FFT", pages 688 - 694.
+          Method used here: overlap-and-save.
+      **********************************************************************************/
+      /**********************************************************************************
+        Perform complex FFT on the audio time signals
+        calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
+      **********************************************************************************/
+      arm_cfft_f32(S, FFT_buffer, 0, 1);
+
+      /**********************************************************************************
+        Continuing FFT Convolution
+            Next, prepare the filter mask (done in the Filter.cpp file).  Only need to do this once for each filter setting.
+            Allows efficient real-time variable LP and HP audio filters, without the overhead of time-domain convolution filtering.
+
+            After the Filter mask in the frequency domain is created, complex multiply  filter mask with the frequency domain audio data.
+            Filter mask previously calculated in setup Array of filter mask coefficients:
+            FIR_filter_mask[]
+      **********************************************************************************/
+
+      arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
+
+      if (updateDisplayFlag == 1) {
+        for (int k = 0; k < 1024; k++) {
+          audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
+        }
+        for (int k = 0; k < 256; k++) {
+          if (bands[currentBand].mode == 0  || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
+            audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1024 - k] + audioSpectBuffer[1024 - k + 1] + audioSpectBuffer[1024 - k + 2]) / 3), 0, 100, 0, 120);
+          }
+          else {
+            if (bands[currentBand].mode == 1) {
+              audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, 120);
+            }
+          }
+          if (audioYPixel[k] < 0) {
+            audioYPixel[k] = 0;
           }
         }
-        if (audioYPixel[k] < 0) {
-          audioYPixel[k] = 0;
-        }
+        arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared abin magnitued in audio
+        audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
+        DisplaydbM(audioMaxSquaredAve);
       }
-      arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared abin magnitued in audio
-      audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
-      DisplaydbM(audioMaxSquaredAve);
 
+      /**********************************************************************************
+          Additional Convolution Processes:
+          // filter by just deleting bins - principle of Linrad
+            only works properly when we have the right window function!
 
-      //if(bands[currentBand].mode == DEMOD_AM) {
-      //  if(loopCount == 2) {
-      //    for(unsigned i = 0; i < 256; i++) {
-      //      Serial.println(audioYPixel[i]);
-      //    }
-      //  }
-      //  loopCount++;
-      //}
+          (automatic) notch filter = Tone killer --> the name is stolen from SNR ;-)
+          first test, we set a notch filter at 1kHz
+          which bin is that?
+          positive & negative frequency -1kHz and +1kHz --> delete 2 bins
+          we are not deleting one bin, but five bins for the test
+          1024 bins in 12ksps = 11.71Hz per bin
+          SampleRate / 8.0 / 1024 = bin BW
+          1000Hz / 11.71Hz = bin 85.333
 
+      **********************************************************************************/
+
+      /**********************************************************************************
+        After the frequency domain filter mask and other processes are complete, do a
+        complex inverse FFT to return to the time domain
+          (if sample rate = 192kHz, we are in 24ksps now, because we decimated by 8)
+          perform iFFT (in-place)  IFFT is selected by the IFFT flag=1 in the Arm CFFT function.
+      **********************************************************************************/
+
+      arm_cfft_f32(iS, iFFT_buffer, 1, 1);
+
+      // Adjust for level alteration because of filters
+
+      /**********************************************************************************
+          AGC - automatic gain control
+
+          we´re back in time domain
+          AGC acts upon I & Q before demodulation on the decimated audio data in iFFT_buffer
+      **********************************************************************************/
+      AGC();  //AGC function works with time domain I and Q data buffers created in the last step
     }
-
-    /**********************************************************************************
-        Additional Convolution Processes:
-        // filter by just deleting bins - principle of Linrad
-           only works properly when we have the right window function!
-
-        (automatic) notch filter = Tone killer --> the name is stolen from SNR ;-)
-        first test, we set a notch filter at 1kHz
-        which bin is that?
-        positive & negative frequency -1kHz and +1kHz --> delete 2 bins
-        we are not deleting one bin, but five bins for the test
-        1024 bins in 12ksps = 11.71Hz per bin
-        SampleRate / 8.0 / 1024 = bin BW
-        1000Hz / 11.71Hz = bin 85.333
-
-    **********************************************************************************/
-
-    /**********************************************************************************
-      After the frequency domain filter mask and other processes are complete, do a
-      complex inverse FFT to return to the time domain
-        (if sample rate = 192kHz, we are in 24ksps now, because we decimated by 8)
-        perform iFFT (in-place)  IFFT is selected by the IFFT flag=1 in the Arm CFFT function.
-    **********************************************************************************/
-
-    arm_cfft_f32(iS, iFFT_buffer, 1, 1);
-
-    // Adjust for level alteration because of filters
-
-    /**********************************************************************************
-        AGC - automatic gain control
-
-        we´re back in time domain
-        AGC acts upon I & Q before demodulation on the decimated audio data in iFFT_buffer
-    **********************************************************************************/
-    AGC();  //AGC function works with time domain I and Q data buffers created in the last step
-
-    //============================  Demod  ========================
 
     /**********************************************************************************
       Demodulation
         our time domain output is a combination of the real part (left channel) AND the imaginary part (right channel) of the second half of the FFT_buffer
         The demod mode is accomplished by selecting/combining the real and imaginary parts of the output of the IFFT process.
     **********************************************************************************/
-    float32_t i_last_sample;
-    float32_t q_last_sample;
-    int limit_reached = 0;
-    float last_output = 0;
 
     switch (bands[currentBand].mode) {
       case DEMOD_USB:
@@ -459,42 +466,15 @@ void ProcessIQData() {
         break;
 
       case DEMOD_NFM:
-        // two versions to select from (both have about same performance):
+        // three versions to select from:
         //  (1) - fmdemod_quadri_novect_cf
         //  (2) - nfmdemod
-        // Still experimenting with post demod filtering and deemphasis
-        // Have some investigation to do on quality of demod signal
+        //  (3) - arm_max_f32
+        // the first two have about same performance, the third didn't perform well on my test signal
 
-        // initialize fmdemod_quadri_novect_cf
-        //ilast = iFFT_buffer[FFT_length];
-        //qlast = iFFT_buffer[FFT_length + 1];
-        ////i_last_sample = iFFT_buffer[FFT_length + ((FFT_length / 2 - 1) * 2)];
-        ////q_last_sample = iFFT_buffer[FFT_length + ((FFT_length / 2 - 1) * 2) + 1];
-        //i_last_sample = iFFT_buffer[2 * (FFT_length - 1)];
-        //q_last_sample = iFFT_buffer[2 * (FFT_length - 1) + 1];
-        //
-        //float_buffer_L[0] = fmdemod_quadri_K * (ilast * (qlast - q_last_sample) - qlast * (ilast - i_last_sample)) / (ilast * ilast + qlast * qlast);
-        //
-        //for (unsigned i = 1; i < FFT_length / 2; i++) {
-        //  float32_t tmp = fmdemod_quadri_novect_cf(iFFT_buffer[FFT_length + (i * 2)], iFFT_buffer[FFT_length + (i * 2) + 1]);
-        //
-        //  //if(tmp > 1 || tmp < -1) {
-        //  //  limit_reached++;
-        //  //}
-        //  // limit it to -1 <= tmp <= 1
-        //  // modified from limit_ff in libcsdr.c from https://github.com/ha7ilm/csdr
-        //  tmp = (1 < tmp) ? 1 : tmp;
-        //  tmp = (-1 > tmp) ? -1 : tmp;
-        //  float_buffer_L[i] = tmp;
-        //}
-
-        //if(limit_reached > 0) {
-        //  Serial.println("limiting tmp");
-        //  limit_reached = 0;
-        //}
-
-        nfmdemod(&iFFT_buffer[FFT_length], float_buffer_L, FFT_length / 2);
-
+        nfmdemod(&FFT_buffer[FFT_length], float_buffer_L, FFT_length / 2);
+        
+        // limit the demodulated signal
         for (unsigned i = 1; i < FFT_length / 2; i++) {
           float32_t tmp = float_buffer_L[i];
         
@@ -502,93 +482,61 @@ void ProcessIQData() {
           // modified from limit_ff in libcsdr.c from https://github.com/ha7ilm/csdr
           tmp = (1 < tmp) ? 1 : tmp;
           tmp = (-1 > tmp) ? -1 : tmp;
-          //tmp = (0.75 < tmp) ? 0.75 : tmp;
-          //tmp = (-0.75 > tmp) ? -0.75 : tmp;
-          //tmp = (0.5 < tmp) ? 0.5 : tmp;
-          //tmp = (-0.5 > tmp) ? -0.5 : tmp;
           float_buffer_L[i] = tmp;
         }
-        //arm_copy_f32(float_buffer_L, float_buffer_R, FFT_length / 2);
 
-        //for(unsigned i = 0; i < FFT_length / 2; i++) {
-        //  float_buffer_L[i] = 0;
-        //}
-
-        // no difference in audio
+        // no difference in audio with this
         //arm_biquad_cascade_df1_f32(&biquad_lowpass1, float_buffer_L, float_buffer_R, FFT_length / 2);
         //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
 
-        // none of these deemphasis_nfm_ff work, the sampe rate isn't correct
-        //deemphasis_nfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 11025); // not great, doesn't help
+        // buzz and muffled sound with this deemphasis filter
+        //deemphasis_nfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 24000);
         //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
 
-        //deemphasis_nfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 48000); // bad
-        //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
-
-        //deemphasis_nfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 8000); // terrible
-        //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
-
-        //deemphasis_nfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 44100); // bad
-        //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
-
-        //deemphasis_wfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 240000, 0);
+        //deemphasis_nfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 24000);
         //arm_biquad_cascade_df1_f32(&biquad_lowpass1, float_buffer_R, float_buffer_L, FFT_length / 2);
 
-        //last_output = deemphasis_wfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 240000, last_output);
-        //arm_biquad_cascade_df1_f32(&biquad_lowpass1, float_buffer_R, float_buffer_L, FFT_length / 2);
-
-        //last_output = deemphasis_wfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 240000, last_output);
-        //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
-
+        //arm_biquad_cascade_df1_f32(&biquad_lowpass1, float_buffer_L, float_buffer_R, FFT_length / 2);
+        //deemphasis_nfm_ff(float_buffer_R, float_buffer_L, FFT_length / 2, 24000);
         break;
 
       case DEMOD_SAM:
         AMDecodeSAM();
         break;
     }
-/*
-    if(bands[currentBand].mode == DEMOD_AM) {
-      if(loopCount == 2) {
-        for(unsigned i = 0; i < FFT_length / 2; i++) {
-          Serial.println(float_buffer_L[i]);
-        }
-      }
-      loopCount++;
-    }
-*/
 
     // update audio spectrum for NFM
-    if (0) {
-//    if (updateDisplayFlag == 1 && bands[currentBand].mode == DEMOD_NFM) {
+    if(bands[currentBand].mode == DEMOD_NFM) {
+
+      // Prepare the audio signal buffers
       for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
+        // fill first half of buffer with last sample
         FFT_buffer[i * 2] = last_sample_buffer_L[i]; // real
-        FFT_buffer[i * 2 + 1] = last_sample_buffer_R[i]; // imaginary
-      }
+        FFT_buffer[i * 2 + 1] = 0; // there is no imaginary component
 
-      for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {   // copy recent samples to last_sample_buffer for next time!
+        // copy recent sample to last_sample_buffer for next time
         last_sample_buffer_L [i] = float_buffer_L[i];
-        last_sample_buffer_R [i] = float_buffer_R[i];
+
+        // fill recent audio samples into FFT_buffer
+        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
+        FFT_buffer[FFT_length + i * 2 + 1] = 0; // there is no imaginary component
       }
 
-      //------------------------------ now fill recent audio samples into FFT_buffer (left channel: re, right channel: im)
-      for (unsigned i = 0; i < FFT_length / 2; i++) {
-        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
-        FFT_buffer[FFT_length + i * 2 + 1] = 0; // imaginary
-      }
       /**********************************************************************************
         Perform complex FFT on the audio time signals
         calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
       **********************************************************************************/
+
+      // prepare audio box spectrum and filter per the audio cutoff frequency
       arm_cfft_f32(S, FFT_buffer, 0, 1);
-      //arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
-      if (updateDisplayFlag == 1 && bands[currentBand].mode == DEMOD_NFM) {
-        //for (int k = 0; k < FFT_length / 2; k++) {
+      arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
+      if (updateDisplayFlag == 1) {
         for (int k = 0; k < 1024; k++) {
-          //audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
-          audioSpectBuffer[1024 - k] = (FFT_buffer[k] * FFT_buffer[k]);
+          audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
         for (int k = 0; k < 256; k++) {
-            audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, 120);
+          // a spectrum offset of 25 give about the same magnitude signal peak as seen in the AM modes
+          audioYPixel[k] = 25 +  map(15 * log10f((audioSpectBuffer[1024 - k] + audioSpectBuffer[1024 - k + 1] + audioSpectBuffer[1024 - k + 2]) / 3), 0, 100, 0, 120);
           if (audioYPixel[k] < 0) {
             audioYPixel[k] = 0;
           }
@@ -598,13 +546,14 @@ void ProcessIQData() {
         DisplaydbM(audioMaxSquaredAve);
       }
 
-      if(bands[currentBand].mode == DEMOD_NFM) {
-        if(loopCount == 2) {
-          for(unsigned i = 0; i < 256; i++) {
-            Serial.println(audioYPixel[i]);
-          }
-        }
-        loopCount++;
+      // convert back to time domain and fill buffer
+      arm_cfft_f32(iS, iFFT_buffer, 1, 1);
+
+      AGC();  // we can perform AGC on the NFM signal now
+
+      // transfer audio signal back to buffer
+      for (unsigned i = 0; i < FFT_length / 2; i++) {
+        float_buffer_L[i] = iFFT_buffer[FFT_length + (i * 2)];
       }
     }
 
@@ -612,10 +561,9 @@ void ProcessIQData() {
     //============================  Receive EQ  ========================
     if (receiveEQFlag == ON ) {
       DoReceiveEQ();
-      arm_copy_f32(float_buffer_L, float_buffer_R, FFT_length / 2);
+      //arm_copy_f32(float_buffer_L, float_buffer_R, FFT_length / 2);
     }
     //============================ End Receive EQ
-
 
     /**********************************************************************************
       Noise Reduction
@@ -630,7 +578,7 @@ void ProcessIQData() {
       case 1:                               // Kim NR
         Kim1_NR();
         arm_scale_f32 (float_buffer_L, 30, float_buffer_L, FFT_length / 2);
-        arm_scale_f32 (float_buffer_R, 30, float_buffer_R, FFT_length / 2);
+        //arm_scale_f32 (float_buffer_R, 30, float_buffer_R, FFT_length / 2);
         break;
       case 2:                               // Spectral NR
         SpectralNoiseReduction();
@@ -639,7 +587,7 @@ void ProcessIQData() {
         ANR_notch = 0;
         Xanr();
         arm_scale_f32 (float_buffer_L, 1.5, float_buffer_L, FFT_length / 2);
-        arm_scale_f32 (float_buffer_R, 2, float_buffer_R, FFT_length / 2);
+        //arm_scale_f32 (float_buffer_R, 2, float_buffer_R, FFT_length / 2);
         break;
     }
     //==================  End NR ============================
@@ -657,7 +605,7 @@ void ProcessIQData() {
       by Michael Wild
     **********************************************************************************/
     if (NB_on != 0) {
-    NoiseBlanker(float_buffer_L, float_buffer_R);
+      NoiseBlanker(float_buffer_L, float_buffer_R);
       arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
     }
 
@@ -670,31 +618,31 @@ void ProcessIQData() {
           case 0:  // 0.8 KHz
             arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter1, float_buffer_L, float_buffer_L_AudioCW, 256);
             arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
             break;
 
           case 1: // 1.0 KHz
             arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter2, float_buffer_L, float_buffer_L_AudioCW, 256);
             arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
             break;
 
           case 2: // 1.3 KHz
             arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter3, float_buffer_L, float_buffer_L_AudioCW, 256);
             arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
             break;
 
           case 3: // 1.8 KHz
             arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter4, float_buffer_L, float_buffer_L_AudioCW, 256);
             arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
             break;
 
           case 4:  // 2.0 KHz
             arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter5, float_buffer_L, float_buffer_L_AudioCW, 256);
             arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
             break;
 
           case 5:  //Off
@@ -704,38 +652,29 @@ void ProcessIQData() {
     }
 
     // ======================================Interpolation  ================
-
+    // interpolation-by-2
     arm_fir_interpolate_f32(&FIR_int1_I, float_buffer_L, iFFT_buffer, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF));   // Interpolatikon
-    arm_fir_interpolate_f32(&FIR_int1_Q, float_buffer_R, FFT_buffer, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF));
 
     // interpolation-by-4
     arm_fir_interpolate_f32(&FIR_int2_I, iFFT_buffer, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF1));
-    arm_fir_interpolate_f32(&FIR_int2_Q, FFT_buffer, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF1));
 
     /**********************************************************************************
       Digital Volume Control
     **********************************************************************************/
     if (mute == 1) {
       arm_scale_f32(float_buffer_L, 0.0, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-      arm_scale_f32(float_buffer_R, 0.0, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
     } else {
       if (mute == 0) {
         arm_scale_f32(float_buffer_L, DF * VolumeToAmplification(audioVolume), float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-        arm_scale_f32(float_buffer_R, DF * VolumeToAmplification(audioVolume), float_buffer_R, BUFFER_SIZE * N_BLOCKS);
       }
     }
+
     /**********************************************************************************
       CONVERT TO INTEGER AND PLAY AUDIO
     **********************************************************************************/
-
-    for (unsigned  i = 0; i < N_BLOCKS; i++) {
-      sp_L1 = Q_out_L.getBuffer();
-      sp_R1 = Q_out_R.getBuffer();
-      arm_float_to_q15 (&float_buffer_L[BUFFER_SIZE * i], sp_L1, BUFFER_SIZE);
-      arm_float_to_q15 (&float_buffer_R[BUFFER_SIZE * i], sp_R1, BUFFER_SIZE);
-      Q_out_L.playBuffer(); // play it !
-      Q_out_R.playBuffer(); // play it !
-    }
+    q15_t q15_buffer_LTemp[2048];
+    arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
+    Q_out_L.play(q15_buffer_LTemp, 2048);
 
     Codec_gain();
 

@@ -131,10 +131,10 @@ int ProcessButtonPress(int valPin) {
     return -1;
   }
 
-  if (valPin == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {
-    NoActiveMenu();
-    return -1;
-  }
+//  if (valPin == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {
+//    NoActiveMenu();
+//    return -1;
+//  }
 
   for (switchIndex = 0; switchIndex < NUMBER_OF_SWITCHES; switchIndex++) {
     if (abs(valPin - EEPROMData.switchValues[switchIndex]) < WIGGLE_ROOM)  // ...because ADC does return exact values every time
@@ -185,7 +185,7 @@ int ReadSelectedPushButton() {
   }
   minPinRead = buttonRead;
   if (!buttonInterruptsEnabled) {
-    MyDelay(100L);
+    delay(100L);
   }
   return minPinRead;
 }
@@ -201,35 +201,20 @@ int ReadSelectedPushButton() {
     void
 *****/
 void ExecuteButtonPress(int val) {
-  if (val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
-    NoActiveMenu();
-    return;
-  } else {
-    menuStatus = PRIMARY_MENU_ACTIVE;
-  }
+
   switch (val) {
     case MENU_OPTION_SELECT:  // 0
 
-      if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
-        ErasePrimaryMenu();
-//        secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
-          functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
-        menuStatus = SECONDARY_MENU_ACTIVE;
-        secondaryMenuIndex = -1;  // Reset secondary menu
-      } else {
-        if (menuStatus == SECONDARY_MENU_ACTIVE) {  // Doing primary menu
-          menuStatus = PRIMARY_MENU_ACTIVE;
-          mainMenuIndex = 0;
-        }
-      }
+        ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+        functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
       EraseMenus();
       break;
 
     case MAIN_MENU_UP:                      // 1
       ButtonMenuIncrease();                 // This makes sure the increment does go outta range
-      if (menuStatus != NO_MENUS_ACTIVE) {  // Doing primary menu
+//      if (menuStatus != NO_MENUS_ACTIVE) {  // Doing primary menu
         ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
-      }
+//      }
       break;
 
     case BAND_UP:  // 2 Now calls ProcessIQData and Encoders calls
@@ -246,16 +231,13 @@ void ExecuteButtonPress(int val) {
       break;
 
     case ZOOM:  // 3
-      menuStatus = PRIMARY_MENU_ACTIVE;
       EraseMenus();
       ButtonZoom();
       break;
 
     case MAIN_MENU_DN:  // 4
       ButtonMenuDecrease();
-      if (menuStatus != NO_MENUS_ACTIVE) {  // Doing primary menu
         ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
-      }
       break;
 
     case BAND_DN:  // 5
@@ -344,7 +326,7 @@ void ExecuteButtonPress(int val) {
       }
       while (true) {
         valPin = ReadSelectedPushButton();  // Poll UI push buttons
-        MyDelay(100L);
+        delay(100L);
         if (valPin != BOGUS_PIN_READ) {              // If a button was pushed...
           buttonIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
           switch (buttonIndex) {
@@ -401,8 +383,4 @@ void NoActiveMenu() {
   tft.setTextColor(RA8875_RED);
   tft.setCursor(10, 0);
   tft.print("No menu selected");
-
-  menuStatus = NO_MENUS_ACTIVE;
-  mainMenuIndex = 0;
-  secondaryMenuIndex = 0;
 }

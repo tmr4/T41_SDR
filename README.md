@@ -34,6 +34,7 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * feature/menu
   * feature/liveNoiseFloor
   * feature/infoBoxCons
+  * feature/NFMDemod
 
 * feature/liveNoiseFloor - modifies Noise Floor pushbutton to toggle live setting of noise floor.  Requires configuration setting USE_LIVE_NOISE_FLOOR set to 1.  Includes feature/menu.
 
@@ -45,7 +46,13 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
 
 * feature/NFMDemod - adds narrow-band FM demodulation
 
-  * also some cleanup
+  * added fixed 6 kHz demodulation filter (not shown on spectrum display)
+  * separate, adjustable filter for audio output
+  * cleaned up audio spectrum box including correcting operation of filter bars
+
+    * likely some cleanup for CW transmit still needed
+
+  * also some general cleanup
 
 ## Previous changes
 

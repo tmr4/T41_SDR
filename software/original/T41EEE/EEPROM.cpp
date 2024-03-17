@@ -62,7 +62,6 @@ FLASHMEM int EEPROMReadSize() {
 }
 
 
-
 /*****
   Purpose: Read default favorite frequencies
 
@@ -119,7 +118,7 @@ FLASHMEM void SetFavoriteFrequency() {
 
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
     if (val == MENU_OPTION_SELECT) {  // Make a choice??
       EraseMenus();
       EEPROMData.favoriteFreqs[index] = TxRxFreq;
@@ -175,7 +174,7 @@ FLASHMEM void GetFavoriteFrequency() {
 
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
 
     if (EEPROMData.centerFreq >= bands[BAND_80M].fBandLow && EEPROMData.centerFreq <= bands[BAND_80M].fBandHigh) {
       currentBand2 = BAND_80M;

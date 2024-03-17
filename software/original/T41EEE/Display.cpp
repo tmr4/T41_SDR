@@ -1579,7 +1579,7 @@ FLASHMEM void UpdateEqualizerField(bool rxEqState, bool txEqState) {
 
 
 /*****
-  Purpose: Updates the WPM setting on the display
+  Purpose: Updates the Keyer and WPM setting on the display
 
   Parameter list:
     void
@@ -1594,7 +1594,7 @@ void UpdateWPMField() {
   tft.setCursor(WPM_X + 5, WPM_Y - 5);
   tft.print("Keyer:");
   tft.setTextColor(RA8875_GREEN);
-  tft.fillRect(WPM_X + 60, WPM_Y, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
+  tft.fillRect(WPM_X + 59, WPM_Y - 4, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
   tft.setCursor(FIELD_OFFSET_X, WPM_Y - 5);
   //EEPROMData.EEPROMData.currentWPM = EEPROMData.currentWPM;
   if (EEPROMData.keyType == KEYER) {
@@ -1811,7 +1811,7 @@ void EraseSpectrumWindow() {
 *****/
 void EraseMenus() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, BOTH_MENU_WIDTHS, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                            // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                            // Change menu state
 }
 /*****
   Purpose: To erase primary menu from display
@@ -1823,7 +1823,7 @@ void EraseMenus() {
 *****/
 void ErasePrimaryMenu() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                           // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                           // Change menu state
 }
 /*****
   Purpose: To erase secondary menu from display
@@ -1835,7 +1835,7 @@ void ErasePrimaryMenu() {
 *****/
 void EraseSecondaryMenu() {
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                             // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                             // Change menu state
 }
 
 /*****

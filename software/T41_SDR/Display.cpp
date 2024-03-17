@@ -66,8 +66,6 @@ int16_t pos_x_time = 390;
 int16_t pos_y_time = 5;
 int16_t spectrum_x = 10;
 float xExpand = 1.4;
-int filterLoPositionMarkerOld;
-int filterHiPositionMarkerOld;
 int attenuator = 0;
 
 const uint16_t gradient[] = {  // Color array for waterfall background
@@ -120,12 +118,10 @@ void ShowCurrentPowerSetting();
     void
 *****/
 void DrawAudioSpectContainer() {
-  tft.drawRect(BAND_INDICATOR_X - 9, SPECTRUM_BOTTOM - 118, 255, 118, RA8875_GREEN);
+  tft.drawRect(AUDIO_SPEC_BOX_L, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_W, AUDIO_SPEC_BOX_H, RA8875_GREEN); // make as wide as info box
   for (int k = 0; k < 6; k++) {
-    tft.drawFastVLine(BAND_INDICATOR_X - 10 + k * 43.8, SPECTRUM_BOTTOM, 15, RA8875_GREEN);
-    tft.setCursor(BAND_INDICATOR_X - 14 + k * 43.8, SPECTRUM_BOTTOM + 16);
-    //tft.drawFastVLine(BAND_INDICATOR_X - 10 + k * 42.5, SPECTRUM_BOTTOM, 15, RA8875_GREEN);
-    //tft.setCursor(BAND_INDICATOR_X - 14 + k * 42.5, SPECTRUM_BOTTOM + 16);
+    tft.drawFastVLine(AUDIO_SPEC_BOX_L + k * 43.8, AUDIO_SPEC_BOTTOM, 15, RA8875_GREEN);
+    tft.setCursor(AUDIO_SPEC_BOX_L - 4 + k * 43.8, AUDIO_SPEC_BOTTOM + 16);
     tft.print(k);
     tft.print("k");
   }
@@ -179,8 +175,12 @@ void ShowName() {
 FASTRUN void ShowSpectrum() {
   int filterLoPositionMarker;
   int filterHiPositionMarker;
+  int filterLoPosition;
+  int filterHiPosition;
   int y_new_plot, y1_new_plot, y_old_plot, y_old2_plot;
   static int oldNF;
+  static int filterLoPositionMarkerOld = 0;
+  static int filterHiPositionMarkerOld = 0;
   const int currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
 
   pixelnew[0] = 0;
@@ -244,25 +244,36 @@ FASTRUN void ShowSpectrum() {
     //  In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum.
     pixelCurrent[x1] = pixelnew[x1];  //  This is the actual "old" spectrum!  This is required due to CW interrupts.  pixelCurrent gets copied to pixelold by the FFT function.  KF5N
 
-    if (x1 < 253) {
+    if (x1 < AUDIO_SPEC_BOX_W - 1) { // don't overwrite right edge of audio spectrum box
       if (keyPressedOn == 1) {
         return;
       } else {
-        tft.drawFastVLine(BAND_INDICATOR_X - 8 + x1, SPECTRUM_BOTTOM - 116, 115, RA8875_BLACK);  //AFP Erase old AUDIO spectrum line
+        tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);  // Erase old AUDIO spectrum line (including filter lines)
         if (audioYPixel[x1] != 0) {
           if (audioYPixel[x1] > CLIP_AUDIO_PEAK)  // audioSpectrumHeight = 118
             audioYPixel[x1] = CLIP_AUDIO_PEAK;
-          tft.drawFastVLine(BAND_INDICATOR_X - 8 + x1, AUDIO_SPECTRUM_BOTTOM - audioYPixel[x1] - 1, audioYPixel[x1] - 2, RA8875_MAGENTA);  //AFP draw new AUDIO spectrum line
+          tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
         }
         tft.drawFastHLine(SPECTRUM_LEFT_X - 1, SPECTRUM_TOP_Y + SPECTRUM_HEIGHT, MAX_WATERFALL_WIDTH, RA8875_YELLOW);
         // The following lines calculate the position of the Filter bar below the spectrum display
         // and then draw the Audio spectrum in its own container to the right of the Main spectrum display
 
-        filterLoPositionMarker = map(bands[currentBand].FLoCut, 0, 6000, 0, 256);
-        filterHiPositionMarker = map(bands[currentBand].FHiCut, 0, 6000, 0, 256);
-        //Draw Fiter indicator lines on audio plot AFP 10-30-22
-        tft.drawLine(BAND_INDICATOR_X - 6 + abs(filterLoPositionMarker), SPECTRUM_BOTTOM - 3, BAND_INDICATOR_X - 6 + abs(filterLoPositionMarker), SPECTRUM_BOTTOM - 112, RA8875_LIGHT_GREY);
-        tft.drawLine(BAND_INDICATOR_X - 7 + abs(filterHiPositionMarker), SPECTRUM_BOTTOM - 3, BAND_INDICATOR_X - 7 + abs(filterHiPositionMarker), SPECTRUM_BOTTOM - 112, RA8875_LIGHT_GREY);
+        filterLoPositionMarker = map(bands[currentBand].FLoCut, 0, 6000, 0, AUDIO_SPEC_BOX_W);
+        filterHiPositionMarker = map(bands[currentBand].FHiCut, 0, 6000, 0, AUDIO_SPEC_BOX_W);
+
+        // Draw Fiter indicator lines on audio plot (have to do this here or the filter lines will "blink")
+        // abs prevents these from going below the bottom of the audio spectrum display but that the
+        // resulting filter value isn't meaningful, should fix at the encoder
+        // limit the filter line from going out of the spectrum box to the right
+
+        filterLoPosition = abs(filterLoPositionMarker);
+        filterHiPosition = abs(filterHiPositionMarker);
+        if(filterLoPosition > 0 && filterLoPosition < (AUDIO_SPEC_BOX_W - 1)) {
+          tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterLoPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, RA8875_LIGHT_GREY);
+        }
+        if(filterHiPosition > 0 && filterHiPosition < (AUDIO_SPEC_BOX_W - 1)) {
+          tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterHiPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, RA8875_LIGHT_GREY);
+        }
 
         if (filterLoPositionMarker != filterLoPositionMarkerOld || filterHiPositionMarker != filterHiPositionMarkerOld) {
           DrawBandWidthIndicatorBar();
@@ -669,8 +680,8 @@ void BandInformation() {
         break;
     }
 
-    tft.fillRect(BAND_INDICATOR_X - 8, AUDIO_SPECTRUM_TOP, CWFilterPosition, 120, MAROON);
-    tft.drawFastVLine(BAND_INDICATOR_X - 8 + CWFilterPosition, AUDIO_SPECTRUM_BOTTOM - 118, 118, RA8875_LIGHT_GREY);
+    tft.fillRect(AUDIO_SPEC_BOX_L + 2, AUDIO_SPEC_BOX_T, CWFilterPosition, 120, MAROON);
+    tft.drawFastVLine(AUDIO_SPEC_BOX_L + 2 + CWFilterPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, RA8875_LIGHT_GREY);
 
     tft.writeTo(L1);
     //================  AFP 10-19-22 =========

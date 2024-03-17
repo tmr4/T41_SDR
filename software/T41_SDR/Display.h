@@ -18,8 +18,6 @@
 #define SPECTRUM_TOP_Y        100           // Start of spectrum plot space
 #define SPECTRUM_HEIGHT       150           // This is the pixel height of spectrum plot area without disturbing the axes
 #define SPECTRUM_BOTTOM       (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 3)        // 247 = 100 + 150 - 3
-#define AUDIO_SPECTRUM_TOP    129
-#define AUDIO_SPECTRUM_BOTTOM SPECTRUM_BOTTOM
 #define MAX_WATERFALL_WIDTH   512           // Pixel width of waterfall
 #define MAX_WATERFALL_ROWS    170           // Waterfall rows
 
@@ -31,7 +29,12 @@
 #define TEMP_X_OFFSET         15
 #define TEMP_Y_OFFSET         465                                           // 480 * 0.97 = 465
 
-#define BAND_INDICATOR_X      WATERFALL_RIGHT_X + 25
+#define AUDIO_SPEC_BOX_L      WATERFALL_RIGHT_X + 15
+#define AUDIO_SPEC_BOX_T      SPECTRUM_BOTTOM - 118
+#define AUDIO_SPEC_BOX_W      260
+#define AUDIO_SPEC_BOX_H      118
+#define AUDIO_SPEC_BOTTOM     SPECTRUM_BOTTOM
+
 #define OPERATION_STATS_X     130
 
 #define X_R_STATUS_X          730
