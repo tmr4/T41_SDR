@@ -21,3 +21,5 @@ void FilterBandwidth();
 void InitFilterMask();
 void ControlFilterF();
 void SetDecIntFilters();
+
+void SetDecIntFilters(int filter_BW);
