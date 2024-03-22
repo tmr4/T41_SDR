@@ -1468,9 +1468,9 @@ void WaitforWRComplete() {
     void
 
   Return value;
-    int                   0 if cannot initialize, 1 otherwise
+    void
 *****/
-int BearingMaps() {
+void BearingMaps() {
   char ptrMaps[10][50];
   int count;
 
@@ -1481,7 +1481,7 @@ int BearingMaps() {
     MyDelay(SDCARD_MESSAGE_LENGTH);
     tft.fillRect(200, 300, tft.getFontWidth() * 12, tft.getFontHeight(), RA8875_BLACK);
     tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
-    return 0;
+    return;
   }
   count = CreateMapList(ptrMaps, &count);  // Reads the SD card for BMP files and returns ptrMaps filled in with names and return the count
 
@@ -1489,7 +1489,7 @@ int BearingMaps() {
     tft.setCursor(300, 300);
     tft.print("No Maps found");
     selectedMapIndex = -1;
-    return -1;  // Didn't find any
+    return;  // Didn't find any
   }
   if (count == 1) {
     selectedMapIndex = 0;
@@ -1497,6 +1497,7 @@ int BearingMaps() {
     tft.clearMemory();  // Need to clear overlay too
     tft.writeTo(L2);
     tft.fillWindow();
+    tft.writeTo(L1);
 
     tft.setFontScale((enum RA8875tsize)1);
     tft.drawRect(30, 50, 730, 400, RA8875_WHITE);  // Outline
@@ -1511,7 +1512,7 @@ int BearingMaps() {
       tft.println("initialization failed!");
       MyDelay(2000L);
       tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
-      return -1;
+      return;
     }
     selectedMapIndex = WhichOneToUse(ptrMaps, count);
   }
@@ -1521,10 +1522,8 @@ int BearingMaps() {
   strcpy(mapFileName, (const char *)myMapFiles[selectedMapIndex].mapNames);
 
   RedrawDisplayScreen();
-  ShowFrequency();
-  DrawFrequencyBarValue();
-
-  return selectedMapIndex;
+  //ShowFrequency();
+  //ShowSpectrumFreqValues();
 }
 
 
@@ -1592,11 +1591,11 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
   tft.print(ptrMaps[0]);
 
   while (true) {
-    if (filterEncoderMove != 0) {         // Did they move the encoder?
+    if (menuEncoderMove != 0) {         // Did they move the encoder?
       tft.setCursor(50, 55 + temp * 30);  // Restore old highlighted name
       tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
       tft.print(ptrMaps[temp]);
-      temp += (int)filterEncoderMove;
+      temp += (int)menuEncoderMove;
       if (temp > count - 1) {
         temp = 0;  // Wrap to the first in the list
       } else {
@@ -1607,7 +1606,7 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
       tft.setCursor(50, 55 + temp * 30);  // Highlight new name
       tft.setTextColor(RA8875_BLACK, RA8875_GREEN);
       tft.print(ptrMaps[temp]);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);

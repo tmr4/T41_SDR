@@ -685,8 +685,8 @@ void SetCompressionLevel() {
   tft.print(currentMicThreshold);
 
   while (true) {
-    if (filterEncoderMove != 0) {
-      currentMicThreshold += ((float) filterEncoderMove);
+    if (menuEncoderMove != 0) {
+      currentMicThreshold += ((float) menuEncoderMove);
       if (currentMicThreshold < -60)
         currentMicThreshold = -60;
       else if (currentMicThreshold > 0)                 // 100% max
@@ -695,7 +695,7 @@ void SetCompressionLevel() {
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicThreshold);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches
     val = ProcessButtonPress(val);
@@ -733,8 +733,8 @@ void SetCompressionRatio() {
   tft.print(currentMicCompRatio, 1);
 
   while (true) {
-    if (filterEncoderMove != 0) {
-      currentMicCompRatio += ((float) filterEncoderMove * .1);
+    if (menuEncoderMove != 0) {
+      currentMicCompRatio += ((float) menuEncoderMove * .1);
       if (currentMicCompRatio > 10)
         currentMicCompRatio = 10;
       else if (currentMicCompRatio < 1)                 // 100% max
@@ -743,7 +743,7 @@ void SetCompressionRatio() {
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicCompRatio, 1);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
 
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches
@@ -783,8 +783,8 @@ void SetCompressionAttack() {
   tft.print(currentMicAttack, 1);
 
   while (true) {
-    if (filterEncoderMove != 0) {
-      currentMicAttack += ((float) filterEncoderMove * 0.1);
+    if (menuEncoderMove != 0) {
+      currentMicAttack += ((float) menuEncoderMove * 0.1);
       if (currentMicAttack > 10)
         currentMicAttack = 10;
       else if (currentMicAttack < .1)                 // 100% max
@@ -793,7 +793,7 @@ void SetCompressionAttack() {
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicAttack, 1);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
 
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches
@@ -832,8 +832,8 @@ void SetCompressionRelease() {
   tft.print(currentMicRelease, 1);
 
   while (true) {
-    if (filterEncoderMove != 0) {
-      currentMicRelease += ((float) filterEncoderMove * 0.1);
+    if (menuEncoderMove != 0) {
+      currentMicRelease += ((float) menuEncoderMove * 0.1);
       if (currentMicRelease > 10)
         currentMicRelease = 10;
       else if (currentMicRelease < 0.1)                 // 100% max
@@ -842,7 +842,7 @@ void SetCompressionRelease() {
       tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
       tft.print(currentMicRelease, 1);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
 
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches

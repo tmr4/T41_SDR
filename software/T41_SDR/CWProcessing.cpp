@@ -214,8 +214,9 @@ void SelectCWFilter() {
   // Clear the current CW filter graphics and then restore the bandwidth indicator bar
   tft.writeTo(L2);
   tft.clearMemory();
-  BandInformation();
-  DrawBandWidthIndicatorBar();
+  tft.writeTo(L1);
+  ShowBandInfo();
+  DrawBandwidthBar();
 }
 
 /*****
@@ -269,8 +270,8 @@ void DoCWReceiveProcessing() {
     UpdateDecodeLockIndicator();
 
     combinedCoeff2Old = combinedCoeff2;
-    tft.drawFastVLine(AUDIO_SPEC_BOX_L + 29, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, RA8875_GREEN);  //CW lower freq indicator
-    tft.drawFastVLine(AUDIO_SPEC_BOX_L + 37, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, RA8875_GREEN);  //CW upper freq indicator
+    tft.drawFastVLine(AUDIO_SPEC_BOX_L + 29, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, ORANGE);  //CW lower freq indicator
+    tft.drawFastVLine(AUDIO_SPEC_BOX_L + 37, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, ORANGE);  //CW upper freq indicator
     if (combinedCoeff > 50) {                                                                  // if  have a reasonable corr coeff, >50, then we have a keeper. // AFP 10-26-22
       audioTemp = 1;
     } else {
@@ -530,9 +531,9 @@ void SetSideToneVolume() {
   while (true) {
     if (digitalRead(paddleDit) == LOW || digitalRead(paddleDah) == LOW) CW_ExciterIQData();
 
-    if (filterEncoderMove != 0) {
-      //      sidetoneVolume = sidetoneVolume + (float)filterEncoderMove * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
-      sidetoneDisplay = sidetoneDisplay + filterEncoderMove;  // * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
+    if (menuEncoderMove != 0) {
+      //      sidetoneVolume = sidetoneVolume + (float)menuEncoderMove * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
+      sidetoneDisplay = sidetoneDisplay + menuEncoderMove;  // * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
       if (sidetoneDisplay < 0)
         sidetoneDisplay = 0;
       else if (sidetoneDisplay > 100)  // 100% max
@@ -542,7 +543,7 @@ void SetSideToneVolume() {
       sidetoneVolume = (float32_t)sidetoneDisplay;
       tft.setTextColor(RA8875_WHITE);
       tft.print(sidetoneDisplay);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
     modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone  AFP 10-01-22
                                                              //    modeSelectOutR.gain(1, volumeLog[(int)sidetoneVolume]);  // Right side not used.  KF5N September 1, 2023

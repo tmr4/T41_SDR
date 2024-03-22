@@ -373,6 +373,6 @@ void UpdateDecodeLockIndicator()
     void
 *****/
 void DrawInfoBoxFrame() {
-  tft.fillRect(INFO_BOX_L + 2, INFO_BOX_T + 2, INFO_BOX_W - 4, INFO_BOX_H - 4, RA8875_BLACK); // Clear info box
-  tft.drawRect(INFO_BOX_L, INFO_BOX_T, INFO_BOX_W, INFO_BOX_H, RA8875_LIGHT_GREY); // Redraw Info Window Box
+  tft.fillRect(INFO_BOX_L + 2, INFO_BOX_T + 2, INFO_BOX_W - 4, INFO_BOX_H - 4, RA8875_BLACK); // clear info box contents
+  tft.drawRect(INFO_BOX_L, INFO_BOX_T, INFO_BOX_W, INFO_BOX_H, RA8875_LIGHT_GREY); // draw info box
 }

@@ -49,3 +49,4 @@ void UpdateInfoBox();
 void UpdateInfoBoxItem(const infoBoxItem *item);
 void UpdateIBWPM();
 void UpdateDecodeLockIndicator();
+void DrawInfoBoxFrame();

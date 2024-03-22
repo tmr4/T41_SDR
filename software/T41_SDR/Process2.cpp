@@ -388,7 +388,7 @@ void ProcessIQData2() {
       CalcZoom1Magn();  //AFP Moved to display function
     }
 
-    if (spectrum_zoom != 0) {
+    if(spectrum_zoom != 0 && updateDisplayFlag == 1) {
       //AFP  Used to process Zoom>1 for display
       ZoomFFTExe(BUFFER_SIZE * N_BLOCKS);  // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
       // does not work for magnifications > 8
@@ -484,7 +484,7 @@ float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
 
   if (x1 == (cal_bins[0] - capture_bins)) {  // Set flag at revised beginning.  KF5N
     updateDisplayFlag = 1;                   //Set flag so the display data are saved only once during each display refresh cycle at the start of the cycle, not 512 times
-    ShowBandwidth();                         // Without this call, the calibration value in dB will not be updated.  KF5N
+    ShowBandwidthBarValues();                         // Without this call, the calibration value in dB will not be updated.  KF5N
   } else updateDisplayFlag = 0;              //  Do not save the the display data for the remainder of the
 
   ProcessIQData2();  // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays

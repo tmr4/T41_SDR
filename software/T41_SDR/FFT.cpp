@@ -33,7 +33,6 @@ float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
 void ZoomFFTPrep() {
   // take value of spectrum_zoom and initialize IIR lowpass and FIR decimation filters for the right values
 
-  tft.fillRect(SPECTRUM_LEFT_X , SPECTRUM_TOP_Y + 1, MAX_WATERFALL_WIDTH , SPECTRUM_HEIGHT - 2,  RA8875_BLACK);
   float32_t Fstop_Zoom = 0.5 * (float32_t) SampleRate / (1 << spectrum_zoom);
   CalcFIRCoeffs(Fir_Zoom_FFT_Decimate_coeffs, 4, Fstop_Zoom, 60, 0, 0.0, (float32_t)SampleRate);
 
@@ -49,106 +48,107 @@ void ZoomFFTPrep() {
     IIR_biquad_Zoom_FFT_I.pCoeffs = mag_coeffs[7];
     IIR_biquad_Zoom_FFT_Q.pCoeffs = mag_coeffs[7];
   }
+
   zoom_sample_ptr = 0;
 }
 
 /*****
-  Purpose: Zoom FFT
+  Purpose: Display FFT routine
+           Should only be called when spectrum_zoom > 1 and updateDisplayFlag == 1
   
   Parameter list:
     void
+
   Return value;
     void
-    Used when Spectrum Zoom>1
 *****/
 void ZoomFFTExe(uint32_t blockSize) {
-  //AFP changed resolution 03-12-21  Only for spectrum Zoom > 1
-  if (updateDisplayFlag == 1) {  //Runs display FFT routine only once for each Audio process FFT.  Cuts number of FFTs by 1/512.
-    float32_t x_buffer[blockSize];                      // can be 4096 [FFT length == 1024] or even 8192 [FFT length == 2048]
-    float32_t y_buffer[blockSize];
-    static float32_t FFT_ring_buffer_x[SPECTRUM_RES*2];
-    static float32_t FFT_ring_buffer_y[SPECTRUM_RES*2];
-    int sample_no = SPECTRUM_RES;                       // sample_no is 256, in high magnify modes it is smaller!
-    // but it must never be > SPECTRUM_RES
+  float32_t LPFcoeff;
+  float32_t onem_LPFcoeff;
+  float32_t x_buffer[blockSize]; // can be 4096 [FFT length == 1024] or even 8192 [FFT length == 2048]
+  float32_t y_buffer[blockSize];
+  static float32_t FFT_ring_buffer_x[SPECTRUM_RES*2];
+  static float32_t FFT_ring_buffer_y[SPECTRUM_RES*2];
+  int sample_no = SPECTRUM_RES; // sample_no is 256, in high magnify modes it is smaller but it must never be > SPECTRUM_RES
+  float32_t multiplier;
 
-    sample_no = BUFFER_SIZE * N_BLOCKS / (1 << spectrum_zoom);
-    if (sample_no > SPECTRUM_RES) {
-      sample_no = SPECTRUM_RES;
-    }
 
-    if (spectrum_zoom != 0) {                                                       //For magnifications >1
-      arm_biquad_cascade_df1_f32 (&IIR_biquad_Zoom_FFT_I, float_buffer_L, x_buffer, blockSize);
-      arm_biquad_cascade_df1_f32 (&IIR_biquad_Zoom_FFT_Q, float_buffer_R, y_buffer, blockSize);
-      // decimation
-      arm_fir_decimate_f32(&Fir_Zoom_FFT_Decimate_I, x_buffer, x_buffer, blockSize);
-      arm_fir_decimate_f32(&Fir_Zoom_FFT_Decimate_Q, y_buffer, y_buffer, blockSize);
+  sample_no = BUFFER_SIZE * N_BLOCKS / (1 << spectrum_zoom);
+  if (sample_no > SPECTRUM_RES) {
+    sample_no = SPECTRUM_RES;
+  }
 
-      // This puts the sample_no samples into the ringbuffer -->
-      // the right order has to be thought about!
-      // we take all the samples from zoom_sample_ptr to 256 and
-      // then all samples from 0 to zoom_sampl_ptr - 1
-      // fill into ringbuffer
-      
-      for (int i = 0; i < sample_no; i++) {                 // interleave real and imaginary input values [real, imag, real, imag . . .]
-        FFT_ring_buffer_x[zoom_sample_ptr] = x_buffer[i];
-        FFT_ring_buffer_y[zoom_sample_ptr] = y_buffer[i];
-        zoom_sample_ptr++;
-        if (zoom_sample_ptr >= SPECTRUM_RES)
-          zoom_sample_ptr = 0;
-      }
-    }
-    
-    float32_t multiplier = (float32_t)spectrum_zoom;
-    if (spectrum_zoom > 3) { // SPECTRUM_ZOOM_8
-      multiplier = (float32_t)(1 << spectrum_zoom);
-    }
-    for (int idx = 0; idx < SPECTRUM_RES; idx++) {
-      buffer_spec_FFT[idx * 2 + 0] =  multiplier * FFT_ring_buffer_x[zoom_sample_ptr] * (0.5 - 0.5 * cos(6.28 * idx / SPECTRUM_RES)); //Hanning Window AFP 03-12-21
-      buffer_spec_FFT[idx * 2 + 1] =  multiplier * FFT_ring_buffer_y[zoom_sample_ptr] * (0.5 - 0.5 * cos(6.28 * idx / SPECTRUM_RES));
-      zoom_sample_ptr++;
-      if (zoom_sample_ptr >= SPECTRUM_RES) {
-        zoom_sample_ptr = 0;
-      }
-    }
-    //***************
-    // adjust lowpass filter coefficient, so that
-    // "spectrum display smoothness" is the same across the different sample rates
-    // and the same across different magnify modes . . .
-    float32_t LPFcoeff = 0.7;
-    
-    if (LPFcoeff > 1.0) {
-      LPFcoeff = 1.0;
-    }
-    if (LPFcoeff < 0.001) {
-      LPFcoeff = 0.001;
-    }
-    float32_t onem_LPFcoeff = 1.0 - LPFcoeff;
-    // save old pixels for lowpass filter This is also used to erase the old spectrum.  KF5N
-    for (int i = 0; i < SPECTRUM_RES; i++) {
-      //pixelold[i] = pixelnew[i];
-      pixelold[i] = pixelCurrent[i];  // KF5N
-    }
-    // perform complex FFT
-    // calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
-    arm_cfft_f32(spec_FFT, buffer_spec_FFT, 0, 1);
+  arm_biquad_cascade_df1_f32 (&IIR_biquad_Zoom_FFT_I, float_buffer_L, x_buffer, blockSize);
+  arm_biquad_cascade_df1_f32 (&IIR_biquad_Zoom_FFT_Q, float_buffer_R, y_buffer, blockSize);
 
-    for (int i = 0; i < SPECTRUM_RES / 2; i++) {
-      FFT_spec[i + SPECTRUM_RES / 2] = (buffer_spec_FFT[i * 2] * buffer_spec_FFT[i * 2] + buffer_spec_FFT[i * 2 + 1] * buffer_spec_FFT[i * 2 + 1]); // Last half of spectrum
-      FFT_spec[i] = (buffer_spec_FFT[(i + SPECTRUM_RES / 2) * 2] * buffer_spec_FFT[(i + SPECTRUM_RES / 2)  * 2] + buffer_spec_FFT[(i + SPECTRUM_RES / 2)  * 2 + 1] * buffer_spec_FFT[(i + SPECTRUM_RES / 2)  * 2 + 1]);
-    }
-    // apply low pass filter and scale the magnitude values and convert to int for spectrum display
-    // apply spectrum AGC
-    //
-    for (int16_t x = 0; x < SPECTRUM_RES; x++) {
-      FFT_spec[x] = LPFcoeff * FFT_spec[x] + onem_LPFcoeff * FFT_spec_old[x];
-      FFT_spec_old[x] = FFT_spec[x];
-    }
+  // decimation
+  arm_fir_decimate_f32(&Fir_Zoom_FFT_Decimate_I, x_buffer, x_buffer, blockSize);
+  arm_fir_decimate_f32(&Fir_Zoom_FFT_Decimate_Q, y_buffer, y_buffer, blockSize);
 
-    for (int16_t x = 0; x < SPECTRUM_RES; x++) {
-      pixelnew[x] = displayScale[currentScale].baseOffset + bands[currentBand].pixel_offset + (int16_t)(displayScale[currentScale].dBScale * log10f_fast(FFT_spec[x]));
-      if (pixelnew[x] > 220) {
-        pixelnew[x] = 220;
-      }
+  // This puts the sample_no samples into the ringbuffer -->
+  // the right order has to be thought about!
+  // we take all the samples from zoom_sample_ptr to 256 and
+  // then all samples from 0 to zoom_sampl_ptr - 1
+  // fill into ringbuffer
+  
+  // interleave real and imaginary input values [real, imag, real, imag . . .]
+  for (int i = 0; i < sample_no; i++) { 
+    FFT_ring_buffer_x[zoom_sample_ptr] = x_buffer[i];
+    FFT_ring_buffer_y[zoom_sample_ptr] = y_buffer[i];
+    zoom_sample_ptr++;
+    if (zoom_sample_ptr >= SPECTRUM_RES)
+      zoom_sample_ptr = 0;
+  }
+  
+  multiplier = (float32_t)spectrum_zoom;
+  if (spectrum_zoom > 3) { // SPECTRUM_ZOOM_8
+    multiplier = (float32_t)(1 << spectrum_zoom);
+  }
+  for (int idx = 0; idx < SPECTRUM_RES; idx++) {
+    buffer_spec_FFT[idx * 2 + 0] =  multiplier * FFT_ring_buffer_x[zoom_sample_ptr] * (0.5 - 0.5 * cos(6.28 * idx / SPECTRUM_RES)); //Hanning Window AFP 03-12-21
+    buffer_spec_FFT[idx * 2 + 1] =  multiplier * FFT_ring_buffer_y[zoom_sample_ptr] * (0.5 - 0.5 * cos(6.28 * idx / SPECTRUM_RES));
+    zoom_sample_ptr++;
+    if (zoom_sample_ptr >= SPECTRUM_RES) {
+      zoom_sample_ptr = 0;
+    }
+  }
+  //***************
+  // adjust lowpass filter coefficient, so that
+  // "spectrum display smoothness" is the same across the different sample rates
+  // and the same across different magnify modes . . .
+  LPFcoeff = 0.7;
+  
+  //if (LPFcoeff > 1.0) {
+  //  LPFcoeff = 1.0;
+  //}
+  //if (LPFcoeff < 0.001) {
+  //  LPFcoeff = 0.001;
+  //}
+
+  onem_LPFcoeff = 1.0 - LPFcoeff;
+
+  // perform complex FFT
+  // calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
+  arm_cfft_f32(spec_FFT, buffer_spec_FFT, 0, 1);
+
+  for (int i = 0; i < SPECTRUM_RES / 2; i++) {
+    FFT_spec[i + SPECTRUM_RES / 2] = (buffer_spec_FFT[i * 2] * buffer_spec_FFT[i * 2] + buffer_spec_FFT[i * 2 + 1] * buffer_spec_FFT[i * 2 + 1]); // Last half of spectrum
+    FFT_spec[i] = (buffer_spec_FFT[(i + SPECTRUM_RES / 2) * 2] * buffer_spec_FFT[(i + SPECTRUM_RES / 2)  * 2] + buffer_spec_FFT[(i + SPECTRUM_RES / 2)  * 2 + 1] * buffer_spec_FFT[(i + SPECTRUM_RES / 2)  * 2 + 1]);
+  }
+
+  // apply low pass filter and scale the magnitude values and convert to int for spectrum display
+  // apply spectrum AGC
+  for (int i = 0; i < SPECTRUM_RES; i++) {
+    // save old pixels for lowpass filter This is also used to erase the old spectrum
+    //pixelold[i] = pixelnew[i];
+    pixelold[i] = pixelCurrent[i];
+
+    FFT_spec[i] = LPFcoeff * FFT_spec[i] + onem_LPFcoeff * FFT_spec_old[i];
+    FFT_spec_old[i] = FFT_spec[i];
+
+    pixelnew[i] = displayScale[currentScale].baseOffset + bands[currentBand].pixel_offset + (int16_t)(displayScale[currentScale].dBScale * log10f_fast(FFT_spec[i]));
+    if (pixelnew[i] > 220) {
+      pixelnew[i] = 220;
     }
   }
 }

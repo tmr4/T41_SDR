@@ -509,8 +509,8 @@ void SetFavoriteFrequency() {
   tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
   tft.print(EEPROMData.favoriteFreqs[index]);
   while (true) {
-    if (filterEncoderMove != 0) {  // Changed encoder?
-      index += filterEncoderMove;  // Yep
+    if (menuEncoderMove != 0) {  // Changed encoder?
+      index += menuEncoderMove;  // Yep
       if (index < 0) {
         index = MAX_FAVORITES - 1;  // Wrap to last one
       } else {
@@ -520,7 +520,7 @@ void SetFavoriteFrequency() {
       tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
       tft.print(EEPROMData.favoriteFreqs[index]);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
 
     val = ReadSelectedPushButton();  // Read pin that controls all switches
@@ -537,9 +537,9 @@ void SetFavoriteFrequency() {
       }
 
       SetFreq();
-      BandInformation();
-      ShowBandwidth();
-      FilterBandwidth();
+      ShowBandInfo();
+      ShowBandwidthBarValues();
+      CalcFilters();
       ShowFrequency();
       break;
     }
@@ -566,8 +566,8 @@ void GetFavoriteFrequency() {
   tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
   tft.print(EEPROMData.favoriteFreqs[index]);
   while (true) {
-    if (filterEncoderMove != 0) {  // Changed encoder?
-      index += filterEncoderMove;  // Yep
+    if (menuEncoderMove != 0) {  // Changed encoder?
+      index += menuEncoderMove;  // Yep
       if (index < 0) {
         index = MAX_FAVORITES - 1;  // Wrap to last one
       } else {
@@ -577,7 +577,7 @@ void GetFavoriteFrequency() {
       tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
       tft.print(EEPROMData.favoriteFreqs[index]);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
 
     val = ReadSelectedPushButton();  // Read pin that controls all switches
@@ -632,23 +632,19 @@ void GetFavoriteFrequency() {
     }
     if (val == MENU_OPTION_SELECT) {
 
-      EraseSpectrumDisplayContainer();
-      DrawSpectrumDisplayContainer();
-      DrawFrequencyBarValue();
-      SetBand();
-      SetFreq();
-      ShowFrequency();
-      ShowSpectrumdBScale();
-      EraseMenus();
-      ResetTuning();
-      FilterBandwidth();
-      BandInformation();
-      NCOFreq = 0L;
-      DrawBandWidthIndicatorBar();  // AFP 10-20-22
-      digitalWrite(bandswitchPins[currentBand], LOW);
-      SetFreq();
-      ShowSpectrumdBScale();
-      ShowSpectrum();
+      //EraseSpectrumDisplayContainer();
+      //DrawSpectrumFrame();
+      //ShowSpectrumFreqValues();
+      //SetBand();
+      //ShowSpectrumdBScale();
+      //EraseMenus();
+      //ResetTuning();
+      //ShowBandInfo();
+      //NCOFreq = 0L;
+      //DrawBandwidthBar();  // AFP 10-20-22
+      //digitalWrite(bandswitchPins[currentBand], LOW);
+      //ShowSpectrumdBScale();
+      //ShowSpectrum();
       //bands[currentBand].mode = currentBand;
       return;
     }
