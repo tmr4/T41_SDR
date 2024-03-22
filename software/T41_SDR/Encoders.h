@@ -8,19 +8,24 @@
                                               // for other encoders or libs we use 1.0f
 
 extern bool volumeChangeFlag;
-extern int centerTuneFlag;
-extern int resetTuningFlag;  // Experimental flag for ResetTuning() due to possible timing issues.  KF5N July 31, 2023
+extern bool fineTuneFlag;
+extern bool resetTuningFlag;  // Experimental flag for ResetTuning() due to possible timing issues.  KF5N July 31, 2023
+
+extern long posFilterEncoder;
+extern long lastFilterEncoder;
+extern long filter_pos_BW;
+extern long last_filter_pos_BW;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void FilterSetSSB(int *filterWidth);
-void EncoderCenterTune();
+void SetBWFilters();
+void SetCenterTune();
 void EncoderVolume();
 float GetEncoderValueLive(float minValue, float maxValue, float startValue, float increment, char prompt[]);
 int GetEncoderValue(int minValue, int maxValue, int startValue, int increment, char prompt[]);
 int SetWPM();
 long SetTransmitDelay();
 void EncoderFineTune();
-void EncoderFilter();
+void EncoderMenuChangeFilter();

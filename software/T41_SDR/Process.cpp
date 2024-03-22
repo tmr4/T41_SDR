@@ -20,6 +20,8 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
+float32_t audioMaxSquaredAve = 0;
+
 //const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;  // 512/2/128 * 8 = 16
 //const uint32_t N_B = 16;
 
@@ -44,7 +46,6 @@ int8_t first_block = 1;
 int mute = 0; // 0 - normal volume, 1 - mute (*** this is never changed ***)
 
 float VolumeToAmplification(int volume);
-Metro ms_500 = Metro(500);  // Set up a Metro
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -65,7 +66,6 @@ Metro ms_500 = Metro(500);  // Set up a Metro
    CAUTION: Assumes a spaces[] array is defined
  *****/
 void ProcessIQData() {
-  static float32_t audioMaxSquaredAve = 0;
   static float32_t audiotmp = 0.0f;
   float32_t w;
   static float32_t wold = 0.0f;
@@ -109,19 +109,6 @@ void ProcessIQData() {
     if (keyPressedOn == 1) {
       return;
     }
-
-    // Set frequency here only to minimize interruption to signal stream during tuning
-    // This code was unnecessary in the revised tuning scheme.  KF5N July 22, 2023
-    if (centerTuneFlag == 1) {
-      DrawBandWidthIndicatorBar();
-      ShowFrequency();
-    }
-    centerTuneFlag = 0;
-
-    if (resetTuningFlag == 1) {
-      ResetTuning();
-    }
-    resetTuningFlag = 0;
 
     /*******************************
             Set RFGain - for all bands
@@ -224,7 +211,8 @@ void ProcessIQData() {
 
         Spectrum Zoom uses the shifted spectrum, so the center "hump" around DC is shifted by fs/4
     **********************************************************************************/
-    if (spectrum_zoom != 0) {
+    // Run display FFT routine only once for each Audio process FFT
+    if(spectrum_zoom != 0 && updateDisplayFlag == 1) {
       ZoomFFTExe(BUFFER_SIZE * N_BLOCKS); // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
       // does not work for magnifications > 8
     }
@@ -273,7 +261,7 @@ void ProcessIQData() {
       // set NFM filter to decimate
       // fixed at 6 kHz for now
       // make variable (including separate visual BW on frequency spectrum and audio filter on audio spectrum)
-      SetDecIntFilters(6000);
+      SetDecIntFilters(nfmFilterBW);
 
       // decimation-by-4 in-place!
       arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
@@ -369,6 +357,7 @@ void ProcessIQData() {
 
       arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
 
+      // process audio frequency spectrum only at the beginning of the show spectrum process
       if (updateDisplayFlag == 1) {
         for (int k = 0; k < 1024; k++) {
           audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
@@ -388,7 +377,6 @@ void ProcessIQData() {
         }
         arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared abin magnitued in audio
         audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
-        DisplaydbM(audioMaxSquaredAve);
       }
 
       /**********************************************************************************
@@ -530,6 +518,8 @@ void ProcessIQData() {
       // prepare audio box spectrum and filter per the audio cutoff frequency
       arm_cfft_f32(S, FFT_buffer, 0, 1);
       arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
+
+      // process audio frequency spectrum only at the beginning of the show spectrum process
       if (updateDisplayFlag == 1) {
         for (int k = 0; k < 1024; k++) {
           audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
@@ -543,7 +533,6 @@ void ProcessIQData() {
         }
         arm_max_f32 (audioSpectBuffer, FFT_length / 2, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared abin magnitued in audio
         audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
-        DisplaydbM(audioMaxSquaredAve);
       }
 
       // convert back to time domain and fill buffer
@@ -681,10 +670,6 @@ void ProcessIQData() {
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
   } // end of if(audio blocks available)
-
-  if (ms_500.check() == 1) { // For clock updates
-    DisplayClock();
-  }
 }
 
 /*****

@@ -46,13 +46,27 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
 
 * feature/NFMDemod - adds narrow-band FM demodulation
 
-  * added fixed 6 kHz demodulation filter (not shown on spectrum display)
-  * separate, adjustable filter for audio output
-  * cleaned up audio spectrum box including correcting operation of filter bars
+  * added variable demod filter (use filter button to toggle this filter and the high and low audio spectrum filters)
+  * Renamed/modified functions and variables to better reflect their actual use
+  * Eliminated some functions/variables/menus that weren't used.  I removed the Noise Floor menu in favor of the live update with the push button.
+  * Streamlined display updates, eliminating redundant updates, including updates that overwrote static portions of the display causing them to have to be redrawn
+  * Updated spectrum box routines to more fully utilize display and properly show spectrum
+  * Refactored some functions to remove display updates that were better consolidated with display update functions (exception when doing so added an needless function call)
+  * Consolidated band increase/decrease functions
+  * Made selecting display layers consistent throughout (if a function writes to layer 2 it switches to layer 1 prior to returning)
+  * Replaced MyDelay() function with standard delay().  I hoped this would more efficiently use the processor but it didn't.
+  * Eliminated *some* font/color changes at the end of function, functions that write to display are expected to set font and color
+  * Adjusted tuning reset when fine tuning past edge of spectrum
+  * Moved some functions to other files to better reflect their use
+  * Eliminated some redundant function use checks opting that such checks be made prior to the function call
+  * Consolidated some functions within their file to better group related functions
+  * Updated some function comment blocks and added display routine description at the top of display.cpp
+  * Simplified some loop variables to make code more readable
+  * More general cleanup, including eliminating more meaningless comments
+  * *Some display updates remain (particularly in the Bearing and EEPROM functions).  I may have missed a few others.*
 
-    * likely some cleanup for CW transmit still needed
 
-  * also some general cleanup
+
 
 ## Previous changes
 
@@ -89,3 +103,14 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * Added secondaryMenuCount array. *Probably should automate.*
   * Moved secondaryChoices to T41_SDR.ino with other menu options though these are likely more appropriate in the Menu.cpp.
   * Started to clean up initializers that have no effect *(there variables are reset elsewhere on startup)*.
+
+
+* previous feature/NFMDemod changes
+
+  * added fixed 6 kHz demodulation filter (not shown on spectrum display)
+  * separate, adjustable filter for audio output
+  * cleaned up audio spectrum box including correcting operation of filter bars
+
+    * likely some cleanup for CW transmit still needed
+
+  * also some general cleanup

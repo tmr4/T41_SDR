@@ -62,7 +62,7 @@
 #define                           FOURSQRP
 
 #define USE_FULL_MENU             0   // 0 - use top line menus; 1 - use full screen menus
-#define USE_LIVE_NOISE_FLOOR      1   // 0 - don't use, 1 - use live display when setting noise floor
+//#define USE_LIVE_NOISE_FLOOR      1   // 0 - don't use, 1 - use live display when setting noise floor
 
 #define SDCARD_MESSAGE_LENGTH     3000L                                     // The number of milliseconds to leave error message on screen
 

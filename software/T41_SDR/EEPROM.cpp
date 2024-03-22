@@ -525,7 +525,7 @@ void SetFavoriteFrequency() {
 
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
     if (val == MENU_OPTION_SELECT) {  // Make a choice??
       EraseMenus();
       EEPROMData.favoriteFreqs[index] = TxRxFreq;
@@ -537,7 +537,7 @@ void SetFavoriteFrequency() {
       }
 
       SetFreq();
-      ShowBandInfo();
+      ShowOperatingStats();
       ShowBandwidthBarValues();
       CalcFilters();
       ShowFrequency();
@@ -582,7 +582,7 @@ void GetFavoriteFrequency() {
 
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
 
     centerFreq = EEPROMData.favoriteFreqs[index];  // current frequency  AFP 09-27-22
     if (centerFreq >= bands[BAND_80M].fBandLow && centerFreq <= bands[BAND_80M].fBandHigh) {
@@ -639,7 +639,7 @@ void GetFavoriteFrequency() {
       //ShowSpectrumdBScale();
       //EraseMenus();
       //ResetTuning();
-      //ShowBandInfo();
+      //ShowOperatingStats();
       //NCOFreq = 0L;
       //DrawBandwidthBar();  // AFP 10-20-22
       //digitalWrite(bandswitchPins[currentBand], LOW);

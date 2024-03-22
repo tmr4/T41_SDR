@@ -22,7 +22,6 @@
 
 int buttonRead = 0;
 int minPinRead = 1024;
-int secondaryMenuChoiceMade;
 
 /*
 The button interrupt routine implements a first-order recursive filter, or "leaky integrator,"
@@ -290,7 +289,7 @@ int ReadSelectedPushButton() {
   }
   minPinRead = buttonRead;
   if (!buttonInterruptsEnabled) {
-    MyDelay(100L);
+    delay(100L);
   }
 
   return minPinRead;
@@ -298,7 +297,7 @@ int ReadSelectedPushButton() {
 
 /*****
   Purpose: Function is designed to route program control to the proper execution point in response to
-           a button press.
+           a button press.  To avoid duplication, display updates are generally handled in the routed routine.
 
   Parameter list:
     int vsl               the value from analogRead in loop()
@@ -321,7 +320,7 @@ void ExecuteButtonPress(int val) {
 
         if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
           ErasePrimaryMenu();
-          secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();  // These are processed in MenuProc.cpp
+          functionPtr[mainMenuIndex]();  // These are processed in MenuProc.cpp
           menuStatus = SECONDARY_MENU_ACTIVE;
           secondaryMenuIndex = -1;  // Reset secondary menu
         } else {
@@ -359,7 +358,7 @@ void ExecuteButtonPress(int val) {
               menuStatus = PRIMARY_MENU_ACTIVE;
               EraseSecondaryMenu();
             } else {
-              secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();
+              functionPtr[mainMenuIndex]();
               EraseMenus();
               menuStatus = NO_MENUS_ACTIVE;
             }
@@ -377,11 +376,11 @@ void ExecuteButtonPress(int val) {
         SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
         if(mainMenuIndex < TOP_MENU_COUNT - 1) {
           SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
-          secondaryMenuChoiceMade = functionPtr[mainMenuIndex](); 
+          functionPtr[mainMenuIndex](); 
         }
 
         tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
-        DrawSpectrumDisplayContainer();
+        DrawSpectrumFrame();
         EraseMenus();
       } else {
         if (menuStatus == NO_MENUS_ACTIVE) {
@@ -408,20 +407,24 @@ void ExecuteButtonPress(int val) {
       break;
 
     case BAND_UP:  // 2
-      EraseMenus();
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], LOW);  // Added if so unused GPOs will not be touched.  KF5N October 16, 2023.
-      ButtonBandIncrease();
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], HIGH);
-      BandInformation();
-      NCOFreq = 0L;
-      DrawBandWidthIndicatorBar();  // AFP 10-20-22
-      SetFreq();
-      ShowSpectrum();
+      // Added if so unused GPOs will not be touched
+      if(currentBand < 5) {
+        digitalWrite(bandswitchPins[currentBand], LOW);  
+      }
+
+      currentBand++;
+      if(currentBand == NUMBER_OF_BANDS) {  // Incremented too far?
+        currentBand = 0;                     // Yep. Roll to list front.
+      }
+
+      ButtonBandChange();
+
+      if(currentBand < 5) {
+        digitalWrite(bandswitchPins[currentBand], HIGH);
+      }
       break;
 
     case ZOOM:  // 3
-      menuStatus = PRIMARY_MENU_ACTIVE;
-      EraseMenus();
       ButtonZoom();
       break;
 
@@ -431,11 +434,11 @@ void ExecuteButtonPress(int val) {
         SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
         if(mainMenuIndex < TOP_MENU_COUNT - 1) {
           SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
-          secondaryMenuChoiceMade = functionPtr[mainMenuIndex](); 
+          functionPtr[mainMenuIndex](); 
         }
 
         tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
-        DrawSpectrumDisplayContainer();
+        DrawSpectrumFrame();
         EraseMenus();
       } else {
         if (menuStatus == NO_MENUS_ACTIVE) {
@@ -463,29 +466,32 @@ void ExecuteButtonPress(int val) {
       break;
 
     case BAND_DN:  // 5
-      EraseMenus();
-      ShowSpectrum();  //Now calls ProcessIQData and Encoders calls
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], LOW);
-      ButtonBandDecrease();
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], HIGH);
-      BandInformation();
-      NCOFreq = 0L;
-      DrawBandWidthIndicatorBar();  //AFP 10-20-22
+      if(currentBand < 5) {
+        digitalWrite(bandswitchPins[currentBand], LOW);
+      }
+
+      currentBand--;
+      if(currentBand < 0) {                 // Incremented too far?
+        currentBand = NUMBER_OF_BANDS - 1;  // Yep. Roll to list front.
+      }
+
+      ButtonBandChange();
+
+      if(currentBand < 5) {
+        digitalWrite(bandswitchPins[currentBand], HIGH);
+      }
       break;
 
     case FILTER:  // 6
-      EraseMenus();
       ButtonFilter();
       break;
 
     case DEMODULATION:  // 7
-      EraseMenus();
       ButtonDemodMode();
       break;
 
     case SET_MODE:  // 8
       ButtonMode();
-      ShowSpectrumdBScale();
       break;
 
     case NOISE_REDUCTION:  // 9
@@ -498,11 +504,7 @@ void ExecuteButtonPress(int val) {
       break;
 
     case NOISE_FLOOR:  // 11
-#if USE_LIVE_NOISE_FLOOR
       ToggleLiveNoiseFloorFlag();
-#else
-      ButtonSetNoiseFloor();
-#endif
       break;
 
     case FINE_TUNE_INCREMENT:  // 12
@@ -550,7 +552,7 @@ void ExecuteButtonPress(int val) {
       }
       while (true) {
         valPin = ReadSelectedPushButton();            // Poll UI push buttons
-        MyDelay(100L);
+        delay(100L);
         if (valPin != BOGUS_PIN_READ) {               // If a button was pushed...
           buttonIndex = ProcessButtonPress(valPin);   // Winner, winner...chicken dinner!
           switch (buttonIndex) {
@@ -569,10 +571,10 @@ void ExecuteButtonPress(int val) {
           break;
         }
       }
-      RedrawDisplayScreen();
-      ShowFrequency();
-      DrawFrequencyBarValue();
-      
+
+      //RedrawDisplayScreen();
+      //ShowFrequency();
+      //ShowSpectrumFreqValues();
       break;
   }
 }

@@ -11,15 +11,19 @@ extern float32_t FIR_int1_coeffs[48];
 extern float32_t FIR_int2_coeffs[32];
 extern float32_t FIR_filter_mask[FFT_LENGTH * 2];
 
+extern int nfmFilterBW;
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
 void DoReceiveEQ();
 void DoExciterEQ();
-void FilterBandwidth();
+void CalcFilters();
 void InitFilterMask();
-void ControlFilterF();
 void SetDecIntFilters();
 
 void SetDecIntFilters(int filter_BW);
+
+void UpdateBWFilters();
+void SetupMode();

@@ -11,15 +11,15 @@ extern int IQChoice;
 //-------------------------------------------------------------------------------------------------------------
 
 int CalibrateOptions(int IQChoice);
-int CWOptions();
-int SpectrumOptions();
-int AGCOptions();
-int IQOptions();
-int EqualizerRecOptions();
-int EqualizerXmtOptions();
-int MicGainSet();
-int MicOptions();
-int RFOptions();
-int VFOSelect();
-int EEPROMOptions();
+void CWOptions();
+void SpectrumOptions();
+void AGCOptions();
+void IQOptions();
+void EqualizerRecOptions();
+void EqualizerXmtOptions();
+void MicGainSet();
+void MicOptions();
+void RFOptions();
+void VFOSelect();
+void EEPROMOptions();
 int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart);

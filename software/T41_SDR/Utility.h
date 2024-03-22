@@ -36,14 +36,14 @@ float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature);
 float ApproxAtan(float z);
 void SaveAnalogSwitchValues();
 void DisplayClock();
-void SetupMode(int sideBand);
 void SetBand();
 int SDPresentCheck();
 void ShowTempAndLoad();
 
-void MyDelay(unsigned long millisWait);
 void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp);
 
 void FormatFrequency(long freq, char *freqBuffer);
 
 float TGetTemp();
+
+int  SetI2SFreq(int freq);

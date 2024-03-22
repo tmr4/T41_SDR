@@ -209,14 +209,16 @@ void Dit();
     void
 *****/
 void SelectCWFilter() {
+  int temp = CWFilterIndex;
+
   CWFilterIndex = SubmenuSelect(CWFilter, 6, 0);
 
-  // Clear the current CW filter graphics and then restore the bandwidth indicator bar
-  tft.writeTo(L2);
-  tft.clearMemory();
-  tft.writeTo(L1);
-  ShowBandInfo();
-  DrawBandwidthBar();
+  if(temp != CWFilterIndex) {
+    ShowOperatingStats();
+    if (xmtMode == CW_MODE) {
+      UpdateCWFilter();
+    }
+  }
 }
 
 /*****
@@ -294,7 +296,7 @@ void DoCWReceiveProcessing() {
   CAUTION: Assumes that a global named ditLength holds the value for dit spacing
 *****/
 void LetterSpace() {
-  MyDelay(3UL * ditLength);
+  delay(3UL * ditLength);
 }
 
 /*****
@@ -309,7 +311,7 @@ void LetterSpace() {
   CAUTION: Assumes that a global named ditLength holds the value for dit spacing
 *****/
 void WordSpace() {
-  MyDelay(7UL * ditLength);
+  delay(7UL * ditLength);
 }
 
 /*****

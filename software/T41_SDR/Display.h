@@ -9,15 +9,25 @@
 #define PIXELS_PER_EQUALIZER_DELTA   10           // Number of pixels per detent of encoder for equalizer changes
 #define PIXELS_PER_AUDIO_DELTA       10
 
-#define SPECTRUM_LEFT_X       3            // Used to plot left edge of spectrum display  AFP 12-14-21
-#define WATERFALL_LEFT_X      SPECTRUM_LEFT_X
-#define SPECT_RES_92          512/92000
-
-#define CLIP_AUDIO_PEAK       115           // The pixel value where audio peak overwrites S-meter
+#define SPECTRUM_LEFT_X       1            // Used to plot left edge of spectrum display  AFP 12-14-21
 #define SPECTRUM_RES          512
 #define SPECTRUM_TOP_Y        100           // Start of spectrum plot space
 #define SPECTRUM_HEIGHT       150           // This is the pixel height of spectrum plot area without disturbing the axes
-#define SPECTRUM_BOTTOM       (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 3)        // 247 = 100 + 150 - 3
+//#define SPECTRUM_BOTTOM       (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 3)        // 247 = 100 + 150 - 3
+#define SPECTRUM_BOTTOM       SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 1 // 247 = 100 + 150 - 3
+
+#define FREQUENCY_X           5
+#define FREQUENCY_Y           45
+#define FREQUENCY_X_SPLIT     280
+
+#define WATERFALL_LEFT_X      SPECTRUM_LEFT_X
+#define SPECT_RES_92          512/92000
+
+#define SPEC_BOX_L            SPECTRUM_LEFT_X - 1
+#define SPEC_BOX_T            SPECTRUM_TOP_Y - 1
+#define SPEC_BOX_W            SPECTRUM_RES + 2
+#define SPEC_BOX_H            SPECTRUM_HEIGHT + 2
+
 #define MAX_WATERFALL_WIDTH   512           // Pixel width of waterfall
 #define MAX_WATERFALL_ROWS    170           // Waterfall rows
 
@@ -35,12 +45,24 @@
 #define AUDIO_SPEC_BOX_H      118
 #define AUDIO_SPEC_BOTTOM     SPECTRUM_BOTTOM
 
-#define OPERATION_STATS_X     130
+#define CLIP_AUDIO_PEAK       115           // The pixel value where audio peak overwrites S-meter
+
+#define OPERATION_STATS_L     5
+#define OPERATION_STATS_T     FREQUENCY_Y + 30
+#define OPERATION_STATS_W     SPEC_BOX_W - OPERATION_STATS_L
+#define OPERATION_STATS_H     
+
+#define OPERATION_STATS_CF    100 // center frequency
+#define OPERATION_STATS_BD    180 // band
+#define OPERATION_STATS_MD    220 // mode
+#define OPERATION_STATS_CWF   245 // CW filter
+#define OPERATION_STATS_DMD   310 // demod mode
+#define OPERATION_STATS_PWR   405 // power level
 
 #define X_R_STATUS_X          730
 #define X_R_STATUS_Y          70
 
-#define SMETER_X              WATERFALL_RIGHT_X + 16
+#define SMETER_X              WATERFALL_RIGHT_X + 15
 #define SMETER_Y              YPIXELS * 0.22                // 480 * 0.22 = 106
 #define SMETER_BAR_HEIGHT     18
 #define SMETER_BAR_LENGTH     180
@@ -50,9 +72,6 @@
 #define FILTER_PARAMETERS_X   (XPIXELS * 0.22)
 #define FILTER_PARAMETERS_Y   (YPIXELS * 0.213)
 #define DEFAULT_EQUALIZER_BAR 100                                         // Default equalizer bar height
-#define FREQUENCY_X           5
-#define FREQUENCY_Y           45
-#define FREQUENCY_X_SPLIT     280
 #define VFO_A                 0
 #define VFO_B                 1
 #define VFO_SPLIT             2
@@ -93,7 +112,6 @@
 #define TFT_SCLK                    13
 #define TFT_RST                     255
 
-extern int filterWidth;
 extern int centerLine;
 
 extern int16_t pixelCurrent[SPECTRUM_RES];
@@ -123,30 +141,40 @@ extern int newSpectrumFlag;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void DrawAudioSpectContainer();
+// static items
 void ShowName();
-void ShowSpectrum();
-void ShowBandwidth();
-void DrawSMeterContainer();
-void ShowSpectrumdBScale();
-void DrawSpectrumDisplayContainer();
-void DrawFrequencyBarValue();
-void ShowAnalogGain();
-void BandInformation();
+void DrawSpectrumFrame();
+//void DrawSMeterContainer();
+//void DrawAudioSpectContainer();
+
+void DrawStaticDisplayItems();
+
+// mainly updated each loop during call to ShowSpectrum
 void ShowFrequency();
-void DisplaydbM(float32_t audioMaxSquaredAve);
-void MyDrawFloat(float val, int decimals, int x, int y, char *buff);
+void ShowOperatingStats();
+void ShowSpectrumFreqValues();
+void DrawSmeterBar(float32_t audioMaxSquaredAve);
+void DrawBandwidthBar();
+void ShowBandwidthBarValues();
+
+// 
+void ShowSpectrumdBScale();
+void ShowAnalogGain();
+void ShowTransmitReceiveStatus();
+void SetZoom();
+void ShowCurrentPowerSetting();
+
+void ShowSpectrum();
+void UpdateCWFilter();
+
 void RedrawDisplayScreen();
-void DrawBandWidthIndicatorBar();
+
+// erase various portions of the screen
 void EraseSpectrumDisplayContainer();
 void EraseMenus();
 void ErasePrimaryMenu();
 void EraseSecondaryMenu();
-void ShowTransmitReceiveStatus();
-
-void SetZoom();
 void EraseSpectrumWindow();
 
-int  SetI2SFreq(int freq);
-
+void MyDrawFloat(float val, int decimals, int x, int y, char *buff);
 void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, int width);

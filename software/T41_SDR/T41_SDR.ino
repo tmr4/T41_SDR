@@ -129,28 +129,34 @@ float gain_dB = 0.0; //computed desired gain value in dB
 boolean use_HP_filter = true; //enable the software HP filter to get rid of DC?
 float knee_dBFS, comp_ratio, attack_sec, release_sec;
 
-struct band bands[NUMBER_OF_BANDS] = {
-//freq    band low   band hi   name    mode      Low    Hi  Gain  type    gain  AGC   pixel
-//                                             filter filter             correct     offset
 //DB2OO, 29-AUG-23: take ITU_REGION into account for band limits
 // and changed "gainCorrection" to see the correct dBm value on all bands.
 // Calibration done with TinySA as signal generator with -73dBm levels (S9) at the FT8 frequencies
 // with V010 QSD with the 12V mod of the pre-amp
-#if defined(ITU_REGION) && ITU_REGION == 1
-  3700000, 3500000, 3800000, "80M", DEMOD_LSB, -200, -3000, 1, HAM_BAND, -2.0, 20, 20,
-  7150000, 7000000, 7200000, "40M", DEMOD_LSB, -200, -3000, 1, HAM_BAND, -2.0, 20, 20,
-#elif defined(ITU_REGION) && ITU_REGION == 2
-  3700000, 3500000, 4000000, "80M", DEMOD_LSB, -200, -3000, 1, HAM_BAND, -2.0, 20, 20,
-  7150000, 7000000, 7300000, "40M", DEMOD_LSB, -200, -3000, 1, HAM_BAND, -2.0, 20, 20,
-#elif defined(ITU_REGION) && ITU_REGION == 3
-  3700000, 3500000, 3900000, "80M", DEMOD_LSB, -200, -3000, 1, HAM_BAND, -2.0, 20, 20,
-  7150000, 7000000, 7200000, "40M", DEMOD_LSB, -200, -3000, 1, HAM_BAND, -2.0, 20, 20,
-#endif
-  14200000, 14000000, 14350000, "20M", DEMOD_USB, 3000, 200, 1, HAM_BAND, 2.0, 20, 20,
-  18100000, 18068000, 18168000, "17M", DEMOD_USB, 3000, 200, 1, HAM_BAND, 2.0, 20, 20,
-  21200000, 21000000, 21450000, "15M", DEMOD_USB, 3000, 200, 1, HAM_BAND, 5.0, 20, 20,
-  24920000, 24890000, 24990000, "12M", DEMOD_USB, 3000, 200, 1, HAM_BAND, 6.0, 20, 20,
-  28350000, 28000000, 29700000, "10M", DEMOD_USB, 3000, 200, 1, HAM_BAND, 8.5, 20, 20
+// *** seems it would be better to treat hi/low filter values as absolute; changing this is a lot of work though ***
+struct band bands[NUMBER_OF_BANDS] = {
+//  freq      band low   band hi   name    mode         Hi   Low     Gain  type         gain     AGC   pixel
+//                                                       filter                         correct        offset
+#if defined(ITU_REGION) && ITU_REGION == 1                                                             
+    3700000,  3500000,   3800000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
+    7150000,  7000000,   7200000,  "40M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
+#elif defined(ITU_REGION) && ITU_REGION == 2                                                                    
+    3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
+    7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
+
+    //3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  3000, 200,  1,    HAM_BAND,    -2.0,    20,    20,
+    //7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  3000, 200,  1,    HAM_BAND,    -2.0,    20,    20,
+    //3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  200, 3000,  1,    HAM_BAND,    -2.0,    20,    20,
+    //7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  200, 3000,  1,    HAM_BAND,    -2.0,    20,    20,
+#elif defined(ITU_REGION) && ITU_REGION == 3                                                                    
+    3700000,  3500000,   3900000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
+    7150000,  7000000,   7200000,  "40M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
+#endif                                                                                                        
+    14200000, 14000000, 14350000,  "20M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    2.0,     20,    20,
+    18100000, 18068000, 18168000,  "17M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    2.0,     20,    20,
+    21200000, 21000000, 21450000,  "15M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    5.0,     20,    20,
+    24920000, 24890000, 24990000,  "12M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    6.0,     20,    20,
+    28350000, 28000000, 29700000,  "10M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    8.5,     20,    20
 };
 
 uint32_t FFT_length = FFT_LENGTH;
@@ -238,7 +244,7 @@ Bounce KeyPin1 = Bounce(KEYER_DIT_INPUT_TIP, 5);
 
 Rotary volumeEncoder = Rotary(VOLUME_ENCODER_A, VOLUME_ENCODER_B);        //( 2,  3)
 Rotary tuneEncoder = Rotary(TUNE_ENCODER_A, TUNE_ENCODER_B);              //(16, 17)
-Rotary filterEncoder = Rotary(FILTER_ENCODER_A, FILTER_ENCODER_B);        //(15, 14)
+Rotary menuChangeEncoder = Rotary(FILTER_ENCODER_A, FILTER_ENCODER_B);        //(15, 14)
 Rotary fineTuneEncoder = Rotary(FINETUNE_ENCODER_A, FINETUNE_ENCODER_B);  //( 4,  5)
 
 Si5351 si5351;
@@ -325,7 +331,7 @@ int bandswitchPins[] = {
   0,   // 12M  Note that 12M and 10M both use the 10M filter, which is always in (no relay).  KF5N September 27, 2023.
   0    // 10M
 };
-volatile int filterEncoderMove = 0;
+volatile int menuEncoderMove = 0;
 volatile long fineTuneEncoderMove = 0L;
 int xrState;  // T41 xmit/rec state: 1 = rec, 0 = xmt *** this seems duplicate ***
 
@@ -474,7 +480,7 @@ void InitializeDataArrays() {
   /****************************************************************************************
      set filter bandwidth
   ****************************************************************************************/
-  // *** this is going to get done in call to FilterBandwidth() in setup.  Do we really need it here as well? ***
+  // *** this is going to get done in call to CalcFilters() in setup.  Do we really need it here as well? ***
   CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SampleRate / DF);
 
   /****************************************************************************************
@@ -532,8 +538,6 @@ void InitializeDataArrays() {
   for (int i = 0; i < 5; i++) {                                                     // fill coefficients into the right file
     biquad_lowpass1_coeffs[i] = coefficient_set[i];
   }
-
-  ShowBandwidth();
 
   /****************************************************************************************
      Initiate decimation and interpolation FIR filters
@@ -706,12 +710,64 @@ void Splash() {
   tft.setCursor(centerTxt, line7_Y);
   tft.print(MY_CALL);
 
-  MyDelay(SPLASH_DELAY);
+  delay(1000);
+  //delay(SPLASH_DELAY);
   tft.fillWindow(RA8875_BLACK);
 }
 
-//===============================================================================================================================
-//==========================  Setup ================================
+/*****
+  Purpose: perform a soft reset of the radio
+              This resets the user modifiable radio settings to the startup state
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+void SoftReset() {
+  // can't use any working variables until after this, we can get rid of this when we use EEPROMData
+  LoadOpVars();
+
+  SetKeyPowerUp();  // Use keyType and paddleFlip to configure key GPIs
+  SetDitLength(currentWPM);
+  SetTransmitDitLength(currentWPM);
+  CWFreqShift = 750;
+  calFreqShift = 0;
+  menuEncoderMove = 0;
+  fineTuneEncoderMove = 0L;
+  xrState = RECEIVE_STATE;  // Enter loop() in receive state
+
+  mainMenuIndex = 0;             // Changed from middle to first. Do Menu Down to get to Calibrate quickly
+  secondaryMenuIndex = -1;       // -1 means haven't determined secondary menu
+  menuStatus = NO_MENUS_ACTIVE;  // Blank menu field
+
+  knee_dBFS = -15.0;   // Is this variable actually used???
+  comp_ratio = 5.0;
+  attack_sec = .1;
+  release_sec = 2.0;
+  comp1.setPreGain_dB(-10);  //set the gain of the Left-channel gain processor
+  comp2.setPreGain_dB(-10);  //set the gain of the Right-channel gain processor
+
+  // set T41 last state different from radio state indicating a state change
+  // so receiver will be configured on the first pass through loop()
+  lastState = -1;
+
+  // the following items in addition to the radio state change
+  // are sufficient to fully draw the display
+  DrawStaticDisplayItems();
+  ShowOperatingStats();
+  ShowSpectrumdBScale();
+  ShowBandwidthBarValues();
+  UpdateInfoBox();
+
+  AGCPrep(); // no audio without this unless AGC is off
+
+  NCOFreq = 0;
+  ResetTuning();
+  SetBandRelay(HIGH);
+}
+
 /*****
   Purpose: program entry point that sets the environment for program
 
@@ -722,17 +778,6 @@ void Splash() {
     void
 *****/
 void setup() {
-  float32_t pixel_per_khz;
-
-  // can't use any working variables until after this, we can get rid of this when we use EEPROMData
-  LoadOpVars();
-
-  pixel_per_khz = ((1 << spectrum_zoom) * SPECTRUM_RES * 1000.0 / SampleRate);
-
-  // initialize some externs
-  filterWidth = (int)((bands[currentBand].FHiCut - bands[currentBand].FLoCut) / 1000.0 * pixel_per_khz);
-
-
   Serial.begin(9600);
 
   setSyncProvider(getTeensy3Time);  // get TIME from real time clock with 3V backup battery
@@ -799,9 +844,9 @@ void setup() {
   volumeEncoder.begin(true);
   attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_A), EncoderVolume, CHANGE);
   attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_B), EncoderVolume, CHANGE);
-  filterEncoder.begin(true);
-  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_A), EncoderFilter, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_B), EncoderFilter, CHANGE);
+  menuChangeEncoder.begin(true);
+  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_A), EncoderMenuChangeFilter, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_B), EncoderMenuChangeFilter, CHANGE);
   fineTuneEncoder.begin(true);
   attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_A), EncoderFineTune, CHANGE);
   attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_B), EncoderFineTune, CHANGE);
@@ -812,23 +857,18 @@ void setup() {
   tft.setRotation(0);
 
   // Setup for scrolling attributes. Part of initSpectrum_RA8875() call written by Mike Lewis
-  tft.useLayers(true);  // mainly used to turn on layers
-  tft.layerEffect(OR);
-  tft.clearMemory();
+  tft.useLayers(true); // mainly used to turn on layers
+  tft.layerEffect(OR); // overlay layers
   tft.writeTo(L2);
   tft.clearMemory();
   tft.writeTo(L1);
+  tft.clearMemory();
 
   Splash();
 
   sdCardPresent = InitializeSDCard();  // Is there an SD card that can be initialized?
 
-  // =============== EEPROM section =================
-
   EEPROMStartup();
-
-  // can't use any working variables until after this
-  LoadOpVars(); // v049.2K did this; T41EEE does not
 
 #ifdef DEBUG
   EEPROMShow();
@@ -839,76 +879,25 @@ void setup() {
 
   Q_in_L.begin();  //Initialize receive input buffers
   Q_in_R.begin();
-  MyDelay(100L);
-
-
-  // ========================  End set up of Parameters from EEPROM data ===============
-  NCOFreq = 0;
+  delay(100L);
 
   /****************************************************************************************
      start local oscillator Si5351
   ****************************************************************************************/
-  si5351.reset();                                                                // KF5N.  Moved Si5351 start-up to setup. JJP  7/14/23
-  si5351.init(SI5351_CRYSTAL_LOAD_10PF, Si_5351_crystal, freqCorrectionFactor);  //JJP  7/14/23
-  si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);                                //  Allows CLK1 and CLK2 to exceed 100 MHz simultaneously.
-  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);                          //AFP 10-13-22
-  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);                          //CWP AFP 10-13-22
-
-  //if (xmtMode == CW_MODE && decoderFlag == OFF) {
-  //  decoderFlag = OFF;  // JJP 7/1/23
-  //} else {
-  //  decoderFlag = ON;  // Turns decoder on JJP 7/1/23
-  //}
-
-//  TxRxFreq = centerFreq + NCOFreq;
+  si5351.reset();
+  si5351.init(SI5351_CRYSTAL_LOAD_10PF, Si_5351_crystal, freqCorrectionFactor);
+  si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB); //  Allows CLK1 and CLK2 to exceed 100 MHz simultaneously.
+  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);
+  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);
 
   InitializeDataArrays();
 
-  SetupMode(bands[currentBand].mode);
-
-// incorporated below. *** Make sure float_32 vs float is ok ***
-//  float32_t theta = 0.0;              //AFP 10-25-22
-//  for (int kf = 0; kf < 255; kf++) {  //Calc sine wave
-//    theta = kf * 0.19634950849362;    // Simplify terms: theta = kf * 2 * PI * freqSideTone / 24000  JJP 6/28/23
-//    sinBuffer[kf] = sin(theta);
-//  }
   sineTone(BUFFER_SINE_COUNT);  // Set to 8
 
-  SetKeyPowerUp();  // Use keyType and paddleFlip to configure key GPIs.  KF5N August 27, 2023
-  SetDitLength(currentWPM);
-  SetTransmitDitLength(currentWPM);
-  CWFreqShift = 750;
-  calFreqShift = 0;
-  filterEncoderMove = 0;
-  fineTuneEncoderMove = 0L;
-  xrState = RECEIVE_STATE;  // Enter loop() in receive state.  KF5N July 22, 2023
-  UpdateInfoBox();
-  DrawSpectrumDisplayContainer();
-  RedrawDisplayScreen();
-
-  mainMenuIndex = 0;             // Changed from middle to first. Do Menu Down to get to Calibrate quickly
-  secondaryMenuIndex = -1;       // -1 means haven't determined secondary menu
-  menuStatus = NO_MENUS_ACTIVE;  // Blank menu field
-  ShowName();
-
-  ShowBandwidth();
-  FilterBandwidth();
-//  ShowFrequency();
-//  SetFreq();
-  ResetTuning();
-  SetZoom();
-  knee_dBFS = -15.0;   // Is this variable actually used???
-  comp_ratio = 5.0;
-  attack_sec = .1;
-  release_sec = 2.0;
-  comp1.setPreGain_dB(-10);  //set the gain of the Left-channel gain processor
-  comp2.setPreGain_dB(-10);  //set the gain of the Right-channel gain processor
-
   sdCardPresent = SDPresentCheck();
-  lastState = 1111;                  // To make sure the receiver will be configured on the first pass through.  KF5N September 3, 2023
+
+  SoftReset();
 }
-//============================================================== END setup() =================================================================
-//===============================================================================================================================
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
 
@@ -953,17 +942,16 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
   if(xmtMode == CW_MODE && (digitalRead(paddleDit) == HIGH && digitalRead(paddleDah) == HIGH)) {
     radioState = CW_RECEIVE_STATE;  // Was using symbolic constants. Also changed in code below.  KF5N August 8, 2023
   }
-  if(xmtMode == CW_MODE && (digitalRead(paddleDit) == LOW && xmtMode == CW_MODE && keyType == 0)) {
+  if(xmtMode == CW_MODE && (digitalRead(paddleDit) == LOW && keyType == 0)) {
     radioState = CW_TRANSMIT_STRAIGHT_STATE;
   }
-  if(xmtMode == CW_MODE && (keyPressedOn == 1 && xmtMode == CW_MODE && keyType == 1)) {
+  if(xmtMode == CW_MODE && (keyPressedOn == 1 && keyType == 1)) {
     radioState = CW_TRANSMIT_KEYER_STATE;
   }
 
   if(lastState != radioState) {
     SetFreq();  // Update frequencies if the radio state has changed.
   }
-  //lastState = radioState;  // G0ORX 01092023
 
   //  Begin radio state machines
 
@@ -971,7 +959,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
 
   switch (radioState) {
     case (SSB_RECEIVE_STATE):
-      if (lastState != radioState) {  // G0ORX 01092023
+      if (lastState != radioState) {
         digitalWrite(MUTE, LOW);      // Audio Mute off
         modeSelectInR.gain(0, 1);
         modeSelectInL.gain(0, 1);
@@ -994,7 +982,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
         ShowTransmitReceiveStatus();
       }
       ShowSpectrum();
-      //MyDelay(150);
+      //delay(150);
       break;
     case SSB_TRANSMIT_STATE:
       Q_in_L.end();  //Set up input Queues for transmit
@@ -1061,7 +1049,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
         keyPressedOn = 0;
       }
       ShowSpectrum();  // if removed CW signal on is 2 mS
-      //MyDelay(150);
+      //delay(150);
       break;
     case CW_TRANSMIT_STRAIGHT_STATE:
       powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
@@ -1188,11 +1176,10 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
   }
 
   //  End radio state machine
-  if (lastState != radioState) {  // G0ORX 09012023
+  if (lastState != radioState) {
     lastState = radioState;
     ShowTransmitReceiveStatus();
   }
-  //  ShowTransmitReceiveStatus();
 
 
   if (elapsed_micros_idx_t > (SampleRate / 960)) {
@@ -1208,5 +1195,4 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
 #ifdef DEBUG_LOOP
   ExitLoop();
 #endif
-
 }

@@ -19,17 +19,11 @@ int32_t subMenuMaxOptions;           // holds the number of submenu options
 int8_t menuStatus = NO_MENUS_ACTIVE;
 
 const char *topMenus[] = { "CW Options", "RF Set", "VFO Select",
-                           "EEPROM", "AGC", "Spectrum Options",
-                           "Noise Floor", "Mic Gain", "Mic Comp",
+                           "EEPROM", "AGC", "Spectrum Options", "Mic Gain", "Mic Comp",
                            "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing", "Cancel" };
 
-int (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
-                           &EEPROMOptions, &AGCOptions, &SpectrumOptions,
-#if USE_LIVE_NOISE_FLOOR
-                           &ToggleLiveNoiseFloorFlag, &MicGainSet, &MicOptions,
-#else
-                           &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
-#endif
+void (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
+                           &EEPROMOptions, &AGCOptions, &SpectrumOptions, &MicGainSet, &MicOptions,
                            &EqualizerRecOptions, &EqualizerXmtOptions, &IQOptions, &BearingMaps, &Cancel };
 
 const char *secondaryChoices[][8] = {
@@ -39,7 +33,6 @@ const char *secondaryChoices[][8] = {
   /* EEPROM */ { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite", "EEPROM-->SD", "SD-->EEPROM", "SD Dump", "Cancel" },
   /* AGC */ { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" },
   /* Spectrum Options */ { "20 dB/unit", "10 dB/unit", " 5 dB/unit", " 2 dB/unit", " 1 dB/unit", "Cancel" },
-  /* Noise Floor */ { "Set floor", "Cancel" },
   /* Mic Gain */ { "Set Mic Gain", "Cancel" },
   /* Mic Comp */ { "On", "Off", "Set Threshold", "Set Ratio", "Set Attack", "Set Decay", "Cancel" },
   /* EQ Rec Set */ { "On", "Off", "EQSet", "Cancel" },
@@ -49,7 +42,7 @@ const char *secondaryChoices[][8] = {
   /* Cancel */ { "" }
 };
 
-const int secondaryMenuCount[] {7, 3, 4, 8, 6, 6, 2, 2, 7, 4, 4, 6, 2, 1};
+const int secondaryMenuCount[] {7, 3, 4, 8, 6, 6, 2, 7, 4, 4, 6, 2, 1};
 
 int receiveEQFlag;
 int xmitEQFlag;
@@ -58,8 +51,7 @@ int xmitEQFlag;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-int Cancel() {
-  return 0;
+void Cancel() {
 }
 
 /*****
@@ -174,11 +166,11 @@ int SetPrimaryMenuIndex() {
 
   while (true) {
 
-    if (filterEncoderMove != 0) {             // Did they move the encoder?
+    if (menuEncoderMove != 0) {             // Did they move the encoder?
       tft.setTextColor(RA8875_WHITE);         // Yep. Repaint the old choice
       tft.setCursor(10, mainMenuIndex * 25 + 115);
       tft.print(topMenus[mainMenuIndex]);
-      mainMenuIndex += filterEncoderMove;     // Change the menu index to the new value
+      mainMenuIndex += menuEncoderMove;     // Change the menu index to the new value
       if (mainMenuIndex >= TOP_MENU_COUNT) {  // Did they go past the end of the primary menu list?
         mainMenuIndex = 0;                    // Yep. Set to start of the list.
       } else {
@@ -199,10 +191,10 @@ int SetPrimaryMenuIndex() {
       }
       tft.setCursor(300, i * 25 + 115);
       tft.print(secondaryChoices[mainMenuIndex][i]);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
     val = ReadSelectedPushButton();  // Read the ladder value
-    MyDelay(150L);
+    delay(150L);
     if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {      // Did they press Select?
       val = ProcessButtonPress(val);                                          // Use ladder value to get menu choice
       if (val > -1) {                                                         // Valid choice?
@@ -211,7 +203,7 @@ int SetPrimaryMenuIndex() {
           tft.setTextColor(RA8875_WHITE);
           break;
         }
-        MyDelay(50L);
+        delay(50L);
       }
     }
 
@@ -244,7 +236,7 @@ int SetSecondaryMenuIndex() {
     }
   }
   secondaryMenuIndex = 0;                                   // Change the menu index to the new value
-  filterEncoderMove  = 0;
+  menuEncoderMove  = 0;
   i = 0;
 
   tft.setTextColor(RA8875_GREEN);
@@ -254,11 +246,11 @@ int SetSecondaryMenuIndex() {
   i = 0;
   while (true) {
 
-    if (filterEncoderMove != 0) {  // Did they move the encoder?
+    if (menuEncoderMove != 0) {  // Did they move the encoder?
       tft.setTextColor(DARKGREY);  // Yep. Repaint the old choice
       tft.setCursor(300, oldIndex * 25 + 115);
       tft.print(secondaryChoices[mainMenuIndex][oldIndex]);
-      i += filterEncoderMove;  // Change the menu index to the new value
+      i += menuEncoderMove;  // Change the menu index to the new value
      
       if (i == secondaryMenuCount) {  // Did they go past the end of the primary menu list?
         i = 0;                        // Yep. Set to start of the list.
@@ -271,10 +263,10 @@ int SetSecondaryMenuIndex() {
       tft.setTextColor(RA8875_GREEN);
       tft.setCursor(300, i * 25 + 115);
       tft.print(secondaryChoices[mainMenuIndex][i]);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
     val = ReadSelectedPushButton();  // Read the ladder value
-    MyDelay(200L);
+    delay(200L);
     if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
       val = ProcessButtonPress(val);  // Use ladder value to get menu choice
       if (val > -1) {                 // Valid choice?
@@ -283,7 +275,7 @@ int SetSecondaryMenuIndex() {
           secondaryMenuIndex = oldIndex;
           break;
         }
-        MyDelay(50L);
+        delay(50L);
       }
     }
   }  // End while True

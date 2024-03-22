@@ -12,4 +12,4 @@ extern long TxRxFreq;
 void SetFreqCal(void);
 void ResetTuning();
 void SetFreq();
-int DoSplitVFO();
+void DoSplitVFO();

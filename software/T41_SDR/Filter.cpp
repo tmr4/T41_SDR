@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "ButtonProc.h"
 #include "Display.h"
 #include "EEPROM.h"
 #include "Filter.h"
@@ -11,6 +12,8 @@
 
 #define IIR_ORDER 8
 #define IIR_NUMSTAGES (IIR_ORDER / 2)
+
+int nfmFilterBW = 12000;
 
 uint32_t m_NumTaps = (FFT_LENGTH / 2) + 1;
 float32_t recEQ_LevelScale[14];
@@ -232,26 +235,28 @@ void DoExciterEQ() {
 }
 
 /*****
-  Purpose: void FilterBandwidth()  Parameter list:
+  Purpose: calculates decimation, interpolation and audio filters  
+  
+  Parameter list:
     void
+  
   Return value;
     void
 *****/
-void FilterBandwidth() {
-  //AudioNoInterrupts(); // these cause clicking when adjusting audio filters
+void CalcFilters() {
+  if (bands[currentBand].mode == DEMOD_NFM && nfmBWFilterActive) {
 
-  CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SampleRate / DF);
-  InitFilterMask();
+  } else {
+    CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SampleRate / DF);
+    InitFilterMask();
 
-  for (int i = 0; i < 5; i++) {
-    biquad_lowpass1_coeffs[i] = coefficient_set[i];
+    for (int i = 0; i < 5; i++) {
+      biquad_lowpass1_coeffs[i] = coefficient_set[i];
+    }
+
+    // and adjust decimation and interpolation filters
+    SetDecIntFilters();
   }
-
-  // and adjust decimation and interpolation filters
-  SetDecIntFilters();
-  ShowBandwidth();
-  MyDelay(1L);
-  //AudioInterrupts();
 }
 
 /*****
@@ -291,33 +296,86 @@ void InitFilterMask() {
 
 /*****
   Purpose: void control_filter_f()
+
   Parameter list:
     void
+
   Return value;
     void
 *****/
-void ControlFilterF() {
+void UpdateBWFilters() {
   // low Fcut must never be larger than high Fcut and vice versa
 
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
-      if (bands[currentBand].FLoCut < 0) bands[currentBand].FLoCut = 100;
+      if (bands[currentBand].FLoCut < 0) bands[currentBand].FLoCut = 200;
       break;
 
     case DEMOD_LSB:
-      if (bands[currentBand].FHiCut > 0) bands[currentBand].FHiCut = -100;
+      if (bands[currentBand].FHiCut > 0) bands[currentBand].FHiCut = -200;
       break;
 
     case DEMOD_AM:
-    case DEMOD_NFM:
     case DEMOD_SAM:
       bands[currentBand].FLoCut = - bands[currentBand].FHiCut;
       break;
 
-    case DEMOD_IQ:
-      bands[currentBand].FLoCut = - bands[currentBand].FHiCut;
+    case DEMOD_NFM:
+      if (bands[currentBand].FLoCut < 0) bands[currentBand].FLoCut = 200;
+      //if(nfmBWFilterActive) {
+      //  nfmFilterBW = 0;
+      //} else {
+      //  // could have FLoCut be adjustable as well with three filter button presses
+      //  // but should have an idication of which is active, perhaps by color
+      //  //bands[currentBand].FLoCut = - bands[currentBand].FHiCut;
+      //}
       break;
   }
+
+  CalcFilters();
+}
+
+/*****
+  Purpose: changes audio filters appropriate for the current demod mode and calculates new filters based on BW
+           *** evaluate using just high/low audio filters, without changing back and forth; lilely big code change ***
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void SetupMode() {
+  int temp;
+
+  switch(bands[currentBand].mode) {
+    case DEMOD_USB:
+      temp = bands[currentBand].FHiCut;
+      bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
+      bands[currentBand].FLoCut = -temp;
+      break;
+    
+    case DEMOD_LSB:
+      temp = bands[currentBand].FHiCut;
+      bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
+      bands[currentBand].FLoCut = -temp;
+      break;
+
+    case DEMOD_AM:
+      bands[currentBand].FHiCut =  -bands[currentBand].FLoCut;
+      break;
+
+    case DEMOD_NFM:
+      //temp = min(abs(bands[currentBand].FHiCut), abs(bands[currentBand].FLoCut));
+      bands[currentBand].FHiCut = max(abs(bands[currentBand].FHiCut), abs(bands[currentBand].FLoCut));
+      bands[currentBand].FLoCut = 200;
+      break;
+
+    default:
+      break;
+  }
+
+  CalcFilters();
 }
 
 /*****
@@ -363,9 +421,9 @@ void SetDecIntFilters() {
 void SetDecIntFilters(int filter_BW) {
   int LP_F_help = filter_BW;
 
-  if (LP_F_help > 10000) {
-    LP_F_help = 10000;
-  }
+  //if (LP_F_help > 10000) {
+  //  LP_F_help = 10000;
+  //}
 
   CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate));
   CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));

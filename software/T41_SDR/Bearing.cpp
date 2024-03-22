@@ -605,7 +605,7 @@ void DrawKeyboard() {
   tft.drawRect(30, 150, 730, 280, RA8875_WHITE);  // Draw frame
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
 
-  MyDelay(100L);
+  delay(100L);
   row = 160;
   xOffset = 50;
   keyCell = 0;
@@ -706,12 +706,12 @@ void CaptureKeystrokes() {
   DrawActiveLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
   while (true) {
     valPin = ReadSelectedPushButton();  // Poll UI push buttons
-    MyDelay(150L);
+    delay(150L);
     if (valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
       pushButtonSwitchIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
       switch (pushButtonSwitchIndex) {
         case MENU_OPTION_SELECT:  // They selected a letter
-          MyDelay(150L);
+          delay(150L);
           if (row < 240) {
             keyboardBuffer[bufferIndex] = whichLetterIndex;
           } else {
@@ -727,7 +727,7 @@ void CaptureKeystrokes() {
           if (row <= 155)   // Trying to go up above numerics
             break;
           DrawNormalLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
-          MyDelay(150L);
+          delay(150L);
           row -= 60;
           if (row < 240) {          // Move up to number line
             whichLetterIndex = 53;  // Move to 5
@@ -1076,7 +1076,7 @@ void bmpDraw(const char *filename, int x, int y) {
 
   if (!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
-    MyDelay(2000L);  // Given them time to read it.
+    delay(2000L);  // Given them time to read it.
     return;
   }
   // Open requested file on SD card
@@ -1427,12 +1427,12 @@ int InitializeSDCard() {
   tft.setCursor(100, 240);
   if (!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
-    MyDelay(2000L);  // Given them time to read it.
+    delay(2000L);  // Given them time to read it.
     return 0;
   }
 
   //  tft.print("Initializing SD card.");
-  //  MyDelay(2000L);
+  //  delay(2000L);
   return 1;
 }
 
@@ -1478,7 +1478,7 @@ void BearingMaps() {
     tft.setCursor(200, 300);
     tft.setTextColor(RA8875_RED, RA8875_BLACK);
     tft.println("No SD card.");
-    MyDelay(SDCARD_MESSAGE_LENGTH);
+    delay(SDCARD_MESSAGE_LENGTH);
     tft.fillRect(200, 300, tft.getFontWidth() * 12, tft.getFontHeight(), RA8875_BLACK);
     tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
     return;
@@ -1510,7 +1510,7 @@ void BearingMaps() {
       tft.setCursor(200, 200);
       tft.setTextColor(RA8875_RED, RA8875_BLACK);
       tft.println("initialization failed!");
-      MyDelay(2000L);
+      delay(2000L);
       tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
       return;
     }
@@ -1580,7 +1580,7 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
   int i;
   int val;
 
-  MyDelay(100L);
+  delay(100L);
   for (i = 0; i < count; i++) {  // Yep.
     tft.setCursor(50, 55 + i * 30);
     tft.print(ptrMaps[i]);
@@ -1610,7 +1610,7 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
     }
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(100L);
+    delay(100L);
     if (val == MENU_OPTION_SELECT) {  // Make a choice??
       break;                          // Yep.
     }

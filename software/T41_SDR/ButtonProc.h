@@ -3,8 +3,10 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-extern int switchFilterSideband;
+extern bool lowerAudioFilterActive;
 extern int liveNoiseFloorFlag;
+
+extern bool nfmBWFilterActive;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -12,14 +14,12 @@ extern int liveNoiseFloorFlag;
 
 void ButtonMenuDown();
 void ButtonMenuUp();
-void ButtonBandIncrease();
-void ButtonBandDecrease();
+void ButtonBandChange();
 void ButtonZoom();
 void ButtonFilter();
 void ButtonDemodMode();
 void ButtonMode();
 void ButtonNR();
 void ButtonNotchFilter();
-int ButtonSetNoiseFloor();
 void ButtonFrequencyEntry();
-int ToggleLiveNoiseFloorFlag();
+void ToggleLiveNoiseFloorFlag();

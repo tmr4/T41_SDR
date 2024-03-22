@@ -48,7 +48,6 @@
 #define DEMOD_NFM                   3
 #define DEMOD_SAM                   4
 #define DEMOD_MAX                   4
-#define DEMOD_IQ                    5
 #define BUFFER_SIZE                 128
 
 //---- Global Teensy 4.1 Pin assignments
@@ -124,7 +123,7 @@ extern Bounce selectExitMenues;
 
 extern Rotary volumeEncoder;        // (2,  3)
 extern Rotary tuneEncoder;          // (16, 17)
-extern Rotary filterEncoder;        // (14, 15)
+extern Rotary menuChangeEncoder;        // (14, 15)
 extern Rotary fineTuneEncoder;  // (4,  5);
 
 extern Si5351 si5351;
@@ -166,7 +165,7 @@ struct band {
   int FLoCut;
   int RFgain;
   uint8_t band_type;
-  float32_t gainCorrection; // is hardware dependent and has to be calibrated ONCE and hardcoded in the table below
+  float32_t gainCorrection; // is hardware dependent and has to be calibrated ONCE and hardcoded in the band table
   int AGC_thresh;
   int16_t pixel_offset;
 };
@@ -176,7 +175,7 @@ extern uint8_t T41State;
 extern const uint16_t n_dec1_taps;
 extern const uint16_t n_dec2_taps;
 extern int bandswitchPins[];
-extern volatile int filterEncoderMove;
+extern volatile int menuEncoderMove;
 extern volatile long fineTuneEncoderMove;
 extern const float32_t DF;
 extern const float32_t DF1;           // decimation factor
