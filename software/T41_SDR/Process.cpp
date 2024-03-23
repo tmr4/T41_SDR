@@ -360,11 +360,11 @@ void ProcessIQData() {
       // process audio frequency spectrum only at the beginning of the show spectrum process
       if (updateDisplayFlag == 1) {
         for (int k = 0; k < 1024; k++) {
-          audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
+          audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
         for (int k = 0; k < 256; k++) {
           if (bands[currentBand].mode == 0  || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
-            audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1024 - k] + audioSpectBuffer[1024 - k + 1] + audioSpectBuffer[1024 - k + 2]) / 3), 0, 100, 0, 120);
+            audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
           }
           else {
             if (bands[currentBand].mode == 1) {
@@ -375,7 +375,7 @@ void ProcessIQData() {
             audioYPixel[k] = 0;
           }
         }
-        arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared abin magnitued in audio
+        arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared bin magnitued in audio
         audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
       }
 
@@ -522,16 +522,16 @@ void ProcessIQData() {
       // process audio frequency spectrum only at the beginning of the show spectrum process
       if (updateDisplayFlag == 1) {
         for (int k = 0; k < 1024; k++) {
-          audioSpectBuffer[1024 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
+          audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
         for (int k = 0; k < 256; k++) {
-          // a spectrum offset of 25 give about the same magnitude signal peak as seen in the AM modes
-          audioYPixel[k] = 25 +  map(15 * log10f((audioSpectBuffer[1024 - k] + audioSpectBuffer[1024 - k + 1] + audioSpectBuffer[1024 - k + 2]) / 3), 0, 100, 0, 120);
+          // a spectrum offset of 20 give about the same magnitude signal peak as seen in the AM modes
+          audioYPixel[k] = 20 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
           if (audioYPixel[k] < 0) {
             audioYPixel[k] = 0;
           }
         }
-        arm_max_f32 (audioSpectBuffer, FFT_length / 2, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared abin magnitued in audio
+        arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared bin magnitued in audio
         audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
       }
 

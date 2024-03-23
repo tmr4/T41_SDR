@@ -369,7 +369,7 @@ FASTRUN void ShowSpectrum() {
   }
 
   // update S-meter once per loop
-  DrawSmeterBar(audioMaxSquaredAve);
+  DrawSmeterBar();
 
   pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];  
 
@@ -868,7 +868,7 @@ const float pixels_per_s = 12.2;
   Return value;
     void
 *****/
-void DrawSmeterBar(float32_t audioMaxSquaredAve) {
+void DrawSmeterBar() {
   char buff[10];
   const char *unit_label;
   int16_t smeterPad;

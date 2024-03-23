@@ -153,7 +153,7 @@ void DrawStaticDisplayItems();
 void ShowFrequency();
 void ShowOperatingStats();
 void ShowSpectrumFreqValues();
-void DrawSmeterBar(float32_t audioMaxSquaredAve);
+void DrawSmeterBar();
 void DrawBandwidthBar();
 void ShowBandwidthBarValues();
 
