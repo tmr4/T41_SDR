@@ -35,6 +35,7 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * feature/liveNoiseFloor
   * feature/infoBoxCons
   * feature/NFMDemod
+  * expanded waterfall, audio spectrum and info box
 
 * feature/liveNoiseFloor - modifies Noise Floor pushbutton to toggle live setting of noise floor.  Requires configuration setting USE_LIVE_NOISE_FLOOR set to 1.  Includes feature/menu.
 

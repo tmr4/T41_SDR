@@ -362,7 +362,8 @@ void ProcessIQData() {
         for (int k = 0; k < 1024; k++) {
           audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
-        for (int k = 0; k < 256; k++) {
+        //for (int k = 0; k < 256; k++) {
+        for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
           if (bands[currentBand].mode == 0  || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
             audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
           }
@@ -524,7 +525,8 @@ void ProcessIQData() {
         for (int k = 0; k < 1024; k++) {
           audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
-        for (int k = 0; k < 256; k++) {
+        //for (int k = 0; k < 256; k++) {
+        for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
           // a spectrum offset of 20 give about the same magnitude signal peak as seen in the AM modes
           audioYPixel[k] = 20 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
           if (audioYPixel[k] < 0) {

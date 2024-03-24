@@ -457,7 +457,7 @@ void ShowSpectrum2() {
   tft.print(adjdB, 1);
 
   //  At least a partial waterfall is necessary.  It seems to provide some important timing function.  KF5N August 14, 2023
-  tft.BTE_move(WATERFALL_LEFT_X, FIRST_WATERFALL_LINE, MAX_WATERFALL_WIDTH, MAX_WATERFALL_ROWS - 2, WATERFALL_LEFT_X, FIRST_WATERFALL_LINE + 1, 1, 2);
+  tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, WATERFALL_H, WATERFALL_L, WATERFALL_T + 1, 1, 2);
   while (tft.readStatus())
     ;
 }

@@ -9,39 +9,38 @@
 #define PIXELS_PER_EQUALIZER_DELTA   10           // Number of pixels per detent of encoder for equalizer changes
 #define PIXELS_PER_AUDIO_DELTA       10
 
-#define SPECTRUM_LEFT_X       1            // Used to plot left edge of spectrum display  AFP 12-14-21
 #define SPECTRUM_RES          512
-#define SPECTRUM_TOP_Y        100           // Start of spectrum plot space
-#define SPECTRUM_HEIGHT       150           // This is the pixel height of spectrum plot area without disturbing the axes
-//#define SPECTRUM_BOTTOM       (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 3)        // 247 = 100 + 150 - 3
-#define SPECTRUM_BOTTOM       SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 1 // 247 = 100 + 150 - 3
+#define SPECTRUM_HEIGHT       150                 // This is the pixel height of spectrum plot area without disturbing the axes
+
+#define SPEC_BOX_L            0
+#define SPEC_BOX_T            99
+#define SPEC_BOX_W            SPECTRUM_RES + 2
+#define SPEC_BOX_H            SPECTRUM_HEIGHT + 2
+
+#define SPECTRUM_LEFT_X       SPEC_BOX_L + 1            // Used to plot left edge of spectrum display
+#define SPECTRUM_TOP_Y        SPEC_BOX_T + 1            // Start of spectrum plot space
+#define SPECTRUM_BOTTOM       SPECTRUM_TOP_Y + SPECTRUM_HEIGHT - 1
+
+#define SPEC_BOX_LABELS       (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT + 5)
 
 #define FREQUENCY_X           5
 #define FREQUENCY_Y           45
 #define FREQUENCY_X_SPLIT     280
 
-#define WATERFALL_LEFT_X      SPECTRUM_LEFT_X
-#define SPECT_RES_92          512/92000
+#define WATERFALL_L           SPECTRUM_LEFT_X
+#define WATERFALL_T           (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT + 25)
+#define WATERFALL_W           SPECTRUM_RES            // Pixel width of waterfall
+#define WATERFALL_H           YPIXELS - WATERFALL_T       // use up remainder of 480 rows
 
-#define SPEC_BOX_L            SPECTRUM_LEFT_X - 1
-#define SPEC_BOX_T            SPECTRUM_TOP_Y - 1
-#define SPEC_BOX_W            SPECTRUM_RES + 2
-#define SPEC_BOX_H            SPECTRUM_HEIGHT + 2
-
-#define MAX_WATERFALL_WIDTH   512           // Pixel width of waterfall
-#define MAX_WATERFALL_ROWS    170           // Waterfall rows
-
-#define WATERFALL_RIGHT_X     (WATERFALL_LEFT_X + MAX_WATERFALL_WIDTH)      // 3 + 512
-#define WATERFALL_TOP_Y       (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT + 5)        // 130 + 120 + 5 = 255
-#define FIRST_WATERFALL_LINE  (WATERFALL_TOP_Y + 20)                        // 255 + 35 = 290
-#define WATERFALL_BOTTOM      (FIRST_WATERFALL_LINE + MAX_WATERFALL_ROWS)   // 290 + 170 = 460
+#define WATERFALL_BOTTOM      (WATERFALL_T + WATERFALL_H)
 
 #define TEMP_X_OFFSET         15
 #define TEMP_Y_OFFSET         465                                           // 480 * 0.97 = 465
 
-#define AUDIO_SPEC_BOX_L      WATERFALL_RIGHT_X + 15
+#define AUDIO_SPEC_BOX_L      (SPECTRUM_LEFT_X + SPECTRUM_RES + 15)
 #define AUDIO_SPEC_BOX_T      SPECTRUM_BOTTOM - 118
-#define AUDIO_SPEC_BOX_W      260
+//#define AUDIO_SPEC_BOX_W      260
+#define AUDIO_SPEC_BOX_W      XPIXELS - AUDIO_SPEC_BOX_L // use up rest of screen right
 #define AUDIO_SPEC_BOX_H      118
 #define AUDIO_SPEC_BOTTOM     SPECTRUM_BOTTOM
 
@@ -62,7 +61,7 @@
 #define X_R_STATUS_X          730
 #define X_R_STATUS_Y          70
 
-#define SMETER_X              WATERFALL_RIGHT_X + 15
+#define SMETER_X              SPECTRUM_LEFT_X + SPECTRUM_RES + 15
 #define SMETER_Y              YPIXELS * 0.22                // 480 * 0.22 = 106
 #define SMETER_BAR_HEIGHT     18
 #define SMETER_BAR_LENGTH     180
@@ -122,6 +121,7 @@ extern int16_t pixelold2[];
 extern int newCursorPosition;
 extern int oldCursorPosition;
 extern int updateDisplayFlag;
+extern int wfRows;
 
 extern RA8875 tft;
 

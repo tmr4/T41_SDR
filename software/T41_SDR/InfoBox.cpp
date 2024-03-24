@@ -25,9 +25,9 @@ void DrawInfoBoxFrame();
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-#define IB_COL_1_X        WATERFALL_RIGHT_X + 110 // X coordinate for info box 1st column field
-#define IB_COL_2_X        WATERFALL_RIGHT_X + 240 // X coordinate for info box 2nd column field
-#define IB_COL_2L_X       WATERFALL_RIGHT_X + 220 // X coordinate for info box 2nd column field
+#define IB_COL_1_X        INFO_BOX_L + 90  // X coordinate for info box 1st column field
+#define IB_COL_2_X        INFO_BOX_L + 220 // X coordinate for info box 2nd column field
+#define IB_COL_2L_X       INFO_BOX_L + 205 // X coordinate for info box 2nd column field
 #define IB_ROW_1_Y        INFO_BOX_T + 1
 #define IB_ROW_2_Y        IB_ROW_1_Y + 12
 #define IB_ROW_3_Y        IB_ROW_2_Y + 20

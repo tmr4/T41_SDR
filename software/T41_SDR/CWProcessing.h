@@ -5,7 +5,7 @@
 
 #define CW_TEXT_START_X             5
 #define CW_TEXT_START_Y             449                   // 480 * 0.97 = 465 - height = 465 - 16 = 449
-#define CW_MESSAGE_WIDTH            MAX_WATERFALL_WIDTH   // 512
+#define CW_MESSAGE_WIDTH            WATERFALL_W   // 512
 #define CW_MESSAGE_HEIGHT           16                    // tft.getFontHeight()
 
 #define IIR_CW_ORDER              8

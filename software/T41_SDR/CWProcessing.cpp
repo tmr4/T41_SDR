@@ -602,6 +602,7 @@ void MorseCharacterDisplay(char currentLetter) {
   }
   tft.fillRect(CW_TEXT_START_X, CW_TEXT_START_Y, CW_MESSAGE_WIDTH, CW_MESSAGE_HEIGHT * 2, RA8875_BLACK);
   tft.setFontScale((enum RA8875tsize)1);
+
   tft.setTextColor(RA8875_WHITE);
   tft.setCursor(CW_TEXT_START_X, CW_TEXT_START_Y);
   tft.print(decodeBuffer);
@@ -681,23 +682,23 @@ void ResetHistograms() {
 void DrawSignalPlotFrame() {
   int offset;
   float val = 0.0;
-  tft.fillRect(WATERFALL_LEFT_X, FIRST_WATERFALL_LINE - 5, MAX_WATERFALL_WIDTH + 10, MAX_WATERFALL_ROWS + 30, RA8875_BLACK);
+  tft.fillRect(WATERFALL_L, WATERFALL_T - 5, WATERFALL_W + 10, WATERFALL_H + 30, RA8875_BLACK);
 
   tft.setFontScale(0);
   tft.setTextColor(RA8875_GREEN);
-  tft.drawFastVLine(WATERFALL_LEFT_X + 60, FIRST_WATERFALL_LINE + 5, MAX_WATERFALL_ROWS - 25, RA8875_GREEN);
-  tft.drawFastHLine(WATERFALL_LEFT_X + 60, WATERFALL_BOTTOM - 20, MAX_WATERFALL_WIDTH - 80, RA8875_GREEN);
+  tft.drawFastVLine(WATERFALL_L + 60, WATERFALL_T + 5, WATERFALL_H - 25, RA8875_GREEN);
+  tft.drawFastHLine(WATERFALL_L + 60, WATERFALL_BOTTOM - 20, WATERFALL_W - 80, RA8875_GREEN);
   offset = WATERFALL_BOTTOM - 30;
   for (int i = 0; i < 5; i++) {
-    tft.setCursor(WATERFALL_LEFT_X + 15, offset - (i * 30));
+    tft.setCursor(WATERFALL_L + 15, offset - (i * 30));
     tft.print(val);
     tft.print(" -");
     val += 2.0;
   }
   tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(WATERFALL_LEFT_X, FIRST_WATERFALL_LINE);
+  tft.setCursor(WATERFALL_L, WATERFALL_T);
   tft.print("Signal");
-  tft.setCursor(MAX_WATERFALL_WIDTH >> 1, WATERFALL_BOTTOM - 20);
+  tft.setCursor(WATERFALL_W >> 1, WATERFALL_BOTTOM - 20);
   tft.print("Time");
 }
 
@@ -713,17 +714,17 @@ void DrawSignalPlotFrame() {
 void DoSignalPlot(float val) {
   int i, j;
   int location;
-  static short int signalArray[MAX_WATERFALL_ROWS + 1][MAX_WATERFALL_WIDTH + 1];
+  static short int signalArray[WATERFALL_H + 1][WATERFALL_W + 1];
 
-  location = map(val, 0, 8.0, WATERFALL_TOP_Y, WATERFALL_BOTTOM);  // What row to activate?
-  signalArray[location][MAX_WATERFALL_WIDTH] = RA8875_WHITE;       // Turn pixel on.
-  for (i = 0; i < MAX_WATERFALL_ROWS; i++) {
-    memmove(&signalArray[i], &signalArray[i + 1], MAX_WATERFALL_WIDTH);
+  location = map(val, 0, 8.0, SPEC_BOX_LABELS, WATERFALL_BOTTOM);  // What row to activate?
+  signalArray[location][WATERFALL_W] = RA8875_WHITE;       // Turn pixel on.
+  for (i = 0; i < WATERFALL_H; i++) {
+    memmove(&signalArray[i], &signalArray[i + 1], WATERFALL_W);
   }
-  for (i = 0; i < MAX_WATERFALL_ROWS; i++) {
-    for (j = 0; j < MAX_WATERFALL_WIDTH; j++) {
+  for (i = 0; i < WATERFALL_H; i++) {
+    for (j = 0; j < WATERFALL_W; j++) {
       if (signalArray[i][j] != 0) {
-        tft.setCursor(WATERFALL_LEFT_X + 61 + i, FIRST_WATERFALL_LINE + 6 + j);
+        tft.setCursor(WATERFALL_L + 61 + i, WATERFALL_T + 6 + j);
         tft.print('.');
       }
     }

@@ -514,6 +514,21 @@ void ExecuteButtonPress(int val) {
     case DECODER_TOGGLE:  // 13
       decoderFlag = !decoderFlag;
       UpdateInfoBoxItem(&infoBox[IB_ITEM_DECODER]);
+
+      if(xmtMode == CW_MODE) {
+        if(decoderFlag == ON) {
+          // reduce waterfall height if we're decoding CW
+          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+          tft.writeTo(L2); // it's on layer 2 as well
+          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+          tft.writeTo(L1);
+          wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
+        } else {
+          // erase any decoded CW and return waterfall to normal
+          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+          wfRows = WATERFALL_H;
+        }
+      }
       break;
 
     case MAIN_TUNE_INCREMENT:  // 14

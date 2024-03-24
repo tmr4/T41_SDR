@@ -618,7 +618,7 @@ void ShowTempAndLoad() {
 
   CPU_temperature = TGetTemp();
 
-  tft.fillRect(TEMP_X_OFFSET, TEMP_Y_OFFSET, MAX_WATERFALL_WIDTH, tft.getFontHeight(), RA8875_BLACK);  // Erase current data
+  tft.fillRect(TEMP_X_OFFSET, TEMP_Y_OFFSET, WATERFALL_W, tft.getFontHeight(), RA8875_BLACK);  // Erase current data
   tft.setCursor(TEMP_X_OFFSET, TEMP_Y_OFFSET);
   tft.setTextColor(RA8875_WHITE);
   tft.print("Temp:");

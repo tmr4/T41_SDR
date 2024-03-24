@@ -244,8 +244,24 @@ void ButtonMode() {
   // Toggle the current mode
   if (xmtMode == CW_MODE) {  
     xmtMode = SSB_MODE;
+
+    // return waterfall to normal if decoder is on
+    if(decoderFlag == ON) {
+      // erase any decoded CW
+      tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      wfRows = WATERFALL_H;
+    }
   } else {
     xmtMode = CW_MODE;
+
+    // reduce waterfall height if we're decoding CW
+    if(decoderFlag == ON) {
+      tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      tft.writeTo(L2); // it's on layer 2 as well
+      tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      tft.writeTo(L1);
+      wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
+    }
   }
 
   UpdateCWFilter();
@@ -374,14 +390,14 @@ void ButtonFrequencyEntry() {
 #define TEXT_OFFSET -8
 
   tft.writeTo(L1);
-  tft.fillRect(WATERFALL_LEFT_X, SPECTRUM_TOP_Y + 1, MAX_WATERFALL_WIDTH, WATERFALL_BOTTOM - SPECTRUM_TOP_Y, RA8875_BLACK);  // Make space for FEInfo
-  tft.fillRect(MAX_WATERFALL_WIDTH, WATERFALL_TOP_Y - 10, 15, 30, RA8875_BLACK);
+  tft.fillRect(WATERFALL_L, SPECTRUM_TOP_Y + 1, WATERFALL_W, WATERFALL_BOTTOM - SPECTRUM_TOP_Y, RA8875_BLACK);  // Make space for FEInfo
+  tft.fillRect(WATERFALL_W, SPEC_BOX_LABELS - 10, 15, 30, RA8875_BLACK);
   tft.writeTo(L2);
 
-  tft.fillRect(WATERFALL_LEFT_X, SPECTRUM_TOP_Y + 1, MAX_WATERFALL_WIDTH, WATERFALL_BOTTOM - SPECTRUM_TOP_Y, RA8875_BLACK);
+  tft.fillRect(WATERFALL_L, SPECTRUM_TOP_Y + 1, WATERFALL_W, WATERFALL_BOTTOM - SPECTRUM_TOP_Y, RA8875_BLACK);
 
-  tft.setCursor(centerLine - 140, WATERFALL_TOP_Y);
-  tft.drawRect(SPECTRUM_LEFT_X - 1, SPECTRUM_TOP_Y, MAX_WATERFALL_WIDTH + 2, 360, RA8875_YELLOW);  // Spectrum box
+  tft.setCursor(centerLine - 140, SPEC_BOX_LABELS);
+  tft.drawRect(SPECTRUM_LEFT_X - 1, SPECTRUM_TOP_Y, WATERFALL_W + 2, 360, RA8875_YELLOW);  // Spectrum box
 
   // Draw keypad box
   tft.fillRect(KEYPAD_LEFT, KEYPAD_TOP, KEYPAD_WIDTH, KEYPAD_HEIGHT, DARKGREY);
@@ -396,28 +412,28 @@ void ButtonFrequencyEntry() {
     }
   }
   tft.setFontScale((enum RA8875tsize)0);
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 50);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 50);
   tft.setTextColor(RA8875_WHITE);
   tft.print("Direct Frequency Entry");
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 100);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 100);
   tft.print("<   Apply entered frequency");
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 130);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 130);
   tft.print("X   Exit without changing frequency");
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 160);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 160);
   tft.print("D   Delete last digit");
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 190);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 190);
   tft.print("S   Save Direct to Last Freq. ");
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 240);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 240);
   tft.print("Direct Entry was called from "); 
   tft.print(DE_Band[currentBand]);
   tft.print(" band");
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 270);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 270);
   tft.print("Frequency response limited above "); 
   tft.print(DE_Flimit[currentBand]);
   tft.print("MHz");
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 300);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 300);
   tft.print("For widest direct entry frequency range"); 
-  tft.setCursor(WATERFALL_LEFT_X + 20, SPECTRUM_TOP_Y + 330);
+  tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 330);
   tft.print("call from 12m or 10m band"); 
 
 #endif
@@ -435,9 +451,9 @@ void ButtonFrequencyEntry() {
   tft.setCursor(SECONDARY_MENU_X + 21, MENUS_Y);
   tft.print("kHz or MHz:");
   tft.setFontScale((enum RA8875tsize)0);
-  tft.setCursor(WATERFALL_LEFT_X + 50, SPECTRUM_TOP_Y + 260);
+  tft.setCursor(WATERFALL_L + 50, SPECTRUM_TOP_Y + 260);
   tft.print("Save Direct to Last Freq.= ");
-  tft.setCursor(WATERFALL_LEFT_X + 270, SPECTRUM_TOP_Y + 190);
+  tft.setCursor(WATERFALL_L + 270, SPECTRUM_TOP_Y + 190);
   if (save_last_frequency) {
     tft.setTextColor(RA8875_GREEN);
     tft.print("On");
@@ -481,8 +497,8 @@ void ButtonFrequencyEntry() {
         case 0x99:
           save_last_frequency = !save_last_frequency;
           tft.setFontScale((enum RA8875tsize)0);
-          tft.fillRect(WATERFALL_LEFT_X + 269, SPECTRUM_TOP_Y + 190, 50, CHAR_HEIGHT, RA8875_BLACK);
-          tft.setCursor(WATERFALL_LEFT_X + 260, SPECTRUM_TOP_Y + 190);
+          tft.fillRect(WATERFALL_L + 269, SPECTRUM_TOP_Y + 190, 50, CHAR_HEIGHT, RA8875_BLACK);
+          tft.setCursor(WATERFALL_L + 260, SPECTRUM_TOP_Y + 190);
           if (save_last_frequency) {
             tft.setTextColor(RA8875_GREEN);
             tft.print("On");
