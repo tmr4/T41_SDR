@@ -18,9 +18,6 @@ unsigned long long Clk1SetFreq = 1000000000ULL;
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
 
-// the following functions are not used anywhere
-// void CenterFastTune();
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -130,19 +127,6 @@ void SetFreq() {
     si5351.output_enable(SI5351_CLK2, 0);  // CLK2 (receive) off during transmit to prevent spurious outputs
     si5351.output_enable(SI5351_CLK1, 1);
   }
-}
-
-/*****
-  Purpose: Places the Fast Tune cursor in the center of the spectrum display
-
-  Parameter list:
-
-  Return value;
-    void
-*****/
-void CenterFastTune() {
-  tft.drawFastVLine(oldCursorPosition, SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 27, RA8875_BLACK);
-  tft.drawFastVLine(newCursorPosition , SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 27, RA8875_RED);
 }
 
 /*****

@@ -84,7 +84,8 @@ config_t EEPROMData {
   { 0, 0, 0, 0, 0, 0, 0 }, // float IQXPhaseCorrectionFactor[NUMBER_OF_BANDS]
 
   { 3560000, 3690000, 7030000, 7200000, 14060000, 14200000, 21060000, 21285000, 28060000, 28365000, 5000000, 10000000, 15000000 }, // long favoriteFreqs[13]
-  { { 3548000, 3560000 }, { 7048000, 7030000 }, { 14048000, 14100000 }, { 18116000, 18110000 }, { 21048000, 21150000 }, { 24937000, 24930000 }, { 28048000, 28200000 } }, // int lastFrequencies[NUMBER_OF_BANDS][2]
+//  { { 3548000, 3560000 }, { 7048000, 7030000 }, { 14048000, 14100000 }, { 18116000, 18110000 }, { 21048000, 21150000 }, { 24937000, 24930000 }, { 28048000, 28200000 } }, // int lastFrequencies[NUMBER_OF_BANDS][2]
+  { { 3548000, 3560000 }, { 7074000, 7030000 }, { 14074000, 14100000 }, { 18116000, 18110000 }, { 21048000, 21150000 }, { 24937000, 24930000 }, { 28048000, 28200000 } }, // int lastFrequencies[NUMBER_OF_BANDS][2]
 
   7048000, // long centerFreq
 
@@ -112,17 +113,9 @@ config_t EEPROMData {
 #endif
 };
 
-//int16_t currentMode; // not used
-
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
-
-// the following functions are not used anywhere
-// void CopyEEPROM();
-// void ConvertForEEPROM(File file, char *buffer, int val, int whatDataType);
-// int ValidEEPROMData();
-// void ClearEEPROM();
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -138,8 +131,7 @@ config_t EEPROMData {
   Return value;
     void
 *****/
-//FLASHMEM void EEPROMWrite() {
-void EEPROMWrite() {
+FLASHMEM void EEPROMWrite() {
   EEPROM.put(EEPROM_BASE_ADDRESS + sizeof(int), EEPROMData);
 }
 
@@ -152,8 +144,7 @@ void EEPROMWrite() {
   Return value;
     void
 *****/
-//FLASHMEM void EEPROMRead() {
-void EEPROMRead() {
+FLASHMEM void EEPROMRead() {
   EEPROM.get(EEPROM_BASE_ADDRESS + sizeof(int), EEPROMData);
 }
 
@@ -166,8 +157,7 @@ void EEPROMRead() {
   Return value;
     void
 *****/
-//FLASHMEM void EEPROMWriteSize(int structSize) {
-void EEPROMWriteSize(int structSize) {
+FLASHMEM void EEPROMWriteSize(int structSize) {
   EEPROM.put(EEPROM_BASE_ADDRESS, structSize);
 }
 
@@ -180,8 +170,7 @@ void EEPROMWriteSize(int structSize) {
   Return value;
     void
 *****/
-//FLASHMEM int EEPROMReadSize() {
-int EEPROMReadSize() {
+FLASHMEM int EEPROMReadSize() {
   int structSize;
   EEPROM.get(EEPROM_BASE_ADDRESS, structSize);
   return structSize;
@@ -217,7 +206,7 @@ static char* EEPROMSetVersion(void) {
   Return value;
     void
 *****/
-void EEPROMShow() {
+FLASHMEM void EEPROMShow() {
    int i;
 
   Serial.println("----- EEPROM Parameters: -----");
@@ -475,7 +464,7 @@ void EEPROMShow() {
   Return value;
     void
 *****/
-void EEPROMStuffFavorites(unsigned long current[]) {
+FLASHMEM void EEPROMStuffFavorites(unsigned long current[]) {
   int i;
 
   for (i = 0; i < MAX_FAVORITES; i++) {
@@ -497,7 +486,7 @@ void EEPROMStuffFavorites(unsigned long current[]) {
            replace and press Select to save in EEPROM. The currently active VFO frequency
            is then stored to EEPROM.
 *****/
-void SetFavoriteFrequency() {
+FLASHMEM void SetFavoriteFrequency() {
   int index;
   int val;
 
@@ -555,7 +544,7 @@ void SetFavoriteFrequency() {
   Return value;
     void
 *****/
-void GetFavoriteFrequency() {
+FLASHMEM void GetFavoriteFrequency() {
   int index = 0;
   int val;
   int currentBand2 = 0;
@@ -651,127 +640,6 @@ void GetFavoriteFrequency() {
   }
 }
 
-//===================================================================
-/*****
-  Purpose: Copy EEPROM data into working variables
-
-  Parameter list:
-    struct config_t e[]       pointer to the EEPROM structure
-
-  Return value;
-    void
-*****/
-void CopyEEPROM() {
-  //  EEPROM.get(EEPROM_BASE_ADDRESS, EEPROMData);                       // Read as one large chunk
-
-  AGCMode = EEPROMData.AGCMode;                // 1 byte
-  CWFilterIndex = EEPROMData.CWFilterIndex;    // Off
-  nrOptionSelect = EEPROMData.nrOptionSelect;  // 1 byte
-
-  activeVFO = EEPROMData.activeVFO;  // 2 bytes
-
-  audioVolume = EEPROMData.audioVolume;    // 4 bytes
-  currentBand = EEPROMData.currentBand;    // 4 bytes
-  currentBandA = EEPROMData.currentBandA;  // 4 bytes
-  currentBandB = EEPROMData.currentBandB;  // 4 bytes
-  decoderFlag = EEPROMData.decoderFlag;
-
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
-    equalizerRec[i] = EEPROMData.equalizerRec[i];  // 4 bytes each
-    equalizerXmt[i] = EEPROMData.equalizerXmt[i];
-  }
-
-  freqIncrement = EEPROMData.freqIncrement;              // 4 bytes
-  keyType = EEPROMData.keyType;                          // straight key = 0, keyer = 1
-  currentMicThreshold = EEPROMData.currentMicThreshold;  // 4 bytes      // AFP 09-22-22
-  currentMicCompRatio = EEPROMData.currentMicCompRatio;
-  currentMicAttack = EEPROMData.currentMicAttack;
-  currentMicRelease = EEPROMData.currentMicRelease;
-  currentMicGain = EEPROMData.currentMicGain;
-
-  paddleDit = EEPROMData.paddleDit;
-  paddleDah = EEPROMData.paddleDah;
-  rfGainAllBands = EEPROMData.rfGainAllBands;
-  spectrumNoiseFloor = EEPROMData.spectrumNoiseFloor;
-
-  //  Note: switch values are read and written to EEPROM only
-
-  tuneIndex = EEPROMData.tuneIndex;
-  //ftIncrement = EEPROMData.ftIncrement;
-  transmitPowerLevel = EEPROMData.transmitPowerLevel;
-  currentWPM = EEPROMData.currentWPM;
-  xmtMode = EEPROMData.xmtMode;
-
-  currentScale = EEPROMData.currentScale;
-  spectrum_zoom = EEPROMData.spectrum_zoom;
-  spectrum_display_scale = EEPROMData.spectrum_display_scale;  // 4 bytes
-  sidetoneVolume = EEPROMData.sidetoneVolume;                  // 4 bytes
-  cwTransmitDelay = EEPROMData.cwTransmitDelay;                // 4 bytes
-
-  freqCorrectionFactor = EEPROMData.freqCorrectionFactor;
-
-  LPFcoeff = EEPROMData.LPFcoeff;  // 4 bytes
-  NR_PSI = EEPROMData.NR_PSI;      // 4 bytes
-  NR_alpha = EEPROMData.NR_alpha;  // 4 bytes
-  NR_beta = EEPROMData.NR_beta;    // 4 bytes
-  omegaN = EEPROMData.omegaN;      // 4 bytes
-  pll_fmax = EEPROMData.pll_fmax;  // 4 bytes
-
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    CWPowerCalibrationFactor[i] = EEPROMData.CWPowerCalibrationFactor[i];    // 0.019;   //AFP 10-29-22
-    SSBPowerCalibrationFactor[i] = EEPROMData.SSBPowerCalibrationFactor[i];  // 0.008;   //AFP 10-29-22
-    powerOutCW[i] = EEPROMData.powerOutCW[i];                                // 4 bytes  //AFP 10-28-22
-    powerOutSSB[i] = EEPROMData.powerOutSSB[i];                              // 4 bytes AFP 10-28-22
-    IQAmpCorrectionFactor[i] = EEPROMData.IQAmpCorrectionFactor[i];
-    IQPhaseCorrectionFactor[i] = EEPROMData.IQPhaseCorrectionFactor[i];
-    IQXAmpCorrectionFactor[i] = EEPROMData.IQXAmpCorrectionFactor[i];      //AFP 2-21-23
-    IQXPhaseCorrectionFactor[i] = EEPROMData.IQXPhaseCorrectionFactor[i];  //AFP 2-21-23
-  }
-
-  if (EEPROMData.lastFrequencies[0][1] < 3560000L || EEPROMData.lastFrequencies[0][0] > 3985000L) {  // Already set?
-    EEPROMData.lastFrequencies[0][0] = 3985000L;                                                     // 80 Phone
-    EEPROMData.lastFrequencies[1][0] = 7200000L;                                                     // 40
-    EEPROMData.lastFrequencies[2][0] = 14285000L;                                                    // 50
-    EEPROMData.lastFrequencies[3][0] = 18130000L;                                                    // 17
-    EEPROMData.lastFrequencies[4][0] = 21385000L;                                                    // 15
-    EEPROMData.lastFrequencies[5][0] = 24950000L;                                                    // 12
-    EEPROMData.lastFrequencies[6][0] = 28385800L;                                                    // 10
-
-    EEPROMData.lastFrequencies[0][1] = 3560000L;   // 80 CW
-    EEPROMData.lastFrequencies[1][1] = 7030000L;   // 40
-    EEPROMData.lastFrequencies[2][1] = 14060000L;  // 20
-    EEPROMData.lastFrequencies[3][1] = 18096000L;  // 17
-    EEPROMData.lastFrequencies[4][1] = 21060000L;  // 15
-    EEPROMData.lastFrequencies[5][1] = 24906000L;  // 12
-    EEPROMData.lastFrequencies[6][1] = 28060000L;  // 10
-  } else {
-    for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-      lastFrequencies[i][0] = EEPROMData.lastFrequencies[i][0];
-      lastFrequencies[i][1] = EEPROMData.lastFrequencies[i][1];
-    }
-  }
-
-  //  long favoriteFreqs[MAX_FAVORITES];               // 40 bytes
-  centerFreq = EEPROMData.lastFrequencies[currentBandA][activeVFO];  // 4 bytes
-  currentFreqA = EEPROMData.lastFrequencies[currentBandA][VFO_A];    // 4 bytes
-  currentFreqB = EEPROMData.lastFrequencies[currentBandB][VFO_B];    // 4 bytes
-
-  strncpy(mapFileName, EEPROMData.mapFileName, 50);
-  strncpy(myCall, EEPROMData.myCall, 10);
-  strncpy(myTimeZone, EEPROMData.myTimeZone, 10);
-
-  paddleFlip = EEPROMData.paddleFlip;
-  sdCardPresent = EEPROMData.sdCardPresent;
-
-  myLat = EEPROMData.myLat;
-  myLong = EEPROMData.myLong;
-
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
-    currentNoiseFloor[i] = EEPROMData.currentNoiseFloor[i];
-  }
-  compressorFlag = EEPROMData.compressorFlag;                     // JJP 8/28/23
-}
-
 /*****
   Purpose: To save the default setting for EEPROM variables
 
@@ -781,7 +649,7 @@ void CopyEEPROM() {
   Return value;
     void
 *****/
-void EEPROMSaveDefaults2() {
+FLASHMEM void EEPROMSaveDefaults2() {
   strcpy(EEPROMData.versionSettings, EEPROMSetVersion());  // Update version
 
   EEPROMData.AGCMode = 1;
@@ -999,7 +867,7 @@ void EEPROMSaveDefaults2() {
   Return value;
     int                         0 unsuccessful, 1 ok
 *****/
-int CopySDToEEPROM() {
+FLASHMEM int CopySDToEEPROM() {
   char character;
   char line[150];
   char *target;
@@ -1018,13 +886,6 @@ int CopySDToEEPROM() {
   }
   //  while (file.available() > 0) {
   while (true) {
-/*
-    Serial.printf("lineCount = %d\n", lineCount);     // Greg's debug code
-    if (lineCount == 100) {
-      Serial.printf("Hit end of file!\n");
-      break;
-    }
-*/    
     while (true) {
       character = file.read();
       if (character == EOF || lineCount > MAX_SD_ITEMS) {
@@ -1620,51 +1481,6 @@ int CopySDToEEPROM() {
 }
 
 /*****
-  Purpose: Converts EEPROMData members and value to ASCII
-
-  Parameter list:
-    File file             file handle for the SD file
-    char *buffer          pointer to the EEPROMData member
-    int val               the current value of the member
-    int whatDataType      1 = int, 2 = long, 3 = float, 4 = string
-
-  Return value;
-    void
-
-*****/
-void ConvertForEEPROM(File file, char *buffer, int val, int whatDataType) {
-  char temp[10];
-
-  temp[0] = '\0';
-  switch (whatDataType) {
-    case 1:  // int
-      itoa(val, temp, DEC);
-      break;
-    case 2:  // long
-      ltoa(val, temp, DEC);
-      break;
-    case 3:                      // float
-      dtostrf(val, 9, 4, temp);  //Field of up to 9 digits with 4 decimal places
-      break;
-    case 4:
-      strcpy(temp, EEPROMSetVersion());
-      break;
-    default:
-#ifdef DEBUG
-      Serial.println("Error");
-#endif
-      break;
-  }
-  strcat(buffer, " = ");
-  strcat(buffer, temp);
-#ifdef DEBUG1
-  Serial.println(buffer);
-#endif
-  file.println(buffer);
-  buffer[0] = '\0';
-}
-
-/*****
   Purpose: Writes the current values of the working variable
            to the SD card as SDEEPROMData.txt
 
@@ -1674,7 +1490,7 @@ void ConvertForEEPROM(File file, char *buffer, int val, int whatDataType) {
   Return value;
     int               0 = no write, 1 = write
 *****/
-int CopyEEPROMToSD() {
+FLASHMEM int CopyEEPROMToSD() {
   char buffer[100];
   char temp[15];
   char digits[10];
@@ -2052,23 +1868,6 @@ int CopyEEPROMToSD() {
 }
 
 /*****
-  Purpose: See if the EEPROM has ever been set
-
-  Parameter list:
-    void
-
-  Return value;
-    int               1 = used before, 0 = nope
-*****/
-int ValidEEPROMData() {
-  int val = EEPROMData.switchValues[0];
-  if (val > 0 && val < 1023)
-    return 1;
-  else
-    return 0;
-}
-
-/*****
   Purpose: Reads the SD EEPROM data and writes it to the Serial object
 
   Parameter list:
@@ -2077,7 +1876,7 @@ int ValidEEPROMData() {
   Return value;
     int               0 = SD is untouched, 1 = has data
 *****/
-void SDEEPROMDump() {
+FLASHMEM void SDEEPROMDump() {
   char c;
   int lines = 0;
 
@@ -2109,22 +1908,6 @@ void SDEEPROMDump() {
 }
 
 /*****
-  Purpose: Clears the first 1K of emulated EEPROM to 0xff
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void ClearEEPROM() {
-  int i;
-  for (i = 0; i < 1000; i++) {
-    EEPROM.write(i, 0xFF);
-  }
-}
-
-/*****
   Purpose: Manage EEPROM memory at radio start-up.
 
   Parameter list:
@@ -2133,7 +1916,7 @@ void ClearEEPROM() {
   Return value;
     void
 *****/
-void EEPROMStartup() {
+FLASHMEM void EEPROMStartup() {
   int eepromStructSize;
   int stackStructSize;
   //  Determine if the struct EEPROMData is compatible (same size) with the one stored in EEPROM.

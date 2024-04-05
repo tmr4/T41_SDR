@@ -49,7 +49,7 @@ float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins);
    Return value:
       void
  *****/
-void CalibratePreamble(int setZoom) {
+FLASHMEM void CalibratePreamble(int setZoom) {
   calOnFlag = 1;
   corrChange = 0;
   correctionIncrement = 0.01;
@@ -116,7 +116,7 @@ void CalibratePreamble(int setZoom) {
    Return value:
       void
  *****/
-void CalibratePrologue() {
+FLASHMEM void CalibratePrologue() {
   digitalWrite(RXTX, LOW);  // Turn off the transmitter.
   updateDisplayFlag = 0;
   xrState = RECEIVE_STATE;
@@ -159,7 +159,7 @@ void CalibratePrologue() {
    Return value:
       void
  *****/
-void DoReceiveCalibrate() {
+FLASHMEM void DoReceiveCalibrate() {
   int task = -1;
   int lastUsedTask = -2;
   CalibratePreamble(0);                                                   // Set zoom to 1X.
@@ -224,7 +224,7 @@ void DoReceiveCalibrate() {
    Return value:
       void
  *****/
-void DoXmitCalibrate() {
+FLASHMEM void DoXmitCalibrate() {
   int task = -1;
   int lastUsedTask = -2;
   CalibratePreamble(2);  // Set zoom to 4X.
@@ -291,7 +291,7 @@ void DoXmitCalibrate() {
    Return value:
       void
  *****/
-void ProcessIQData2() {
+FLASHMEM void ProcessIQData2() {
   float bandCouplingFactor[7] = { 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 };  // AFP 2-11-23  KF5N uniform values
   float bandOutputFactor;                                               // AFP 2-11-23
   float rfGainValue;                                                    // AFP 2-11-23
@@ -409,7 +409,7 @@ void ProcessIQData2() {
   Return value;
     void
 *****/
-void ShowSpectrum2() {
+FLASHMEM void ShowSpectrum2() {
   int x1 = 0;
   float adjdB = 0.0;
   int capture_bins = 10;  // Sets the number of bins to scan for signal peak.

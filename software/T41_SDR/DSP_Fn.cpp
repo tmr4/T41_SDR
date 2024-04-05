@@ -69,11 +69,6 @@ float32_t out_target;
 
 void AltNoiseBlanking(float* insamp, int Nsam, float* E );
 
-// the following functions are not used anywhere
-// void CalcNotchBins();
-// void AGCThresholdChanged();
-// void DecodeIQ();
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -366,15 +361,6 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
   //end of test timing zone
 }
 
-void CalcNotchBins()
-{
-  bin_BW =  SampleRate / 16; // sample rate/2/8
-  // calculate notch centre bin for FFT512
-  //notchCenterBin = roundf(notchFreq / bin_BW);
-  // calculate bins  for deletion of bins in the iFFT_buffer
-  // set iFFT_buffer[notch_L] to iFFT_buffer[notch_R] to zero
-}
-
 // ================= AGC
 
 // G0ORX broke this code out so can be called from other places
@@ -479,10 +465,6 @@ void AGCPrep() {
   tau_hang_decay        = 0.100;      // tau_hang_decay
 
   AGCLoadValues(); // G0ORX
-}
-
-void AGCThresholdChanged() {
-  max_gain = powf (10.0, (float32_t)bands[currentBand].AGC_thresh / 20.0);
 }
 
 #define RB_SIZE                     (int) (MAX_SAMPLE_RATE * MAX_N_TAU * MAX_TAU_ATTACK + 1)
@@ -646,20 +628,6 @@ void AGC() {
     mult = (out_target - slope_constant * min (0.0, log10f_fast(inv_max_input * volts))) / volts;
     iFFT_buffer[FFT_length + 2 * i + 0] = out_sample[0] * mult;
     iFFT_buffer[FFT_length + 2 * i + 1] = out_sample[1] * mult;
-  }
-}
-
-/*****
-  Purpose: Demod IQ
-  Parameter list:
-    void
-  Return value;
-    void
-*****/
-void DecodeIQ() {
-  for (unsigned i = 0; i < FFT_length / 2; i++) {
-    float_buffer_L[i] = iFFT_buffer[FFT_length + i * 2];
-    float_buffer_R[i] = iFFT_buffer[FFT_length + i * 2 + 1];
   }
 }
 

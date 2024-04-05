@@ -231,12 +231,18 @@ int ProcessButtonPress(int valPin) {
   int switchIndex;
 
   if (valPin == BOGUS_PIN_READ) {  // Not valid press
+#ifdef DEBUG_SW
+//  NoActiveMenu();
+  Serial.println("NAM BOGUS_PIN_READ");
+#endif
     return -1;
   }
 
   if (valPin == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {
-    NoActiveMenu();
-    Serial.println("NAM #2");
+#ifdef DEBUG_SW
+  NoActiveMenu();
+  Serial.println("NAM #2");
+#endif
     return -1;
   }
 
@@ -306,13 +312,20 @@ int ReadSelectedPushButton() {
     void
 *****/
 void ExecuteButtonPress(int val) {
+#ifdef DEBUG_SW
+  Serial.print("ExecuteButtonPress TOP: val = ");
+  Serial.println(val);
+#endif
   switch (val) {
     case MENU_OPTION_SELECT:  // 0
 
       if(USE_FULL_MENU) {
         if (val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
-          NoActiveMenu();
-          Serial.println("NAM #1");
+#ifdef DEBUG_SW
+  //NoActiveMenu();
+  Serial.print("NAM #0: val = ");
+  Serial.println(val);
+#endif
           return;
         } else {
           menuStatus = PRIMARY_MENU_ACTIVE;
@@ -334,8 +347,11 @@ void ExecuteButtonPress(int val) {
       } else {
         switch (menuStatus) {
           case NO_MENUS_ACTIVE:
-            NoActiveMenu();
-            Serial.println("NAM #3");
+#ifdef DEBUG_SW
+  //NoActiveMenu();
+  Serial.print("NAM #0: val = ");
+  Serial.println(val);
+#endif
             break;
 
           case PRIMARY_MENU_ACTIVE:

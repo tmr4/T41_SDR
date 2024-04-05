@@ -7,6 +7,7 @@
 //#define ALT_ISR
 
 extern int loopCounter;
+extern bool memCheck;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -15,3 +16,6 @@ extern int loopCounter;
 void EnterLoop();
 void ExitLoop();
 void ButtonInfoOut(int valPin, int pushButtonSwitchIndex);
+
+void memInfo();
+void getFreeITCM();

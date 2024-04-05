@@ -32,9 +32,6 @@ int micGainChoice;
 
 void DoPaddleFlip();
 
-// the following functions are not used anywhere
-// void SetSidetoneVolume();
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -200,32 +197,6 @@ void CWOptions() {
     default:  // Cancel
       break;
   }
-}
-
-/*****
-  Purpose: Set the loudness of the sidetone.
-
-  Parameter list:
-    void
-
-  Return value
-    void
-*****/
-void SetSidetoneVolume() {
-  const char *loudness[] = { "Whisper", "Low", "Medium", "Loud", "Cancel" };
-  int retVal;
-  const float32_t sidetoneParameter[] = {0.1, 0.25, 0.5,  1.0, 0.0};  // Louder sidetone. G0ORX.  Old values -> { 0.0005, 0.001, 0.002, 0.004, 0.0 };  //  AFP 10-01-22
-
-  retVal = SubmenuSelect(loudness, 4, sidetoneVolume);
-  if (retVal == 4)  // Did they make a choice?
-    return;         // Nope.
-
-  sidetoneVolume = sidetoneParameter[retVal];
-
-  EEPROMData.sidetoneVolume = sidetoneVolume;
-  EEPROMWrite();
-  //RedrawDisplayScreen();
-  //ShowSpectrumdBScale();
 }
 
 /*****

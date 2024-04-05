@@ -37,6 +37,14 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * feature/NFMDemod
   * expanded waterfall, audio spectrum and info box
 
+* feature/ft8 - adds FT8 and FT8.wav decoding as a demodulation modes. TODO: Make FT8.wav an option of FT8 mode, not a separate demod mode.  Currently FT8.wav decodes a given wav file from the SD card and then switches to FT8 mode.
+
+  * deleted many unused functions to free up memory for FT8
+  * moved many non-critical functions to FLASHMEM
+  * added DEBUG_SW define to investigate switch matrix phantom press issues
+  * added memInfo() debug routine to help track memory usage
+  * modified way audio filters are set up when changing demodulation modes (in SetupMode()) as old method of trying to translate current settings to new mode were hard to maintain as new modes were added.  This needs reworked as the values are currently hardcoded.
+
 * feature/liveNoiseFloor - modifies Noise Floor pushbutton to toggle live setting of noise floor.  Requires configuration setting USE_LIVE_NOISE_FLOOR set to 1.  Includes feature/menu.
 
 * feature/menu - SDR.1 with option to select top line menu functionality (similar to T41EEE) or retain full screen menu (SDTVer049.2K).

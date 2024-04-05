@@ -308,6 +308,8 @@ void UpdateBWFilters() {
 
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
+    case DEMOD_FT8: // ft8 is USB
+    case DEMOD_FT8_WAV: // ft8 is USB
       if (bands[currentBand].FLoCut < 0) bands[currentBand].FLoCut = 200;
       break;
 
@@ -346,35 +348,45 @@ void UpdateBWFilters() {
     void
 *****/
 void SetupMode() {
-  int temp;
-
   switch(bands[currentBand].mode) {
     case DEMOD_USB:
-      temp = bands[currentBand].FHiCut;
-      bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
-      bands[currentBand].FLoCut = -temp;
+    case DEMOD_FT8: // ft8 is USB
+    case DEMOD_FT8_WAV: // ft8 is USB
+      //temp = bands[currentBand].FHiCut;
+      //bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
+      //bands[currentBand].FLoCut = -temp;
+      bands[currentBand].FHiCut =  3000;
+      bands[currentBand].FLoCut = 200;
       break;
     
     case DEMOD_LSB:
-      temp = bands[currentBand].FHiCut;
-      bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
-      bands[currentBand].FLoCut = -temp;
+      //temp = bands[currentBand].FHiCut;
+      //bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
+      //bands[currentBand].FLoCut = -temp;
+      bands[currentBand].FHiCut =  -200;
+      bands[currentBand].FLoCut = -3000;
       break;
 
     case DEMOD_AM:
-      bands[currentBand].FHiCut =  -bands[currentBand].FLoCut;
+      //bands[currentBand].FHiCut =  -bands[currentBand].FLoCut;
+      bands[currentBand].FHiCut =  3000;
+      bands[currentBand].FLoCut = -3000;
       break;
 
     case DEMOD_NFM:
       //temp = min(abs(bands[currentBand].FHiCut), abs(bands[currentBand].FLoCut));
-      bands[currentBand].FHiCut = max(abs(bands[currentBand].FHiCut), abs(bands[currentBand].FLoCut));
+      //bands[currentBand].FHiCut = max(abs(bands[currentBand].FHiCut), abs(bands[currentBand].FLoCut));
+      bands[currentBand].FHiCut =  3000;
       bands[currentBand].FLoCut = 200;
       break;
 
     default:
+      bands[currentBand].FHiCut =  3000;
+      bands[currentBand].FLoCut = 200;
       break;
   }
 
+  //UpdateBWFilters();
   CalcFilters();
 }
 

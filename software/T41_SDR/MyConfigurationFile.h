@@ -1,6 +1,7 @@
 //====================== User Specific Preferences =============
 
-//#define DEBUG // Uncommented for debugging, comment out for normal use
+//#define DEBUG    // Uncommented for debugging, comment out for normal use
+//#define DEBUG_SW // debug switch matrix false presses
 //#define DEBUG1
 
 //-------------------------------------------------------------------------------------------------------------

@@ -7,10 +7,10 @@
 //======================================== Library include files ========================================================
 // need to verify that all these libraries are still used
 #include <Adafruit_GFX.h>
-#include "Fonts/FreeMonoBold24pt7b.h"
-#include "Fonts/FreeMonoBold18pt7b.h"
-#include "Fonts/FreeMono24pt7b.h"
-#include "Fonts/FreeMono9pt7b.h"
+//#include "Fonts/FreeMonoBold24pt7b.h"
+//#include "Fonts/FreeMonoBold18pt7b.h"
+//#include "Fonts/FreeMono24pt7b.h"
+//#include "Fonts/FreeMono9pt7b.h"
 #include <Audio.h>                     //https://github.com/chipaudette/OpenAudio_ArduinoLibrary
 #include <OpenAudio_ArduinoLibrary.h>  // AFP 11-01-22
 #include <TimeLib.h>                   // Part of Teensy Time library
@@ -41,13 +41,18 @@
 #define CW_MODE                     1
 #define OFF                         0
 #define ON                          1
+
+// demodulation modes
 #define DEMOD_MIN                   0
 #define DEMOD_USB                   0
 #define DEMOD_LSB                   1
 #define DEMOD_AM                    2
 #define DEMOD_NFM                   3
-#define DEMOD_SAM                   4
-#define DEMOD_MAX                   4
+#define DEMOD_FT8_WAV               4
+#define DEMOD_FT8                   5
+#define DEMOD_SAM                   6
+#define DEMOD_MAX                   6
+
 #define BUFFER_SIZE                 128
 
 //---- Global Teensy 4.1 Pin assignments
@@ -198,3 +203,5 @@ extern float32_t last_sample_buffer_L[];
 extern float32_t last_sample_buffer_R[];
 
 extern float temp;
+
+time_t getTeensy3Time();

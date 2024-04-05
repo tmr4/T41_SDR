@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "ButtonProc.h"
 #include "CW_Excite.h"
 #include "CWProcessing.h"
 #include "Demod.h"
@@ -9,6 +10,7 @@
 #include "Filter.h"
 #include "FIR.h"
 #include "Freq_Shift.h"
+#include "ft8.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Noise.h"
@@ -19,6 +21,8 @@
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
+
+int ft8Loop = 0;
 
 float32_t audioMaxSquaredAve = 0;
 
@@ -69,21 +73,180 @@ void ProcessIQData() {
   static float32_t audiotmp = 0.0f;
   float32_t w;
   static float32_t wold = 0.0f;
+  static int leftover = 0;
+  q15_t q15_buffer_LTemp[2048];
+  float32_t audioMaxSquared;
+  uint32_t AudioMaxIndex;
+  static uint32_t result = 0;
 
   if (keyPressedOn == 1) {
     return;
   }
 
+  if(bands[currentBand].mode == DEMOD_FT8_WAV) {
+  // are there at least N_BLOCKS buffers in each channel available ?
+  if ( (uint32_t) Q_in_L.available() > N_BLOCKS + 0 && (uint32_t) Q_in_R.available() > N_BLOCKS + 0 ) {
+    usec = 0;
+    // get samples from wave file
+    // let's pull the data at the same rate as the T41 pulls from the I/Q stream
+    // 2048 samples / 8 = 256
+    // Or we can look to fill the audio out buffer at the same rate, which is 2048 samples per loop
+
+    // process wave file data
+    // get next chunk of wave file
+    //readWave(float_buffer_L, 1920);
+    // wav file sample rate is 12 kHz, T41 audio is 24 kHz
+    // get a half sample size that we'll interpolate to the proper rate
+    if(readWave(float_buffer_R, FFT_length / 2 / 2)) {
+
+    // prepare audio stream (mostly just to verify proper wav file transfer)
+    // interpolate by 2 to 24 kHz
+    float_buffer_L[0] = float_buffer_R[0];
+    for (unsigned i = 1; i < FFT_length / 2; i++) {
+      float_buffer_L[2*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) / 2;
+      float_buffer_L[2*i] = float_buffer_R[i];
+    }
+    
+    // convert floats to the q15 required by FT8 routines
+    arm_float_to_q15(float_buffer_R, q15_buffer_LTemp, FFT_length / 2 / 2);
+
+    // decimate by 1.875
+    for (unsigned i = 0; i < 68; i++) {
+      // roll ft8 dsp buffer
+      ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
+      ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+
+      // transfer audio data to ft8_dsp_buffer
+      // decimate by 1.875 which brings us to a 6.4 ksps rate
+      ft8_dsp_buffer[2048 + i + ft8Loop * 68] = q15_buffer_LTemp[(int)(((float)i) * 120.0 / 64.0)]; // i * 1.875
+    }
+
+    if(++ft8Loop == 15) {
+      ft8Loop = 0;
+      process_FT8_FFT();
+      if(ft8_decode_flag == 1) {
+        num_decoded_msg = ft8_decode();
+        if(num_decoded_msg > 0) {
+          display_details(num_decoded_msg, kMax_decoded_messages);
+        }
+        ft8_decode_flag = 0;
+        FT_8_counter = 0;
+      }
+    }
+    
+      // Prepare the audio signal buffers
+      for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
+        // fill first half of buffer with last sample
+        FFT_buffer[i * 2] = last_sample_buffer_L[i]; // real
+        FFT_buffer[i * 2 + 1] = 0; // there is no imaginary component
+
+        // copy recent sample to last_sample_buffer for next time
+        last_sample_buffer_L [i] = float_buffer_L[i];
+
+        // fill recent audio samples into FFT_buffer
+        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
+        FFT_buffer[FFT_length + i * 2 + 1] = 0; // there is no imaginary component
+      }
+
+      /**********************************************************************************
+        Perform complex FFT on the audio time signals
+        calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
+      **********************************************************************************/
+
+      // prepare audio box spectrum and filter per the audio cutoff frequency
+      arm_cfft_f32(S, FFT_buffer, 0, 1);
+      arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
+
+      // process audio frequency spectrum only at the beginning of the show spectrum process
+      if (updateDisplayFlag == 1) {
+        for (int k = 0; k < 1024; k++) {
+          audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
+        }
+        //for (int k = 0; k < 256; k++) {
+        for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
+          // a spectrum offset of 20 give about the same magnitude signal peak as seen in the AM modes
+          audioYPixel[k] = 20 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
+          if (audioYPixel[k] < 0) {
+            audioYPixel[k] = 0;
+          }
+        }
+        arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared bin magnitued in audio
+        audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
+      }
+
+    // ======================================Interpolation  ================
+    // interpolation-by-2
+    arm_fir_interpolate_f32(&FIR_int1_I, float_buffer_L, iFFT_buffer, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF));
+
+    // interpolation-by-4
+    arm_fir_interpolate_f32(&FIR_int2_I, iFFT_buffer, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF1));
+
+    /**********************************************************************************
+      Digital Volume Control
+    **********************************************************************************/
+    if (mute == 1) {
+      arm_scale_f32(float_buffer_L, 0.0, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+    } else {
+      if (mute == 0) {
+        arm_scale_f32(float_buffer_L, DF * VolumeToAmplification(audioVolume), float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+      }
+    }
+
+    /**********************************************************************************
+      CONVERT TO INTEGER AND PLAY AUDIO
+    **********************************************************************************/
+    arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
+
+    result = Q_out_L.play(q15_buffer_LTemp, 2048);
+    ft8Delay = result / 10;
+    Codec_gain();
+    }
+    else {
+      ButtonDemodMode(); // switch back to ft8 mode
+      /*
+      // keep decoding w/o new audio
+      for (unsigned i = 0; i < 68; i++) {
+        // roll ft8 dsp buffer
+        ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
+        ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+
+        ft8_dsp_buffer[2048 + i + ft8Loop * 68] = 0;
+      }
+
+      if(++ft8Loop == 15) {
+        //Serial.println(ft8Loop);
+        ft8Loop = 0;
+        process_FT8_FFT();
+        if(ft8_decode_flag == 1) {
+          num_decoded_msg = ft8_decode();
+          if(num_decoded_msg > 0) {
+            display_details(num_decoded_msg, kMax_decoded_messages);
+          }
+          ft8_decode_flag = 0;
+          FT_8_counter = 0;
+        }
+      }
+      */
+    }
+    elapsed_micros_sum = elapsed_micros_sum + usec;
+    elapsed_micros_idx_t++;
+
+    //delay(10); // need some delay to slow down processing
+    Q_in_L.clear();
+    Q_in_R.clear();
+
+  }
+
+  } else {
+
   /**********************************************************************************
         Get samples from queue buffers
-        Teensy Audio Library stores ADC data in two buffers size=128, Q_in_L and Q_in_R as initiated from the audio lib.
+        Teensy Audio Library stores ADC data in two buffers, Q_in_L and Q_in_R as initiated from the audio lib.
         Then the buffers are read into two arrays sp_L and sp_R in blocks of 128 up to N_BLOCKS.  The arrarys are
         of size BUFFER_SIZE * N_BLOCKS.  BUFFER_SIZE is 128.
         N_BLOCKS = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF; // should be 16 with DF == 8 and FFT_LENGTH = 512
         BUFFER_SIZE*N_BLOCKS = 2048 samples
      **********************************************************************************/
-  float32_t audioMaxSquared;
-  uint32_t AudioMaxIndex;
   float rfGainValue;
 
   // are there at least N_BLOCKS buffers in each channel available ?
@@ -166,6 +329,7 @@ void ProcessIQData() {
       IQPhaseCorrection(float_buffer_L, float_buffer_R, IQPhaseCorrectionFactor[currentBand], BUFFER_SIZE * N_BLOCKS);
     } else {
       if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
+      //if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
         arm_scale_f32 (float_buffer_L, -IQAmpCorrectionFactor[currentBand], float_buffer_L, BUFFER_SIZE * N_BLOCKS);
         IQPhaseCorrection(float_buffer_L, float_buffer_R, IQPhaseCorrectionFactor[currentBand], BUFFER_SIZE * N_BLOCKS);
       }
@@ -301,7 +465,7 @@ void ProcessIQData() {
       volScaleFactor = 7.0874 * pow(freqKHzFcut, -1.232);
       arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, FFT_length / 2);
       arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, FFT_length / 2);
-
+      
       // Prepare the audio signal buffers
       //  First, Create Complex time signal for CFFT routine.
       //  Fill first block with Zeros
@@ -364,7 +528,7 @@ void ProcessIQData() {
         }
         //for (int k = 0; k < 256; k++) {
         for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
-          if (bands[currentBand].mode == 0  || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
+          if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
             audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
           }
           else {
@@ -424,12 +588,68 @@ void ProcessIQData() {
 
     switch (bands[currentBand].mode) {
       case DEMOD_USB:
+      case DEMOD_FT8: // demodulate FT8 signals via antenna input as USB for audio
         for (unsigned i = 0; i < FFT_length / 2; i++) {
           // if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_LSB ) {  // for SSB copy real part in both outputs
           float_buffer_L[i] = iFFT_buffer[FFT_length + (i * 2)];
 
           float_buffer_R[i] = float_buffer_L[i];
           audiotmp = AlphaBetaMag(iFFT_buffer[FFT_length + (i * 2)], iFFT_buffer[FFT_length + (i * 2) + 1]);
+        }
+
+          // save audio signal to FT8 bubber
+        if(bands[currentBand].mode == DEMOD_FT8) {
+          if(ft8_decode_flag == 0) {
+            // Pocket_FT8 process_data()
+            // convert floats to the q15 required by FT8 routines
+            arm_float_to_q15(float_buffer_L, q15_buffer_LTemp, 256);
+
+            for (unsigned i = 0; i < 68; i++) {
+              // roll ft8 dsp buffer
+              ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
+              ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+
+              // transfer audio data to ft8_dsp_buffer
+              // decimate by 3.75 which brings us to a 6.4 ksps rate
+              //ft8_dsp_buffer[2048 + i + ft8Loop * 68] = float_buffer_L[(int)(i * 3.75)]; 
+              ft8_dsp_buffer[2048 + i + ft8Loop * 68 + leftover] = q15_buffer_LTemp[(int)(i * 15 / 4)]; // i * 3.75
+            }
+
+            ++ft8Loop;
+            if(ft8Loop == 15) {
+              // fill last cell
+              ft8_dsp_buffer[3071] = q15_buffer_LTemp[255];
+
+              ft8Loop = 0;
+              leftover = 0;
+
+              DSP_Flag = 1;
+
+            } else {
+              // take 3 more samples over the range (every 4th loop) to completely fill the buffer
+              if(ft8Loop == 4 || ft8Loop == 8 || ft8Loop == 12) {
+                ft8_dsp_buffer[2048 + ft8Loop * 68 + leftover] = q15_buffer_LTemp[255];
+                leftover++;
+              }
+            }
+          }
+
+          if(DSP_Flag == 1 && ft8_flag == 1) {
+            // *** investigate threads to handle FT8 processing while we continue to collect audio
+            process_FT8_FFT();
+            DSP_Flag = 0;
+          }
+
+          if(ft8_decode_flag == 1) {
+            num_decoded_msg = ft8_decode();
+            if(num_decoded_msg > 0) {
+              display_details(num_decoded_msg, 5);
+            }
+
+            ft8_decode_flag = 0;  
+          }
+
+          if(ft8_flag == 0) update_synchronization();
         }
         break;
 
@@ -644,7 +864,7 @@ void ProcessIQData() {
 
     // ======================================Interpolation  ================
     // interpolation-by-2
-    arm_fir_interpolate_f32(&FIR_int1_I, float_buffer_L, iFFT_buffer, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF));   // Interpolatikon
+    arm_fir_interpolate_f32(&FIR_int1_I, float_buffer_L, iFFT_buffer, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF));
 
     // interpolation-by-4
     arm_fir_interpolate_f32(&FIR_int2_I, iFFT_buffer, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF1));
@@ -663,7 +883,6 @@ void ProcessIQData() {
     /**********************************************************************************
       CONVERT TO INTEGER AND PLAY AUDIO
     **********************************************************************************/
-    q15_t q15_buffer_LTemp[2048];
     arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
     Q_out_L.play(q15_buffer_LTemp, 2048);
 
@@ -672,6 +891,7 @@ void ProcessIQData() {
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
   } // end of if(audio blocks available)
+  }
 }
 
 /*****

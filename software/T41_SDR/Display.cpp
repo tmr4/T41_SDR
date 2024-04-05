@@ -11,6 +11,7 @@
 #include "Exciter.h"
 #include "FFT.h"
 #include "Filter.h"
+#include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "Noise.h"
@@ -135,12 +136,14 @@ struct DEMOD_Descriptor
 { const uint8_t DEMOD_n;
   const char* const text;
 };
-const DEMOD_Descriptor DEMOD[4] = {
+const DEMOD_Descriptor DEMOD[6] = {
   //   DEMOD_n, name
   { DEMOD_USB, "(USB)" },
   { DEMOD_LSB, "(LSB)" },
   { DEMOD_AM, "(AM)" },
   { DEMOD_NFM, "(NFM)" },
+  { DEMOD_FT8_WAV, "(FT8.wav)" },
+  { DEMOD_FT8, "(FT8)" },
 };
 
 Metro ms_500 = Metro(500);  // Set up a Metro
@@ -249,7 +252,7 @@ FASTRUN void ShowSpectrum() {
       resetTuningFlag = false;
     }
 
-    if (T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
+    if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
       // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
       ProcessIQData();
     }
@@ -310,6 +313,7 @@ FASTRUN void ShowSpectrum() {
         // set color of active filter bar to green
         switch (bands[currentBand].mode) {
           case DEMOD_USB:
+          case DEMOD_FT8: // ft8 is USB
             if (lowerAudioFilterActive) {
               filterLoColor = RA8875_GREEN;
               filterHiColor = RA8875_LIGHT_GREY;
@@ -416,7 +420,8 @@ void ShowBandwidthBarValues() {
   int centerLine = (SPECTRUM_RES + SPECTRUM_LEFT_X) / 2;
   int posLeft, posRight;
   //int hi_offset = 80;
-  int loColor, hiColor;
+  int loColor = RA8875_LIGHT_GREY;
+  int hiColor = RA8875_LIGHT_GREY;
   //float32_t pixel_per_khz;
   float loValue = (float)(bands[currentBand].FLoCut / 1000.0f);
   float hiValue = (float)(bands[currentBand].FHiCut / 1000.0f);
@@ -444,32 +449,25 @@ void ShowBandwidthBarValues() {
   // set color of active filter value to green
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
+    case DEMOD_FT8: // ft8 is USB
       if (lowerAudioFilterActive) {
         loColor = RA8875_GREEN;
-        hiColor = RA8875_LIGHT_GREY;
       } else {
-        loColor = RA8875_LIGHT_GREY;
         hiColor = RA8875_GREEN;
       } 
       break;
 
     case DEMOD_LSB:
       if (lowerAudioFilterActive) {
-        loColor = RA8875_LIGHT_GREY;
         hiColor = RA8875_GREEN;
       } else {
         loColor = RA8875_GREEN;
-        hiColor = RA8875_LIGHT_GREY;
       } 
       break;
 
     case DEMOD_NFM:
       if (nfmBWFilterActive) {
-        //loColor = RA8875_GREEN;
         hiColor = RA8875_GREEN;
-      } else {
-        //loColor = RA8875_LIGHT_GREY;
-        hiColor = RA8875_LIGHT_GREY;
       }
       hiValue = (float)(nfmFilterBW / 1000.0f);
       posRight = centerLine - tft.getFontWidth() * 5 - 4;
@@ -720,6 +718,8 @@ void ShowOperatingStats() {
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
     case DEMOD_LSB:
+    case DEMOD_FT8: // ft8 is USB
+    case DEMOD_FT8_WAV: // ft8 is USB
       if (activeVFO == VFO_A) {
         tft.print(DEMOD[bands[currentBandA].mode].text);
       } else {
@@ -1053,6 +1053,8 @@ FASTRUN void DrawBandwidthBar() {
 
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
+    case DEMOD_FT8: // ft8 is USB
+    case DEMOD_FT8_WAV: // ft8 is USB
       tft.fillRect(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
       break;
 

@@ -7,6 +7,7 @@
 #include "Encoders.h"
 #include "FFT.h"
 #include "Filter.h"
+#include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "Noise.h"
@@ -223,8 +224,34 @@ void ButtonDemodMode() {
     bands[currentBand].mode = DEMOD_MIN;  // cycle thru demod modes
   }
 
+  if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
+    if(!ft8Init) {
+      setupFT8();
+      ft8Init = true;
+    }
+
+    if(bands[currentBand].mode == DEMOD_FT8) {
+      auto_sync_FT8();
+    } else {
+      // set up message area
+      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      tft.writeTo(L2); // it's on layer 2 as well
+      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      tft.writeTo(L1);
+      wfRows = WATERFALL_H - 20 * 6 - 3;
+
+      setupFT8Wav();
+    }
+  } else {
+    // erase any decoded messages if w're coming from FT8
+    if(bands[currentBand].mode - 1 == DEMOD_FT8) {
+      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);
+      wfRows = WATERFALL_H;
+    }
+  }
+
   SetupMode();
-  UpdateBWFilters();
+  //UpdateBWFilters();
 
   ShowOperatingStats();
   ShowBandwidthBarValues();

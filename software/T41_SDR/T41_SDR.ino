@@ -413,7 +413,7 @@ time_t getTeensy3Time() {
   Return value:
     void
 *****/
-void T4_rtc_set(unsigned long t) {
+FLASHMEM void T4_rtc_set(unsigned long t) {
   //#if defined (T4)
 #if 0
   // stop the RTC
@@ -444,7 +444,7 @@ void T4_rtc_set(unsigned long t) {
   Return value:
     void
 *****/
-void InitializeDataArrays() {
+FLASHMEM void InitializeDataArrays() {
   int LP_F_help;
 
   //DB2OO, 11-SEP-23: don't use the fixed sizes, but use the caculated ones, otherwise a code change will create very difficult to find problems
@@ -650,7 +650,7 @@ void InitializeDataArrays() {
   Return value:
     void
 *****/
-void Splash() {
+FLASHMEM void Splash() {
   int centerTxt;
   int line1_Y = YPIXELS / 10;
   int line2_Y = YPIXELS / 3;
@@ -725,7 +725,7 @@ void Splash() {
   Return value:
     void
 *****/
-void SoftReset() {
+FLASHMEM void SoftReset() {
   // can't use any working variables until after this, we can get rid of this when we use EEPROMData
   LoadOpVars();
 
@@ -777,7 +777,7 @@ void SoftReset() {
   Return value:
     void
 *****/
-void setup() {
+FLASHMEM void setup() {
   Serial.begin(9600);
 
   setSyncProvider(getTeensy3Time);  // get TIME from real time clock with 3V backup battery
@@ -879,6 +879,7 @@ void setup() {
 
   Q_in_L.begin();  //Initialize receive input buffers
   Q_in_R.begin();
+  Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING); // NON_STALLING
   delay(100L);
 
   /****************************************************************************************
@@ -897,6 +898,8 @@ void setup() {
   sdCardPresent = SDPresentCheck();
 
   SoftReset();
+
+  //memCheck = true;
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
@@ -917,6 +920,13 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
   int valPin;
   long ditTimerOff;
   long dahTimerOn;
+
+  if(memCheck) {
+    if(++loopCounter == 100) {
+      memInfo();
+      loopCounter = 0;
+    }
+  }
 
 #ifdef DEBUG_LOOP
   EnterLoop();
@@ -1073,7 +1083,6 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           modeSelectOutExR.gain(0, powerOutCW[currentBand]);       //AFP 10-21-22
           digitalWrite(MUTE, LOW);                                 // unmutes audio
           modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone  AFP 10-01-22
-          //  modeSelectOutR.gain(1, volumeLog[(int)sidetoneVolume]);           // Right side not used.  KF5N September 1, 2023
         } else {
           if (digitalRead(paddleDit) == HIGH && keyType == 0) {  //Turn off CW signal
             keyPressedOn = 0;
@@ -1123,7 +1132,6 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
             modeSelectOutExR.gain(0, powerOutCW[currentBand]);       //AFP 10-21-22
             digitalWrite(MUTE, LOW);                                 // unmutes audio
             modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone
-                                                                     //  modeSelectOutR.gain(1, volumeLog[(int)sidetoneVolume]);           // Right side not used.  KF5N September 1, 2023
             CW_ExciterIQData();                                      // Creates CW output signal
             keyPressedOn = 0;
           }
@@ -1147,7 +1155,6 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
               modeSelectOutExR.gain(0, powerOutCW[currentBand]);        //AFP 10-21-22
               digitalWrite(MUTE, LOW);                                  // unmutes audio
               modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);   // Dah sidetone was using constants.  KD0RC
-                                                                        //   modeSelectOutR.gain(1, volumeLog[(int)sidetoneVolume]);           // Right side not used.  KF5N September 1, 2023
               CW_ExciterIQData();                                       // Creates CW output signal
               keyPressedOn = 0;
             }
@@ -1181,7 +1188,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
     ShowTransmitReceiveStatus();
   }
 
-
+  // update processor load and temp info box items every 200 loops
   if (elapsed_micros_idx_t > (SampleRate / 960)) {
     UpdateInfoBoxItem(&infoBox[IB_ITEM_TEMP]);
     UpdateInfoBoxItem(&infoBox[IB_ITEM_LOAD]);

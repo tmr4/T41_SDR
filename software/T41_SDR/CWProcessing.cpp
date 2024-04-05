@@ -76,26 +76,6 @@ char numberTable[] = {
   0b111110   // 9
 };
 
-// not used
-char punctuationTable[] = {
-  0b01101011,  // exclamation mark 33
-  0b01010010,  // double quote 34
-  0b10001001,  // dollar sign 36
-  0b00101000,  // ampersand 38
-  0b01011110,  // apostrophe 39
-  0b01011110,  // parentheses (L) 40, 41
-  0b01110011,  // comma 44
-  0b00100001,  // hyphen 45
-  0b01010101,  // period  46
-  0b00110010,  // slash 47
-  0b01111000,  // colon 58
-  0b01101010,  // semi-colon 59
-  0b01001100,  // question mark 63
-  0b01001101,  // underline 95
-  0b01101000,  // paragraph
-  0b00010001   // break
-};
-
 //=== CW Filter ===
 
 float32_t CW_Filter_state[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -181,14 +161,6 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
 void Dah();
 void Dit();
 
-// the following functions are not used anywhere
-// void Send(char myChar);
-// void MorseCharacterClear(void);
-// void Lookup(char currentAtom);
-// void DrawSignalPlotFrame();
-// void DoSignalPlot(float val);
-// void CW_DecodeLevelDisplay();
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -208,7 +180,7 @@ void Dit();
   Return value:
     void
 *****/
-void SelectCWFilter() {
+FLASHMEM void SelectCWFilter() {
   int temp = CWFilterIndex;
 
   CWFilterIndex = SubmenuSelect(CWFilter, 6, 0);
@@ -341,89 +313,6 @@ void SendCode(char code) {
 }
 
 /*****
-  Purpose: to send a Morse code character
-
-
-  Parameter list:
-  char myChar       The character to be sent
-
-  Return value:
-  void
-*****/
-void Send(char myChar) {
-  if (isalpha(myChar)) {
-    if (islower(myChar)) {
-      myChar = toupper(myChar);
-    }
-    SendCode(letterTable[myChar - 'A']);  // Make into a zero-based array index
-    return;
-  } else if (isdigit(myChar)) {
-    SendCode(numberTable[myChar - '0']);  // Same deal here...
-    return;
-  }
-
-  switch (myChar) {  // Non-alpha and non-digit characters
-    case '\r':
-    case '\n':
-    case '!':
-      SendCode(0b01101011);  // exclamation mark 33
-      break;
-    case '"':
-      SendCode(0b01010010);  // double quote 34
-      break;
-    case '$':
-      SendCode(0b10001001);  // dollar sign 36
-      break;
-    case '@':
-      SendCode(0b00101000);  // ampersand 38
-      break;
-    case '\'':
-      SendCode(0b01011110);  // apostrophe 39
-      break;
-
-    case '(':
-    case ')':
-      SendCode(0b01011110);  // parentheses (L) 40, 41
-      break;
-
-    case ',':
-      SendCode(0b01110011);  // comma 44
-      break;
-
-    case '.':
-      SendCode(0b01010101);  // period  46
-      break;
-    case '-':
-      SendCode(0b00100001);  // hyphen 45
-      break;
-    case ':':
-      SendCode(0b01111000);  // colon 58
-      break;
-    case ';':
-      SendCode(0b01101010);  // semi-colon 59
-      break;
-    case '?':
-      SendCode(0b01001100);  // question mark 63
-      break;
-    case '_':
-      SendCode(0b01001101);  // underline 95
-      break;
-
-    case (char)182:
-      SendCode(0b01101000);  // paragraph #182, '¶'
-      break;
-
-    case ' ':  // Space
-      WordSpace();
-      break;
-
-    default:
-      WordSpace();
-      break;
-  }
-}
-
-/*****
   Purpose: establish the dit length for code transmission. Crucial since
     all spacing is done using dit length
 
@@ -433,7 +322,7 @@ void Send(char myChar) {
   Return value:
     void
 *****/
-void SetDitLength(int wpm) {
+FLASHMEM void SetDitLength(int wpm) {
   ditLength = 1200 / wpm;
 }
 
@@ -447,7 +336,7 @@ void SetDitLength(int wpm) {
   Return value:
     void
 *****/
-void SetTransmitDitLength(int wpm) {
+FLASHMEM void SetTransmitDitLength(int wpm) {
   transmitDitLength = 1200 / wpm;  // JJP 8/19/23
 }
 
@@ -460,7 +349,7 @@ void SetTransmitDitLength(int wpm) {
   Return value:
     void
 *****/
-void SetKeyType() {
+FLASHMEM void SetKeyType() {
   //const char *keyChoice[] = { "Straight Key", "Keyer", "Cancel" };
 
   //keyType = EEPROMData.keyType = SubmenuSelect(keyChoice, 3, 0);
@@ -482,7 +371,7 @@ void SetKeyType() {
   Return value:
     void
 *****/
-void SetKeyPowerUp() {
+FLASHMEM void SetKeyPowerUp() {
   if (keyType == 0) {
     paddleDit = KEYER_DIT_INPUT_TIP;
     paddleDah = KEYER_DAH_INPUT_RING;
@@ -506,7 +395,7 @@ void SetKeyPowerUp() {
   Return value;
     void
 *****/
-void SetSideToneVolume() {
+FLASHMEM void SetSideToneVolume() {
   int val, sidetoneDisplay;
   Q_in_L.clear();  // Clear other buffers too?
   Q_in_R.clear();
@@ -548,7 +437,6 @@ void SetSideToneVolume() {
       menuEncoderMove = 0;
     }
     modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone  AFP 10-01-22
-                                                             //    modeSelectOutR.gain(1, volumeLog[(int)sidetoneVolume]);  // Right side not used.  KF5N September 1, 2023
     val = ReadSelectedPushButton();                          // Read pin that controls all switches
     val = ProcessButtonPress(val);
     if (val == MENU_OPTION_SELECT) {  // Make a choice??
@@ -564,21 +452,6 @@ void SetSideToneVolume() {
 //==================================== Decoder =================
 //DB2OO, 29-AUG-23: moved col declaration here
 static int col = 0;  // Start at lower left
-
-/*****
-    DB2OO, 29-AUG-23: added
-  Purpose: This function clears the morse code text buffer
-
-  Parameter list:
-    
-
-  Return value
-    void
-*****/
-void MorseCharacterClear(void) {
-  col = 0;
-  decodeBuffer[col] = '\0';  // Make it a string
-}
 
 /*****
   Purpose: This function displays the decoded Morse code below waterfall. Arranged as:
@@ -609,40 +482,6 @@ void MorseCharacterDisplay(char currentLetter) {
 }
 
 /*****
-  Purpose: This function looks up the current character in the decode array using a binary search algorithm.
-           It uses a modified binary search algorith that can be seen in Chapter 10, using Figure 10-9.
-
-                      index=0
-                      dash_jump=128
-                      for each received element
-                        dash_jump=dash_jump/2
-                        index = index + (e=='.')?1:dash_jump
-                      endfor
-                      ascii = lookupstring[index]
-
-  Parameter list:
-    char currentAtom      is it a dit or a dah?
-
-  Return value
-    void
-*****/
-void Lookup(char currentAtom) {
-  /* This shows letter placement in the array after walking the binary tree
-
-char *bigMorseCodeTree  = (char *) "-EISH5--4--V---3--UF--------?-2--ARL---------.--.WP------J---1--TNDB6--.--X/-----KC------Y------MGZ7----,Q------O-8------9--0----";
-//                                  012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678
-//                                           10        20        30        40        50        60        70        80        90       100       110       120
-*/
-  currentDashJump = currentDashJump >> 1;  // Fast divide by 2
-
-  if (currentAtom == '.') {
-    currentDecoderIndex++;
-  } else {
-    currentDecoderIndex += currentDashJump;
-  }
-}
-
-/*****
   Purpose: This function uses the current WPM to set an estimate ditLength any time the tune
            endcoder is changed
 
@@ -668,67 +507,6 @@ void ResetHistograms() {
   memset(gapHistogram, 0, HISTOGRAM_ELEMENTS * sizeof(uint32_t));
   currentWPM = 1200 / ditLength;
   UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
-}
-
-/*****
-  Purpose: This function draws the plot axes in the display's waterfall space
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-void DrawSignalPlotFrame() {
-  int offset;
-  float val = 0.0;
-  tft.fillRect(WATERFALL_L, WATERFALL_T - 5, WATERFALL_W + 10, WATERFALL_H + 30, RA8875_BLACK);
-
-  tft.setFontScale(0);
-  tft.setTextColor(RA8875_GREEN);
-  tft.drawFastVLine(WATERFALL_L + 60, WATERFALL_T + 5, WATERFALL_H - 25, RA8875_GREEN);
-  tft.drawFastHLine(WATERFALL_L + 60, WATERFALL_BOTTOM - 20, WATERFALL_W - 80, RA8875_GREEN);
-  offset = WATERFALL_BOTTOM - 30;
-  for (int i = 0; i < 5; i++) {
-    tft.setCursor(WATERFALL_L + 15, offset - (i * 30));
-    tft.print(val);
-    tft.print(" -");
-    val += 2.0;
-  }
-  tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(WATERFALL_L, WATERFALL_T);
-  tft.print("Signal");
-  tft.setCursor(WATERFALL_W >> 1, WATERFALL_BOTTOM - 20);
-  tft.print("Time");
-}
-
-/*****
-  Purpose: This function plots the CW signal in the display's waterfall space
-
-  Parameter list:
-    float val         the current signal value
-
-  Return value;
-    void
-*****/
-void DoSignalPlot(float val) {
-  int i, j;
-  int location;
-  static short int signalArray[WATERFALL_H + 1][WATERFALL_W + 1];
-
-  location = map(val, 0, 8.0, SPEC_BOX_LABELS, WATERFALL_BOTTOM);  // What row to activate?
-  signalArray[location][WATERFALL_W] = RA8875_WHITE;       // Turn pixel on.
-  for (i = 0; i < WATERFALL_H; i++) {
-    memmove(&signalArray[i], &signalArray[i + 1], WATERFALL_W);
-  }
-  for (i = 0; i < WATERFALL_H; i++) {
-    for (j = 0; j < WATERFALL_W; j++) {
-      if (signalArray[i][j] != 0) {
-        tft.setCursor(WATERFALL_L + 61 + i, WATERFALL_T + 6 + j);
-        tft.print('.');
-      }
-    }
-  }
 }
 
 // This function was re-factored into a state machine by KF5N October 29, 2023.
@@ -1069,25 +847,4 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
 
   magnitude = sqrtf(real * real + imag * imag);
   return magnitude;
-}
-
-/*****
-  Purpose:Display horizontal CW Decode level
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-
-*****/
-void CW_DecodeLevelDisplay() {
-  int levelMtrOffset = 120;
-
-  // draw S-Meter layout
-  tft.drawFastHLine(SMETER_X - levelMtrOffset, SMETER_Y - 1, 100, RA8875_WHITE);
-  tft.drawFastHLine(SMETER_X - levelMtrOffset, SMETER_Y + 20, 100, RA8875_WHITE);  // changed 6 to 20
-
-  tft.drawFastVLine(SMETER_X - levelMtrOffset, SMETER_Y - 1, 20, RA8875_WHITE);  // charge 8 to 18
-  tft.drawFastVLine(SMETER_X + 100 - levelMtrOffset, SMETER_Y - 1, 20, RA8875_WHITE);
 }

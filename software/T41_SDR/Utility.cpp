@@ -51,10 +51,6 @@ const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
 
-// the following functions are not used anywhere
-// float32_t arm_atan2_f32(float32_t y, float32_t x);
-// int Xmit_IQ_Cal();
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -66,7 +62,7 @@ const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016
   Return value;
     void
 *****/
-void sineTone(int numCycles) {
+FLASHMEM void sineTone(int numCycles) {
   float theta;
   float freqSideTone2;
   float freqSideTone3 = 3000;         // Refactored 32 * 24000 / 256; //AFP 2-7-23
@@ -264,90 +260,6 @@ float32_t log10f_fast(float32_t X) {
 }
 
 /*****
-  Purpose: Fast approximation to the trigonometric atan2 function for floating-point data.
-
-  Parameter list:
-    x input value           Inputs
-    y input value
-
-  Return value;
-    atan2(y, x) = atan(y/x) as radians.
-*****/
-float32_t arm_atan2_f32(float32_t y, float32_t x) {
-  float32_t atan2Val, fract, in;                 /* Temporary variables for input, output */
-  uint32_t index;                                /* Index variable */
-  uint32_t tableSize = (uint32_t) TABLE_SIZE_64; /* Initialise tablesize */
-  float32_t wa, wb, wc, wd;                      /* Cubic interpolation coefficients */
-  float32_t a, b, c, d;                          /* Four nearest output values */
-  float32_t *tablePtr;                           /* Pointer to table */
-  uint8_t flags = 0;                             /* flags providing information about input values:
-                                                    Bit0 = 1 if |x| < |y|
-                                                    Bit1 = 1 if x < 0
-                                                    Bit2 = 1 if y < 0 */
-
-  /* calculate magnitude of input values */
-  if (x < 0.0f) {
-    x = -x;
-    flags |= 0x02;
-  }
-
-  if (y < 0.0f) {
-    y = -y;
-    flags |= 0x04;
-  }
-
-  /* calculate in value for LUT [0 1] */
-  if (x < y) {
-    in = x / y;
-    flags |= 0x01;
-  } else {                /* x >= y */
-    if (x > 0.0f)
-      in = y / x;
-    else                  /* both are 0.0 */
-      in = 0.0;           /* prevent division by 0 */
-  }
-
-  /* Calculation of index of the table */
-  index = (uint32_t) (tableSize * in);
-
-  /* fractional value calculation */
-  fract = ((float32_t) tableSize * in) - (float32_t) index;
-
-  /* Initialise table pointer */
-  tablePtr = (float32_t *) & atanTable[index];
-
-  /* Read four nearest values of output value from the sin table */
-  a = *tablePtr++;
-  b = *tablePtr++;
-  c = *tablePtr++;
-  d = *tablePtr++;
-
-  /* Cubic interpolation process */
-  wa = -(((0.166666667f) * (fract * (fract * fract))) +
-         ((0.3333333333333f) * fract)) + ((0.5f) * (fract * fract));
-  wb = (((0.5f) * (fract * (fract * fract))) -
-        ((fract * fract) + ((0.5f) * fract))) + 1.0f;
-  wc = (-((0.5f) * (fract * (fract * fract))) +
-        ((0.5f) * (fract * fract))) + fract;
-  wd = ((0.166666667f) * (fract * (fract * fract))) -
-       ((0.166666667f) * fract);
-
-  atan2Val = ((a * wa) + (b * wb)) + ((c * wc) + (d * wd));     /* Calculate atan2 value */
-
-  if (flags & 0x01)                                             /* exchanged input values? */
-
-    atan2Val = 1.5707963267949f - atan2Val;                     /* output = pi/2 - output */
-
-  if (flags & 0x02)
-    atan2Val = 3.14159265358979f - atan2Val;                    /* negative x input? Quadrant 2 or 3 */
-
-  if (flags & 0x04)
-    atan2Val = - atan2Val;                                      /* negative y input? Quadrant 3 or 4 */
-
-  return (atan2Val);                                            /* Return the output value */
-}
-
-/*****
   Purpose:
   Parameter list:
     float32_t inphase
@@ -400,7 +312,7 @@ float ApproxAtan(float z) {
   Return value;
     void
 *****/
-void SaveAnalogSwitchValues() {
+FLASHMEM void SaveAnalogSwitchValues() {
   int index;
   int minVal;
   int value;
@@ -523,11 +435,6 @@ void DisplayClock() {
   tft.print(timeBuffer);
 }                                                   // end function displayTime
 
-int Xmit_IQ_Cal() {
-  return -1;
-}
-
-
 /*****
   Purpose: sets frequancy for selected band and update filters accordingly
 
@@ -539,6 +446,8 @@ int Xmit_IQ_Cal() {
 *****/
 void SetBand() {
   SetFreq();
+
+  CalcFilters();
 
   ShowFrequency();
   ShowOperatingStats();
@@ -556,7 +465,7 @@ void SetBand() {
   Return value;
     int               0 = SD not initialized, 1 = has data
 *****/
-int SDPresentCheck() {
+FLASHMEM int SDPresentCheck() {
   int retVal = 0;
 
   if(SD.begin(BUILTIN_SDCARD)) {
@@ -672,7 +581,7 @@ float TGetTemp() {
   Return value;
     void
 *****/
-void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp) {
+FLASHMEM void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp) {
 
   uint32_t calibrationData;
   uint32_t roomCount;
@@ -755,7 +664,7 @@ void FormatFrequency(long freq, char *freqBuffer) {
     int             the frequency or 0 if too large
 
 *****/
-int SetI2SFreq(int freq) {
+FLASHMEM int SetI2SFreq(int freq) {
   int n1;
   int n2;
   int c0;

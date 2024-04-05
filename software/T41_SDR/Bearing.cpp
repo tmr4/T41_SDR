@@ -568,10 +568,6 @@ int CreateMapList(char ptrMaps[][50], int *count);
 int WhichOneToUse(char ptrMaps[][50], int count);
 void WaitforWRComplete();
 
-// the following functions are not used anywhere
-// inline void Color565ToRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b);
-// void TurnOffInitializingMessage();
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -585,7 +581,7 @@ void WaitforWRComplete();
   Return value:
     void
 *****/
-void DrawKeyboard() {
+FLASHMEM void DrawKeyboard() {
   int i;
   int keyWidth = 60;
   int keySpace = 10;
@@ -682,7 +678,7 @@ void DrawKeyboard() {
   Return value:
     void
 *****/
-void CaptureKeystrokes() {
+FLASHMEM void CaptureKeystrokes() {
   int keyWidth = 60;
   int keySpace = 10;
   int keyHeight = 40;
@@ -876,7 +872,7 @@ void CaptureKeystrokes() {
   Return value:
     void
 *****/
-void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
+FLASHMEM void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
   tft.fillRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_BLACK);
   tft.drawRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_YELLOW);
@@ -1042,7 +1038,7 @@ float HaversineDistance(float lat2, float lon2) {
 
 /*
 *****/
-void bmpDraw(const char *filename, int x, int y) {
+FLASHMEM void bmpDraw(const char *filename, int x, int y) {
   //  int image_width, image_height;        // W+H in pixels
   int len;
   int rayStart = 0, rayEnd = 0;
@@ -1321,7 +1317,7 @@ inline void writeRect(int x, int y, int cx, int cy, uint16_t *pixels) {
 #endif
 }
 
-void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, bool waitForWRC) {
+FLASHMEM void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, bool waitForWRC) {
   x += g_image_offset_x;
   y += g_image_offset_y;
   int end_x = x + cx;
@@ -1407,11 +1403,6 @@ void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, bool waitF
 
 #endif
 
-inline void Color565ToRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b) {
-  tft.Color565ToRGB(color, r, g, b);
-}
-
-
 /*****
   Purpose: Initialize the SD card
 
@@ -1421,7 +1412,7 @@ inline void Color565ToRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b) {
   Return value;
     int                   0 if cannot initialize, 1 otherwise
 *****/
-int InitializeSDCard() {
+FLASHMEM int InitializeSDCard() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_RED, RA8875_BLACK);
   tft.setCursor(100, 240);
@@ -1436,23 +1427,7 @@ int InitializeSDCard() {
   return 1;
 }
 
-/*****
-  Purpose: Erase initialization error message
-
-  Parameter list:
-    void
-
-  Return value;
-    int                   0 if cannot initialize, 1 otherwise
-*****/
-void TurnOffInitializingMessage() {
-  tft.setFontScale((enum RA8875tsize)1);
-  tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
-  tft.setCursor(100, 240);
-  tft.print("                              ");
-}
-
-void WaitforWRComplete() {
+FLASHMEM void WaitforWRComplete() {
 #if defined(_RA8876_T3)
   // bugbug: ra8876 may use dma code, and since some of our decoders
   // want to reuse the same memory we wait for these to complete
@@ -1470,7 +1445,7 @@ void WaitforWRComplete() {
   Return value;
     void
 *****/
-void BearingMaps() {
+FLASHMEM void BearingMaps() {
   char ptrMaps[10][50];
   int count;
 
