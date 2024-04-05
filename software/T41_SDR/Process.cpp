@@ -77,167 +77,11 @@ void ProcessIQData() {
   q15_t q15_buffer_LTemp[2048];
   float32_t audioMaxSquared;
   uint32_t AudioMaxIndex;
-  static uint32_t result = 0;
+  float rfGainValue;
 
   if (keyPressedOn == 1) {
     return;
   }
-
-  if(bands[currentBand].mode == DEMOD_FT8_WAV) {
-  // are there at least N_BLOCKS buffers in each channel available ?
-  if ( (uint32_t) Q_in_L.available() > N_BLOCKS + 0 && (uint32_t) Q_in_R.available() > N_BLOCKS + 0 ) {
-    usec = 0;
-    // get samples from wave file
-    // let's pull the data at the same rate as the T41 pulls from the I/Q stream
-    // 2048 samples / 8 = 256
-    // Or we can look to fill the audio out buffer at the same rate, which is 2048 samples per loop
-
-    // process wave file data
-    // get next chunk of wave file
-    //readWave(float_buffer_L, 1920);
-    // wav file sample rate is 12 kHz, T41 audio is 24 kHz
-    // get a half sample size that we'll interpolate to the proper rate
-    if(readWave(float_buffer_R, FFT_length / 2 / 2)) {
-
-    // prepare audio stream (mostly just to verify proper wav file transfer)
-    // interpolate by 2 to 24 kHz
-    float_buffer_L[0] = float_buffer_R[0];
-    for (unsigned i = 1; i < FFT_length / 2; i++) {
-      float_buffer_L[2*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) / 2;
-      float_buffer_L[2*i] = float_buffer_R[i];
-    }
-    
-    // convert floats to the q15 required by FT8 routines
-    arm_float_to_q15(float_buffer_R, q15_buffer_LTemp, FFT_length / 2 / 2);
-
-    // decimate by 1.875
-    for (unsigned i = 0; i < 68; i++) {
-      // roll ft8 dsp buffer
-      ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
-      ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
-
-      // transfer audio data to ft8_dsp_buffer
-      // decimate by 1.875 which brings us to a 6.4 ksps rate
-      ft8_dsp_buffer[2048 + i + ft8Loop * 68] = q15_buffer_LTemp[(int)(((float)i) * 120.0 / 64.0)]; // i * 1.875
-    }
-
-    if(++ft8Loop == 15) {
-      ft8Loop = 0;
-      process_FT8_FFT();
-      if(ft8_decode_flag == 1) {
-        num_decoded_msg = ft8_decode();
-        if(num_decoded_msg > 0) {
-          display_details(num_decoded_msg, kMax_decoded_messages);
-        }
-        ft8_decode_flag = 0;
-        FT_8_counter = 0;
-      }
-    }
-    
-      // Prepare the audio signal buffers
-      for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
-        // fill first half of buffer with last sample
-        FFT_buffer[i * 2] = last_sample_buffer_L[i]; // real
-        FFT_buffer[i * 2 + 1] = 0; // there is no imaginary component
-
-        // copy recent sample to last_sample_buffer for next time
-        last_sample_buffer_L [i] = float_buffer_L[i];
-
-        // fill recent audio samples into FFT_buffer
-        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
-        FFT_buffer[FFT_length + i * 2 + 1] = 0; // there is no imaginary component
-      }
-
-      /**********************************************************************************
-        Perform complex FFT on the audio time signals
-        calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
-      **********************************************************************************/
-
-      // prepare audio box spectrum and filter per the audio cutoff frequency
-      arm_cfft_f32(S, FFT_buffer, 0, 1);
-      arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
-
-      // process audio frequency spectrum only at the beginning of the show spectrum process
-      if (updateDisplayFlag == 1) {
-        for (int k = 0; k < 1024; k++) {
-          audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
-        }
-        //for (int k = 0; k < 256; k++) {
-        for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
-          // a spectrum offset of 20 give about the same magnitude signal peak as seen in the AM modes
-          audioYPixel[k] = 20 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
-          if (audioYPixel[k] < 0) {
-            audioYPixel[k] = 0;
-          }
-        }
-        arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared bin magnitued in audio
-        audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
-      }
-
-    // ======================================Interpolation  ================
-    // interpolation-by-2
-    arm_fir_interpolate_f32(&FIR_int1_I, float_buffer_L, iFFT_buffer, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF));
-
-    // interpolation-by-4
-    arm_fir_interpolate_f32(&FIR_int2_I, iFFT_buffer, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF1));
-
-    /**********************************************************************************
-      Digital Volume Control
-    **********************************************************************************/
-    if (mute == 1) {
-      arm_scale_f32(float_buffer_L, 0.0, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-    } else {
-      if (mute == 0) {
-        arm_scale_f32(float_buffer_L, DF * VolumeToAmplification(audioVolume), float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-      }
-    }
-
-    /**********************************************************************************
-      CONVERT TO INTEGER AND PLAY AUDIO
-    **********************************************************************************/
-    arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
-
-    result = Q_out_L.play(q15_buffer_LTemp, 2048);
-    ft8Delay = result / 10;
-    Codec_gain();
-    }
-    else {
-      ButtonDemodMode(); // switch back to ft8 mode
-      /*
-      // keep decoding w/o new audio
-      for (unsigned i = 0; i < 68; i++) {
-        // roll ft8 dsp buffer
-        ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
-        ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
-
-        ft8_dsp_buffer[2048 + i + ft8Loop * 68] = 0;
-      }
-
-      if(++ft8Loop == 15) {
-        //Serial.println(ft8Loop);
-        ft8Loop = 0;
-        process_FT8_FFT();
-        if(ft8_decode_flag == 1) {
-          num_decoded_msg = ft8_decode();
-          if(num_decoded_msg > 0) {
-            display_details(num_decoded_msg, kMax_decoded_messages);
-          }
-          ft8_decode_flag = 0;
-          FT_8_counter = 0;
-        }
-      }
-      */
-    }
-    elapsed_micros_sum = elapsed_micros_sum + usec;
-    elapsed_micros_idx_t++;
-
-    //delay(10); // need some delay to slow down processing
-    Q_in_L.clear();
-    Q_in_R.clear();
-
-  }
-
-  } else {
 
   /**********************************************************************************
         Get samples from queue buffers
@@ -247,57 +91,147 @@ void ProcessIQData() {
         N_BLOCKS = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF; // should be 16 with DF == 8 and FFT_LENGTH = 512
         BUFFER_SIZE*N_BLOCKS = 2048 samples
      **********************************************************************************/
-  float rfGainValue;
-
   // are there at least N_BLOCKS buffers in each channel available ?
   if ( (uint32_t) Q_in_L.available() > N_BLOCKS + 0 && (uint32_t) Q_in_R.available() > N_BLOCKS + 0 ) {
     usec = 0;
 
-    // get audio samples from the audio  buffers and convert them to float
-    // read in 32 blocks á 128 samples in I and Q
-    for (unsigned i = 0; i < N_BLOCKS; i++) {
-      sp_L1 = Q_in_R.readBuffer();
-      sp_R1 = Q_in_L.readBuffer();
+    // we allow input buffer availability to regulate FT8 wav file decoding
+    // otherwise we'll process the wav file too fast.  This is better than 
+    // using delays
+    if(bands[currentBand].mode != DEMOD_FT8_WAV) {
+      // get audio samples from the audio  buffers and convert them to float
+      // read in 32 blocks á 128 samples in I and Q
+      for (unsigned i = 0; i < N_BLOCKS; i++) {
+        sp_L1 = Q_in_R.readBuffer();
+        sp_R1 = Q_in_L.readBuffer();
+
+        /**********************************************************************************
+            Using arm_Math library, convert to float one buffer_size.
+            Float_buffer samples are now standardized from > -1.0 to < 1.0
+        **********************************************************************************/
+        arm_q15_to_float (sp_L1, &float_buffer_L[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
+        arm_q15_to_float (sp_R1, &float_buffer_R[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
+        Q_in_L.freeBuffer();
+        Q_in_R.freeBuffer();
+      }
+
+      /*******************************
+              Set RFGain - for all bands
+      */
+      rfGainValue = pow(10, (float)rfGainAllBands / 20);
+      arm_scale_f32 (float_buffer_L, rfGainValue, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+      arm_scale_f32 (float_buffer_R, rfGainValue, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
 
       /**********************************************************************************
-          Using arm_Math library, convert to float one buffer_size.
-          Float_buffer samples are now standardized from > -1.0 to < 1.0
+          Remove DC offset to reduce centeral spike.  First read the Mean value of
+          left and right channels.  Then fill L and R correction arrays with those Means
+          and subtract the Means from the float L and R buffer data arrays.  Again use Arm_Math functions
+          to manipulate the arrays.  Arrays are all BUFFER_SIZE * N_BLOCKS long
       **********************************************************************************/
-      arm_q15_to_float (sp_L1, &float_buffer_L[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
-      arm_q15_to_float (sp_R1, &float_buffer_R[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
-      Q_in_L.freeBuffer();
-      Q_in_R.freeBuffer();
+      arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
+      arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
+      
+      /********************************************************************************** 
+          Scale the data buffers by the RFgain value defined in bands[currentBand] structure
+      **********************************************************************************/
+      arm_scale_f32 (float_buffer_L, bands[currentBand].RFgain, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+      arm_scale_f32 (float_buffer_R, bands[currentBand].RFgain, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
+
+      /**********************************************************************************
+        IQ amplitude and phase correction.  For this scaled down version the I an Q channels are
+        equalized and phase corrected manually. This is done by applying a correction, which is the difference, to
+        the L channel only.  The phase is corrected in the IQPhaseCorrection() function.
+
+        IQ amplitude and phase correction
+      ***********************************************************************************************/
+
+      // Manual IQ amplitude correction
+      // to be honest: we only correct the amplitude of the I channel ;-)
+      if (bands[currentBand].mode == DEMOD_LSB || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
+        arm_scale_f32 (float_buffer_L, -IQAmpCorrectionFactor[currentBand], float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+        IQPhaseCorrection(float_buffer_L, float_buffer_R, IQPhaseCorrectionFactor[currentBand], BUFFER_SIZE * N_BLOCKS);
+      } else {
+        if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
+        //if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
+          arm_scale_f32 (float_buffer_L, -IQAmpCorrectionFactor[currentBand], float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+          IQPhaseCorrection(float_buffer_L, float_buffer_R, IQPhaseCorrectionFactor[currentBand], BUFFER_SIZE * N_BLOCKS);
+        }
+      }
+      // IQ phase correction
+
+      /**********************************************************************************
+          Perform a 256 point FFT for the spectrum display on the basis of the first 256 complex values
+          of the raw IQ input data this saves about 3% of processor power compared to calculating
+          the magnitudes and means of the 4096 point FFT for the display
+
+          Only go there from here, if magnification == 1
+      ***********************************************************************************************/
+
+      if (spectrum_zoom == 0) { // && display_S_meter_or_spectrum_state == 1)
+        CalcZoom1Magn();  // Moved to display function
+      }
+
+      /**********************************************************************************
+          Frequency translation by Fs/4 without multiplication from Lyons (2011): chapter 13.1.2 page 646
+          together with the savings of not having to shift/rotate the FFT_buffer, this saves
+          about 1% of processor use
+
+          This is for +Fs/4 [moves receive frequency to the left in the spectrum display]
+            float_buffer_L contains I = real values
+            float_buffer_R contains Q = imaginary values
+            xnew(0) =  xreal(0) + jximag(0)
+                leave first value (DC component) as it is!
+            xnew(1) =  - ximag(1) + jxreal(1)
+      **********************************************************************************/
+      FreqShift1();
+
+      /**********************************************************************************
+          SPECTRUM_ZOOM_2 and larger here after frequency conversion!
+          Spectrum zoom displays a magnified display of the data around the translated receive frequency.
+          Processing is done in the ZoomFFTExe(BUFFER_SIZE * N_BLOCKS) function.  For magnifications of 2x to 8X
+          Larger magnification are not needed in practice.
+
+          Spectrum Zoom uses the shifted spectrum, so the center "hump" around DC is shifted by fs/4
+      **********************************************************************************/
+      // Run display FFT routine only once for each Audio process FFT
+      if(spectrum_zoom != 0 && updateDisplayFlag == 1) {
+        ZoomFFTExe(BUFFER_SIZE * N_BLOCKS); // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
+        // does not work for magnifications > 8
+      }
+
+      if (calibrateFlag == 1) {
+        CalibrateOptions(IQChoice);
+      }
+
+      /*************************************************************************************************
+          freq_conv2()
+
+          FREQUENCY CONVERSION USING A SOFTWARE QUADRATURE OSCILLATOR
+          Creates a new IF frequency to allow the tuning window to be moved anywhere in the current display.
+          THIS VERSION calculates the COS AND SIN WAVE on the fly - uses double precision float
+
+          MAJOR ADVANTAGE: frequency conversion can be done for any frequency !
+
+          large parts of the code taken from the mcHF code by Clint, KA7OEI, thank you!
+            see here for more info on quadrature oscillators:
+          Wheatley, M. (2011): CuteSDR Technical Manual Ver. 1.01. - http://sourceforge.net/projects/cutesdr/
+          Lyons, R.G. (2011): Understanding Digital Processing. – Pearson, 3rd edition.
+      *************************************************************************************************/
+
+      FreqShift2();
+
+      /**********************************************************************************
+          Decimation
+          Resample (Decimate) the shifted time signal, first by 4, then by 2.  Each time the
+          signal is decimated by an even number, the spectrum is reversed.  Resampling twice
+          returns the spectrum to the correct orientation.
+          Signal has now been shifted to base band, leaving aliases at higher frequencies,
+          which are removed at each decimation step using the Arm combined decimate/filter function.
+          If the starting sample rate is 192K SPS,   after the combined decimation, the sample rate is
+          now 192K/8 = 24K SPS.  The array size is also reduced by 8, making FFT calculations much faster.
+          The effective bandwidth (up to Nyquist frequency) is 12KHz.
+      **********************************************************************************/
     }
-
-    if (keyPressedOn == 1) {
-      return;
-    }
-
-    /*******************************
-            Set RFGain - for all bands
-    */
-    rfGainValue = pow(10, (float)rfGainAllBands / 20);
-    arm_scale_f32 (float_buffer_L, rfGainValue, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-    arm_scale_f32 (float_buffer_R, rfGainValue, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
-    /**********************************************************************************
-        Remove DC offset to reduce centeral spike.  First read the Mean value of
-        left and right channels.  Then fill L and R correction arrays with those Means
-        and subtract the Means from the float L and R buffer data arrays.  Again use Arm_Math functions
-        to manipulate the arrays.  Arrays are all BUFFER_SIZE * N_BLOCKS long
-    **********************************************************************************/
-    //
-    //================
-
-    arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
-    arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
-    
-    //===========================
-
-    /********************************************************************************** 
-        Scale the data buffers by the RFgain value defined in bands[currentBand] structure
-    **********************************************************************************/
-    arm_scale_f32 (float_buffer_L, bands[currentBand].RFgain, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-    arm_scale_f32 (float_buffer_R, bands[currentBand].RFgain, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
 
     /**********************************************************************************
       Clear Buffers
@@ -307,277 +241,266 @@ void ProcessIQData() {
       in that case, we clear the buffers to keep the whole audio chain running smoothly
       **********************************************************************************/
     if (Q_in_L.available() > 25) {
+      Serial.println("audio buffer cleared ...");
       Q_in_L.clear();
       AudioInterrupts();
     }
     if (Q_in_R.available() > 25) {
+      Serial.println("audio buffer cleared ...");
       Q_in_R.clear();
       AudioInterrupts();
     }
-    /**********************************************************************************
-      IQ amplitude and phase correction.  For this scaled down version the I an Q channels are
-      equalized and phase corrected manually. This is done by applying a correction, which is the difference, to
-      the L channel only.  The phase is corrected in the IQPhaseCorrection() function.
 
-      IQ amplitude and phase correction
-    ***********************************************************************************************/
+    switch(bands[currentBand].mode) {
+      case DEMOD_NFM:
+        // a NFM signal needs to be demodulated prior to audio processing so all we do here
+        // is decimate and prepare the audio signal buffers
 
-    // Manual IQ amplitude correction
-    // to be honest: we only correct the amplitude of the I channel ;-)
-    if (bands[currentBand].mode == DEMOD_LSB || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
-      arm_scale_f32 (float_buffer_L, -IQAmpCorrectionFactor[currentBand], float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-      IQPhaseCorrection(float_buffer_L, float_buffer_R, IQPhaseCorrectionFactor[currentBand], BUFFER_SIZE * N_BLOCKS);
-    } else {
-      if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
-      //if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
-        arm_scale_f32 (float_buffer_L, -IQAmpCorrectionFactor[currentBand], float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-        IQPhaseCorrection(float_buffer_L, float_buffer_R, IQPhaseCorrectionFactor[currentBand], BUFFER_SIZE * N_BLOCKS);
-      }
-    }
-    // IQ phase correction
+        // set NFM filter to decimate
+        // fixed at 6 kHz for now
+        // make variable (including separate visual BW on frequency spectrum and audio filter on audio spectrum)
+        SetDecIntFilters(nfmFilterBW);
 
-    /**********************************************************************************
-        Perform a 256 point FFT for the spectrum display on the basis of the first 256 complex values
-        of the raw IQ input data this saves about 3% of processor power compared to calculating
-        the magnitudes and means of the 4096 point FFT for the display
+        // decimation-by-4 in-place!
+        arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+        arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
 
-        Only go there from here, if magnification == 1
-    ***********************************************************************************************/
+        // decimation-by-2 in-place
+        arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+        arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
 
-    if (spectrum_zoom == 0) { // && display_S_meter_or_spectrum_state == 1)
-      CalcZoom1Magn();  // Moved to display function
-    }
-
-    //display_S_meter_or_spectrum_state++;
-    if ( keyPressedOn == 1) {
-      return;
-    }
-
-    /**********************************************************************************
-        Frequency translation by Fs/4 without multiplication from Lyons (2011): chapter 13.1.2 page 646
-        together with the savings of not having to shift/rotate the FFT_buffer, this saves
-        about 1% of processor use
-
-        This is for +Fs/4 [moves receive frequency to the left in the spectrum display]
-          float_buffer_L contains I = real values
-          float_buffer_R contains Q = imaginary values
-          xnew(0) =  xreal(0) + jximag(0)
-              leave first value (DC component) as it is!
-          xnew(1) =  - ximag(1) + jxreal(1)
-    **********************************************************************************/
-    FreqShift1();
-
-    /**********************************************************************************
-        SPECTRUM_ZOOM_2 and larger here after frequency conversion!
-        Spectrum zoom displays a magnified display of the data around the translated receive frequency.
-        Processing is done in the ZoomFFTExe(BUFFER_SIZE * N_BLOCKS) function.  For magnifications of 2x to 8X
-        Larger magnification are not needed in practice.
-
-        Spectrum Zoom uses the shifted spectrum, so the center "hump" around DC is shifted by fs/4
-    **********************************************************************************/
-    // Run display FFT routine only once for each Audio process FFT
-    if(spectrum_zoom != 0 && updateDisplayFlag == 1) {
-      ZoomFFTExe(BUFFER_SIZE * N_BLOCKS); // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
-      // does not work for magnifications > 8
-    }
-
-    /**********************************************************************************  AFP 12-31-20
-        S-Meter & dBm-display ?? not usually called
-    **********************************************************************************/
-    //============================== AFP 10-22-22  Begin new
-    if (calibrateFlag == 1) {
-      CalibrateOptions(IQChoice);
-    }
-
-    /*************************************************************************************************
-        freq_conv2()
-
-        FREQUENCY CONVERSION USING A SOFTWARE QUADRATURE OSCILLATOR
-        Creates a new IF frequency to allow the tuning window to be moved anywhere in the current display.
-        THIS VERSION calculates the COS AND SIN WAVE on the fly - uses double precision float
-
-        MAJOR ADVANTAGE: frequency conversion can be done for any frequency !
-
-        large parts of the code taken from the mcHF code by Clint, KA7OEI, thank you!
-          see here for more info on quadrature oscillators:
-        Wheatley, M. (2011): CuteSDR Technical Manual Ver. 1.01. - http://sourceforge.net/projects/cutesdr/
-        Lyons, R.G. (2011): Understanding Digital Processing. – Pearson, 3rd edition.
-    *************************************************************************************************/
-
-    FreqShift2();
-
-    /**********************************************************************************
-        Decimation
-        Resample (Decimate) the shifted time signal, first by 4, then by 2.  Each time the
-        signal is decimated by an even number, the spectrum is reversed.  Resampling twice
-        returns the spectrum to the correct orientation.
-        Signal has now been shifted to base band, leaving aliases at higher frequencies,
-        which are removed at each decimation step using the Arm combined decimate/filter function.
-        If the starting sample rate is 192K SPS,   after the combined decimation, the sample rate is
-        now 192K/8 = 24K SPS.  The array size is also reduced by 8, making FFT calculations much faster.
-        The effective bandwidth (up to Nyquist frequency) is 12KHz.
-    **********************************************************************************/
-
-    if(bands[currentBand].mode == DEMOD_NFM) {
-      // a NFM signal needs to be demodulated prior to audio processing so all we do here
-      // is decimate and prepare the audio signal buffers
-
-      // set NFM filter to decimate
-      // fixed at 6 kHz for now
-      // make variable (including separate visual BW on frequency spectrum and audio filter on audio spectrum)
-      SetDecIntFilters(nfmFilterBW);
-
-      // decimation-by-4 in-place!
-      arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-      arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
-
-      // decimation-by-2 in-place
-      arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
-      arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
-
-      // Prepare the audio signal buffers
-      // fill recent audio samples into FFT_buffer (left channel: re, right channel: im)
-      // we'll use this to demodulate the NFM signal
-      for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
-        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
-        FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
-      }
-    } else {
-      // prepare signals for all other modes
-
-      // decimation-by-4 in-place!
-      arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
-      arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
-
-      // decimation-by-2 in-place
-      arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
-      arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
-
-      // =================  Level Adjust ===========
-      float freqKHzFcut;
-      float volScaleFactor;
-      if (bands[currentBand].mode == DEMOD_LSB) {
-        freqKHzFcut = -(float32_t)bands[currentBand].FLoCut * 0.001;
-      } else {
-        freqKHzFcut = (float32_t)bands[currentBand].FHiCut * 0.001;
-      }
-
-      volScaleFactor = 7.0874 * pow(freqKHzFcut, -1.232);
-      arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, FFT_length / 2);
-      arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, FFT_length / 2);
-      
-      // Prepare the audio signal buffers
-      //  First, Create Complex time signal for CFFT routine.
-      //  Fill first block with Zeros
-      //  Then interleave RE and IM parts to create signal for FFT
-      if (first_block) { 
-        // fill real & imaginaries with zeros for the first BLOCKSIZE samples
-        // ONLY FOR the VERY FIRST FFT: fill first samples with zeros
-        for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF / 2.0); i++) {
-          FFT_buffer[i] = 0.0;
-        }
-        first_block = 0;
-      } else {
-        // All other FFTs
-        // fill FFT_buffer with last events audio samples for all other FFT instances
-        for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
-          FFT_buffer[i * 2] = last_sample_buffer_L[i]; // real
-          FFT_buffer[i * 2 + 1] = last_sample_buffer_R[i]; // imaginary
-        }
-      }
-
-      for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
-        // copy recent samples to last_sample_buffer for next time!
-        last_sample_buffer_L [i] = float_buffer_L[i];
-        last_sample_buffer_R [i] = float_buffer_R[i];
-
+        // Prepare the audio signal buffers
         // fill recent audio samples into FFT_buffer (left channel: re, right channel: im)
-        FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
-        FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
-      }
-
-      /**********************************************************************************
-          Digital FFT convolution
-          Filtering is accomplished by combining (multiplying) spectra in the frequency domain.
-          basis for this was Lyons, R. (2011): Understanding Digital Processing.
-          "Fast FIR Filtering using the FFT", pages 688 - 694.
-          Method used here: overlap-and-save.
-      **********************************************************************************/
-      /**********************************************************************************
-        Perform complex FFT on the audio time signals
-        calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
-      **********************************************************************************/
-      arm_cfft_f32(S, FFT_buffer, 0, 1);
-
-      /**********************************************************************************
-        Continuing FFT Convolution
-            Next, prepare the filter mask (done in the Filter.cpp file).  Only need to do this once for each filter setting.
-            Allows efficient real-time variable LP and HP audio filters, without the overhead of time-domain convolution filtering.
-
-            After the Filter mask in the frequency domain is created, complex multiply  filter mask with the frequency domain audio data.
-            Filter mask previously calculated in setup Array of filter mask coefficients:
-            FIR_filter_mask[]
-      **********************************************************************************/
-
-      arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
-
-      // process audio frequency spectrum only at the beginning of the show spectrum process
-      if (updateDisplayFlag == 1) {
-        for (int k = 0; k < 1024; k++) {
-          audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
+        // we'll use this to demodulate the NFM signal
+        for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
+          FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
+          FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
         }
-        //for (int k = 0; k < 256; k++) {
-        for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
-          if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
-            audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
+        break;
+
+#ifdef FT8
+      case DEMOD_FT8_WAV:
+        // get samples from wave file
+        // let's pull the data at the same rate as the T41 pulls from the I/Q stream
+        // 2048 samples / 8 = 256
+        // Or we can look to fill the audio out buffer at the same rate, which is 2048 samples per loop
+
+        // process wave file data
+        // get next chunk of wave file
+        //readWave(float_buffer_L, 1920);
+        // wav file sample rate is 12 kHz, T41 audio is 24 kHz
+        // get a half sample size that we'll interpolate to the proper rate
+        if(readWave(float_buffer_R, FFT_length / 2 / 2)) {
+          // prepare audio stream (mostly just to verify proper wav file transfer)
+          // interpolate by 2 to 24 kHz
+          float_buffer_L[0] = float_buffer_R[0];
+          for (unsigned i = 1; i < FFT_length / 2; i++) {
+            float_buffer_L[2*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) / 2;
+            float_buffer_L[2*i] = float_buffer_R[i];
           }
-          else {
-            if (bands[currentBand].mode == 1) {
-              audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, 120);
+          
+          // convert floats to the q15 required by FT8 routines
+          arm_float_to_q15(float_buffer_R, q15_buffer_LTemp, FFT_length / 2 / 2);
+
+          // decimate by 1.875
+          for (unsigned i = 0; i < 68; i++) {
+            // roll ft8 dsp buffer
+            ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
+            ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+
+            // transfer audio data to ft8_dsp_buffer
+            // decimate by 1.875 which brings us to a 6.4 ksps rate
+            ft8_dsp_buffer[2048 + i + ft8Loop * 68] = q15_buffer_LTemp[(int)(((float)i) * 120.0 / 64.0)]; // i * 1.875
+          }
+
+          if(++ft8Loop == 15) {
+            ft8Loop = 0;
+            process_FT8_FFT();
+            if(ft8_decode_flag == 1) {
+              num_decoded_msg = ft8_decode();
+              if(num_decoded_msg > 0) {
+                display_details(num_decoded_msg, kMax_decoded_messages);
+              }
+              ft8_decode_flag = 0;
+              FT_8_counter = 0;
             }
           }
-          if (audioYPixel[k] < 0) {
-            audioYPixel[k] = 0;
+
+          // we're using the audio input buffers to regulate the pace of the output stream
+          // without this we'll play the wave file about 3 times faster than normal
+          // *** need to check whether we're clipping any of our output with this
+          //      not a big priority unless we want this to be a standard feature ***
+          Q_in_L.clear();
+          Q_in_R.clear();
+
+        }
+        else {
+          ButtonDemodMode(); // switch back to ft8 mode
+          /*
+          // keep decoding w/o new audio
+          for (unsigned i = 0; i < 68; i++) {
+            // roll ft8 dsp buffer
+            ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
+            ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+
+            ft8_dsp_buffer[2048 + i + ft8Loop * 68] = 0;
+          }
+
+          if(++ft8Loop == 15) {
+            //Serial.println(ft8Loop);
+            ft8Loop = 0;
+            process_FT8_FFT();
+            if(ft8_decode_flag == 1) {
+              num_decoded_msg = ft8_decode();
+              if(num_decoded_msg > 0) {
+                display_details(num_decoded_msg, kMax_decoded_messages);
+              }
+              ft8_decode_flag = 0;
+              FT_8_counter = 0;
+            }
+          }
+          */
+        }
+        break;
+#endif // FT8
+
+      default:
+        // prepare signals for all other modes
+
+        // decimation-by-4 in-place!
+        arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+        arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
+
+        // decimation-by-2 in-place
+        arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+        arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+
+        // =================  Level Adjust ===========
+        float freqKHzFcut;
+        float volScaleFactor;
+        if (bands[currentBand].mode == DEMOD_LSB) {
+          freqKHzFcut = -(float32_t)bands[currentBand].FLoCut * 0.001;
+        } else {
+          freqKHzFcut = (float32_t)bands[currentBand].FHiCut * 0.001;
+        }
+
+        volScaleFactor = 7.0874 * pow(freqKHzFcut, -1.232);
+        arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, FFT_length / 2);
+        arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, FFT_length / 2);
+        
+        // Prepare the audio signal buffers
+        //  First, Create Complex time signal for CFFT routine.
+        //  Fill first block with Zeros
+        //  Then interleave RE and IM parts to create signal for FFT
+        if (first_block) { 
+          // fill real & imaginaries with zeros for the first BLOCKSIZE samples
+          // ONLY FOR the VERY FIRST FFT: fill first samples with zeros
+          for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF / 2.0); i++) {
+            FFT_buffer[i] = 0.0;
+          }
+          first_block = 0;
+        } else {
+          // All other FFTs
+          // fill FFT_buffer with last events audio samples for all other FFT instances
+          for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
+            FFT_buffer[i * 2] = last_sample_buffer_L[i]; // real
+            FFT_buffer[i * 2 + 1] = last_sample_buffer_R[i]; // imaginary
           }
         }
-        arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared bin magnitued in audio
-        audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
-      }
 
-      /**********************************************************************************
-          Additional Convolution Processes:
-          // filter by just deleting bins - principle of Linrad
-            only works properly when we have the right window function!
+        for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
+          // copy recent samples to last_sample_buffer for next time!
+          last_sample_buffer_L [i] = float_buffer_L[i];
+          last_sample_buffer_R [i] = float_buffer_R[i];
 
-          (automatic) notch filter = Tone killer --> the name is stolen from SNR ;-)
-          first test, we set a notch filter at 1kHz
-          which bin is that?
-          positive & negative frequency -1kHz and +1kHz --> delete 2 bins
-          we are not deleting one bin, but five bins for the test
-          1024 bins in 12ksps = 11.71Hz per bin
-          SampleRate / 8.0 / 1024 = bin BW
-          1000Hz / 11.71Hz = bin 85.333
+          // fill recent audio samples into FFT_buffer (left channel: re, right channel: im)
+          FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
+          FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
+        }
 
-      **********************************************************************************/
+        /**********************************************************************************
+            Digital FFT convolution
+            Filtering is accomplished by combining (multiplying) spectra in the frequency domain.
+            basis for this was Lyons, R. (2011): Understanding Digital Processing.
+            "Fast FIR Filtering using the FFT", pages 688 - 694.
+            Method used here: overlap-and-save.
+        **********************************************************************************/
+        /**********************************************************************************
+          Perform complex FFT on the audio time signals
+          calculation is performed in-place the FFT_buffer [re, im, re, im, re, im . . .]
+        **********************************************************************************/
+        arm_cfft_f32(S, FFT_buffer, 0, 1);
 
-      /**********************************************************************************
-        After the frequency domain filter mask and other processes are complete, do a
-        complex inverse FFT to return to the time domain
-          (if sample rate = 192kHz, we are in 24ksps now, because we decimated by 8)
-          perform iFFT (in-place)  IFFT is selected by the IFFT flag=1 in the Arm CFFT function.
-      **********************************************************************************/
+        /**********************************************************************************
+          Continuing FFT Convolution
+              Next, prepare the filter mask (done in the Filter.cpp file).  Only need to do this once for each filter setting.
+              Allows efficient real-time variable LP and HP audio filters, without the overhead of time-domain convolution filtering.
 
-      arm_cfft_f32(iS, iFFT_buffer, 1, 1);
+              After the Filter mask in the frequency domain is created, complex multiply  filter mask with the frequency domain audio data.
+              Filter mask previously calculated in setup Array of filter mask coefficients:
+              FIR_filter_mask[]
+        **********************************************************************************/
 
-      // Adjust for level alteration because of filters
+        arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
 
-      /**********************************************************************************
-          AGC - automatic gain control
+        // process audio frequency spectrum only at the beginning of the show spectrum process
+        if (updateDisplayFlag == 1) {
+          for (int k = 0; k < 1024; k++) {
+            audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
+          }
+          //for (int k = 0; k < 256; k++) {
+          for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
+            if (bands[currentBand].mode == DEMOD_USB || bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_AM || bands[currentBand].mode == DEMOD_SAM) {
+              audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
+            }
+            else {
+              if (bands[currentBand].mode == 1) {
+                audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, 120);
+              }
+            }
+            if (audioYPixel[k] < 0) {
+              audioYPixel[k] = 0;
+            }
+          }
+          arm_max_f32 (audioSpectBuffer, 1024, &audioMaxSquared, &AudioMaxIndex);  // Max value of squared bin magnitued in audio
+          audioMaxSquaredAve = .5 * audioMaxSquared + .5 * audioMaxSquaredAve;  // Running averaged values
+        }
 
-          we´re back in time domain
-          AGC acts upon I & Q before demodulation on the decimated audio data in iFFT_buffer
-      **********************************************************************************/
-      AGC();  //AGC function works with time domain I and Q data buffers created in the last step
+        /**********************************************************************************
+            Additional Convolution Processes:
+            // filter by just deleting bins - principle of Linrad
+              only works properly when we have the right window function!
+
+            (automatic) notch filter = Tone killer --> the name is stolen from SNR ;-)
+            first test, we set a notch filter at 1kHz
+            which bin is that?
+            positive & negative frequency -1kHz and +1kHz --> delete 2 bins
+            we are not deleting one bin, but five bins for the test
+            1024 bins in 12ksps = 11.71Hz per bin
+            SampleRate / 8.0 / 1024 = bin BW
+            1000Hz / 11.71Hz = bin 85.333
+
+        **********************************************************************************/
+
+        /**********************************************************************************
+          After the frequency domain filter mask and other processes are complete, do a
+          complex inverse FFT to return to the time domain
+            (if sample rate = 192kHz, we are in 24ksps now, because we decimated by 8)
+            perform iFFT (in-place)  IFFT is selected by the IFFT flag=1 in the Arm CFFT function.
+        **********************************************************************************/
+
+        arm_cfft_f32(iS, iFFT_buffer, 1, 1);
+
+        // Adjust for level alteration because of filters
+
+        /**********************************************************************************
+            AGC - automatic gain control
+
+            we´re back in time domain
+            AGC acts upon I & Q before demodulation on the decimated audio data in iFFT_buffer
+        **********************************************************************************/
+        AGC();  //AGC function works with time domain I and Q data buffers created in the last step
+        break;
     }
 
     /**********************************************************************************
@@ -597,7 +520,8 @@ void ProcessIQData() {
           audiotmp = AlphaBetaMag(iFFT_buffer[FFT_length + (i * 2)], iFFT_buffer[FFT_length + (i * 2) + 1]);
         }
 
-          // save audio signal to FT8 bubber
+#ifdef FT8
+          // save audio signal to FT8 buffer
         if(bands[currentBand].mode == DEMOD_FT8) {
           if(ft8_decode_flag == 0) {
             // Pocket_FT8 process_data()
@@ -651,6 +575,7 @@ void ProcessIQData() {
 
           if(ft8_flag == 0) update_synchronization();
         }
+#endif // FT8
         break;
 
       case DEMOD_LSB:
@@ -712,10 +637,14 @@ void ProcessIQData() {
       case DEMOD_SAM:
         AMDecodeSAM();
         break;
+
+      case DEMOD_FT8_WAV: // demodulate FT8 signals via wave file
+      default:
+        break;
     }
 
-    // update audio spectrum for NFM
-    if(bands[currentBand].mode == DEMOD_NFM) {
+    // update audio spectrum for NFM or FT8_WAV
+    if(bands[currentBand].mode == DEMOD_NFM || bands[currentBand].mode == DEMOD_FT8_WAV) {
 
       // Prepare the audio signal buffers
       for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {
@@ -767,7 +696,6 @@ void ProcessIQData() {
         float_buffer_L[i] = iFFT_buffer[FFT_length + (i * 2)];
       }
     }
-
 
     //============================  Receive EQ  ========================
     if (receiveEQFlag == ON ) {
@@ -891,7 +819,6 @@ void ProcessIQData() {
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
   } // end of if(audio blocks available)
-  }
 }
 
 /*****

@@ -224,6 +224,8 @@ void ButtonDemodMode() {
     bands[currentBand].mode = DEMOD_MIN;  // cycle thru demod modes
   }
 
+#ifdef FT8
+
   if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
     if(!ft8Init) {
       setupFT8();
@@ -249,6 +251,12 @@ void ButtonDemodMode() {
       wfRows = WATERFALL_H;
     }
   }
+#else
+  // skip FT8 modes
+  if(bands[currentBand].mode == DEMOD_FT8_WAV) {
+    bands[currentBand].mode += 2;
+  }
+#endif
 
   SetupMode();
   //UpdateBWFilters();

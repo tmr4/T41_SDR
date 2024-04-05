@@ -6,8 +6,11 @@
 
 #include "SDT.h"
 #include "Display.h"
-#include "ft8_constants.h"
+
+#ifdef FT8
+
 #include "ft8.h"
+#include "ft8_constants.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -29,8 +32,6 @@ uint32_t current_time, start_time, ft8_time;
 int DSP_Flag;
 int ft8_flag, FT_8_counter, ft8_decode_flag;
 int num_decoded_msg;
-
-int ft8Delay = 0;
 
 int master_offset, offset_step;
 
@@ -1341,3 +1342,5 @@ bool readWave(float32_t *buf, int sizeBuf) {
   }
   return true;
 }
+
+#endif // #ifdef FT8
