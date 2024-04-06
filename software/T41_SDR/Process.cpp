@@ -31,7 +31,6 @@ float32_t audioMaxSquaredAve = 0;
 
 int audioYPixel[1024];
 float32_t audioSpectBuffer[1024]; // This can't be DMAMEM.  It will break the S-Meter.
-float32_t DMAMEM float_buffer_L_AudioCW[256];
 //const uint32_t N_DEC_B = N_B / (uint32_t)DF;
 //float32_t DMAMEM last_sample_buffer_L[BUFFER_SIZE * N_DEC_B];
 //float32_t DMAMEM last_sample_buffer_R[BUFFER_SIZE * N_DEC_B];
@@ -755,33 +754,28 @@ void ProcessIQData() {
       if (CWFilterIndex != 5) {
         switch (CWFilterIndex) {
           case 0:  // 0.8 KHz
-            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter1, float_buffer_L, float_buffer_L_AudioCW, 256);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter1, float_buffer_L, float_buffer_R, 256);
+            arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
             break;
 
           case 1: // 1.0 KHz
-            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter2, float_buffer_L, float_buffer_L_AudioCW, 256);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter2, float_buffer_L, float_buffer_R, 256);
+            arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
             break;
 
           case 2: // 1.3 KHz
-            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter3, float_buffer_L, float_buffer_L_AudioCW, 256);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter3, float_buffer_L, float_buffer_R, 256);
+            arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
             break;
 
           case 3: // 1.8 KHz
-            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter4, float_buffer_L, float_buffer_L_AudioCW, 256);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter4, float_buffer_L, float_buffer_R, 256);
+            arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
             break;
 
           case 4:  // 2.0 KHz
-            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter5, float_buffer_L, float_buffer_L_AudioCW, 256);
-            arm_copy_f32(float_buffer_L_AudioCW, float_buffer_L, FFT_length / 2);
-            //arm_copy_f32(float_buffer_L_AudioCW, float_buffer_R, FFT_length / 2);
+            arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter5, float_buffer_L, float_buffer_R, 256);
+            arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
             break;
 
           case 5:  //Off

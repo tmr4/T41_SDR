@@ -67,7 +67,7 @@
 
 #define SDCARD_MESSAGE_LENGTH     3000L                                     // The number of milliseconds to leave error message on screen
 
-//#define FT8 // uncomment to enable FT8: this requires an additional 86k FLASH, 111k of RAM1 and 183k of RAM2
+#define FT8 // uncomment to enable FT8: this requires an additional 86k FLASH, 111k of RAM1 and 183k of RAM2
 
 struct maps {
   char mapNames[50];

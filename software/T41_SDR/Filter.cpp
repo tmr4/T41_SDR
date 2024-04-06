@@ -18,6 +18,28 @@ int nfmFilterBW = 12000;
 uint32_t m_NumTaps = (FFT_LENGTH / 2) + 1;
 float32_t recEQ_LevelScale[14];
 
+// EQ Buffers
+float32_t DMAMEM EQ1_float_buffer_L[256];
+float32_t DMAMEM EQ2_float_buffer_L[256];
+float32_t DMAMEM EQ3_float_buffer_L[256];
+float32_t DMAMEM EQ4_float_buffer_L[256];
+float32_t DMAMEM EQ5_float_buffer_L[256];
+float32_t DMAMEM EQ6_float_buffer_L[256];
+float32_t DMAMEM EQ7_float_buffer_L[256];
+float32_t DMAMEM EQ8_float_buffer_L[256];
+float32_t DMAMEM EQ9_float_buffer_L[256];
+float32_t DMAMEM EQ10_float_buffer_L[256];
+float32_t DMAMEM EQ11_float_buffer_L[256];
+float32_t DMAMEM EQ12_float_buffer_L[256];
+float32_t DMAMEM EQ13_float_buffer_L[256];
+float32_t DMAMEM EQ14_float_buffer_L[256];
+
+float32_t DMAMEM FIR_Coef_I[(FFT_LENGTH / 2) + 1];
+float32_t DMAMEM FIR_Coef_Q[(FFT_LENGTH / 2) + 1];
+float32_t DMAMEM FIR_int1_coeffs[48];
+float32_t DMAMEM FIR_int2_coeffs[32];
+float32_t DMAMEM FIR_filter_mask[FFT_LENGTH * 2] __attribute__((aligned(4)));
+
 float32_t rec_EQ_Band1_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //declare and zero biquad state variables
 float32_t rec_EQ_Band2_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 float32_t rec_EQ_Band3_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -49,21 +71,6 @@ arm_biquad_cascade_df2T_instance_f32 S12_Rec = { IIR_NUMSTAGES, rec_EQ_Band12_st
 arm_biquad_cascade_df2T_instance_f32 S13_Rec = { IIR_NUMSTAGES, rec_EQ_Band13_state, EQ_Band13Coeffs };
 arm_biquad_cascade_df2T_instance_f32 S14_Rec = { IIR_NUMSTAGES, rec_EQ_Band14_state, EQ_Band14Coeffs };
 
-float32_t rec_EQ1_float_buffer_L[256];
-float32_t rec_EQ2_float_buffer_L[256];
-float32_t rec_EQ3_float_buffer_L[256];
-float32_t rec_EQ4_float_buffer_L[256];
-float32_t rec_EQ5_float_buffer_L[256];
-float32_t rec_EQ6_float_buffer_L[256];
-float32_t rec_EQ7_float_buffer_L[256];
-float32_t rec_EQ8_float_buffer_L[256];
-float32_t rec_EQ9_float_buffer_L[256];
-float32_t rec_EQ10_float_buffer_L[256];
-float32_t rec_EQ11_float_buffer_L[256];
-float32_t rec_EQ12_float_buffer_L[256];
-float32_t rec_EQ13_float_buffer_L[256];
-float32_t rec_EQ14_float_buffer_L[256];
-
 float32_t xmt_EQ_Band1_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //declare and zero biquad state variables
 float32_t xmt_EQ_Band2_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 float32_t xmt_EQ_Band3_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -94,28 +101,6 @@ arm_biquad_cascade_df2T_instance_f32 S12_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band12_st
 arm_biquad_cascade_df2T_instance_f32 S13_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band13_state, EQ_Band13Coeffs };
 arm_biquad_cascade_df2T_instance_f32 S14_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band14_state, EQ_Band14Coeffs };
 
-//EQBuffers
-float32_t DMAMEM xmt_EQ1_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ2_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ3_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ4_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ5_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ6_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ7_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ8_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ9_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ10_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ11_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ12_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ13_float_buffer_L[256];
-float32_t DMAMEM xmt_EQ14_float_buffer_L[256];
-
-float32_t DMAMEM FIR_Coef_I[(FFT_LENGTH / 2) + 1];
-float32_t DMAMEM FIR_Coef_Q[(FFT_LENGTH / 2) + 1];
-float32_t DMAMEM FIR_int1_coeffs[48];
-float32_t DMAMEM FIR_int2_coeffs[32];
-float32_t DMAMEM FIR_filter_mask[FFT_LENGTH * 2] __attribute__((aligned(4)));
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -130,50 +115,50 @@ void DoReceiveEQ() {
   for (int i = 0; i < 14; i++) {
     recEQ_LevelScale[i] = (float)EEPROMData.equalizerRec[i] / 100.0;
   }
-  arm_biquad_cascade_df2T_f32(&S1_Rec, float_buffer_L, rec_EQ1_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S2_Rec, float_buffer_L, rec_EQ2_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S3_Rec, float_buffer_L, rec_EQ3_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S4_Rec, float_buffer_L, rec_EQ4_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S5_Rec, float_buffer_L, rec_EQ5_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S6_Rec, float_buffer_L, rec_EQ6_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S7_Rec, float_buffer_L, rec_EQ7_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S8_Rec, float_buffer_L, rec_EQ8_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S9_Rec, float_buffer_L, rec_EQ9_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S10_Rec, float_buffer_L, rec_EQ10_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S11_Rec, float_buffer_L, rec_EQ11_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S12_Rec, float_buffer_L, rec_EQ12_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S13_Rec, float_buffer_L, rec_EQ13_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S14_Rec, float_buffer_L, rec_EQ14_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S1_Rec, float_buffer_L, EQ1_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S2_Rec, float_buffer_L, EQ2_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S3_Rec, float_buffer_L, EQ3_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S4_Rec, float_buffer_L, EQ4_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S5_Rec, float_buffer_L, EQ5_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S6_Rec, float_buffer_L, EQ6_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S7_Rec, float_buffer_L, EQ7_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S8_Rec, float_buffer_L, EQ8_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S9_Rec, float_buffer_L, EQ9_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S10_Rec, float_buffer_L, EQ10_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S11_Rec, float_buffer_L, EQ11_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S12_Rec, float_buffer_L, EQ12_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S13_Rec, float_buffer_L, EQ13_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S14_Rec, float_buffer_L, EQ14_float_buffer_L, 256);
 
-  arm_scale_f32(rec_EQ1_float_buffer_L, -recEQ_LevelScale[0], rec_EQ1_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ2_float_buffer_L, recEQ_LevelScale[1], rec_EQ2_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ3_float_buffer_L, -recEQ_LevelScale[2], rec_EQ3_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ4_float_buffer_L, recEQ_LevelScale[3], rec_EQ4_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ5_float_buffer_L, -recEQ_LevelScale[4], rec_EQ5_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ6_float_buffer_L, recEQ_LevelScale[5], rec_EQ6_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ7_float_buffer_L, -recEQ_LevelScale[6], rec_EQ7_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ8_float_buffer_L, recEQ_LevelScale[7], rec_EQ8_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ9_float_buffer_L, -recEQ_LevelScale[8], rec_EQ9_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ10_float_buffer_L, recEQ_LevelScale[9], rec_EQ10_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ11_float_buffer_L, -recEQ_LevelScale[10], rec_EQ11_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ12_float_buffer_L, recEQ_LevelScale[11], rec_EQ12_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ13_float_buffer_L, -recEQ_LevelScale[12], rec_EQ13_float_buffer_L, 256);
-  arm_scale_f32(rec_EQ14_float_buffer_L, recEQ_LevelScale[13], rec_EQ14_float_buffer_L, 256);
+  arm_scale_f32(EQ1_float_buffer_L, -recEQ_LevelScale[0], EQ1_float_buffer_L, 256);
+  arm_scale_f32(EQ2_float_buffer_L, recEQ_LevelScale[1], EQ2_float_buffer_L, 256);
+  arm_scale_f32(EQ3_float_buffer_L, -recEQ_LevelScale[2], EQ3_float_buffer_L, 256);
+  arm_scale_f32(EQ4_float_buffer_L, recEQ_LevelScale[3], EQ4_float_buffer_L, 256);
+  arm_scale_f32(EQ5_float_buffer_L, -recEQ_LevelScale[4], EQ5_float_buffer_L, 256);
+  arm_scale_f32(EQ6_float_buffer_L, recEQ_LevelScale[5], EQ6_float_buffer_L, 256);
+  arm_scale_f32(EQ7_float_buffer_L, -recEQ_LevelScale[6], EQ7_float_buffer_L, 256);
+  arm_scale_f32(EQ8_float_buffer_L, recEQ_LevelScale[7], EQ8_float_buffer_L, 256);
+  arm_scale_f32(EQ9_float_buffer_L, -recEQ_LevelScale[8], EQ9_float_buffer_L, 256);
+  arm_scale_f32(EQ10_float_buffer_L, recEQ_LevelScale[9], EQ10_float_buffer_L, 256);
+  arm_scale_f32(EQ11_float_buffer_L, -recEQ_LevelScale[10], EQ11_float_buffer_L, 256);
+  arm_scale_f32(EQ12_float_buffer_L, recEQ_LevelScale[11], EQ12_float_buffer_L, 256);
+  arm_scale_f32(EQ13_float_buffer_L, -recEQ_LevelScale[12], EQ13_float_buffer_L, 256);
+  arm_scale_f32(EQ14_float_buffer_L, recEQ_LevelScale[13], EQ14_float_buffer_L, 256);
 
-  arm_add_f32(rec_EQ1_float_buffer_L , rec_EQ2_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(EQ1_float_buffer_L , EQ2_float_buffer_L, float_buffer_L , 256 ) ;
 
-  arm_add_f32(float_buffer_L , rec_EQ3_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ4_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ5_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ6_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ7_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ8_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ9_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ10_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ11_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ12_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ13_float_buffer_L, float_buffer_L , 256 ) ;
-  arm_add_f32(float_buffer_L , rec_EQ14_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ3_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ4_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ5_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ6_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ7_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ8_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ9_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ10_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ11_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ12_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ13_float_buffer_L, float_buffer_L , 256 ) ;
+  arm_add_f32(float_buffer_L , EQ14_float_buffer_L, float_buffer_L , 256 ) ;
 }
 
 /*****
@@ -188,50 +173,50 @@ void DoExciterEQ() {
   for (int i = 0; i < 14; i++) {
     equalizerXmt[i] = (float)EEPROMData.equalizerXmt[i] / 100.0;
   }
-  arm_biquad_cascade_df2T_f32(&S1_Xmt,  float_buffer_L_EX, xmt_EQ1_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S2_Xmt,  float_buffer_L_EX, xmt_EQ2_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S3_Xmt,  float_buffer_L_EX, xmt_EQ3_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S4_Xmt,  float_buffer_L_EX, xmt_EQ4_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S5_Xmt,  float_buffer_L_EX, xmt_EQ5_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S6_Xmt,  float_buffer_L_EX, xmt_EQ6_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S7_Xmt,  float_buffer_L_EX, xmt_EQ7_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S8_Xmt,  float_buffer_L_EX, xmt_EQ8_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S9_Xmt,  float_buffer_L_EX, xmt_EQ9_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S10_Xmt, float_buffer_L_EX, xmt_EQ10_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S11_Xmt, float_buffer_L_EX, xmt_EQ11_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S12_Xmt, float_buffer_L_EX, xmt_EQ12_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S13_Xmt, float_buffer_L_EX, xmt_EQ13_float_buffer_L, 256);
-  arm_biquad_cascade_df2T_f32(&S14_Xmt, float_buffer_L_EX, xmt_EQ14_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S1_Xmt,  float_buffer_L_EX, EQ1_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S2_Xmt,  float_buffer_L_EX, EQ2_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S3_Xmt,  float_buffer_L_EX, EQ3_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S4_Xmt,  float_buffer_L_EX, EQ4_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S5_Xmt,  float_buffer_L_EX, EQ5_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S6_Xmt,  float_buffer_L_EX, EQ6_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S7_Xmt,  float_buffer_L_EX, EQ7_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S8_Xmt,  float_buffer_L_EX, EQ8_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S9_Xmt,  float_buffer_L_EX, EQ9_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S10_Xmt, float_buffer_L_EX, EQ10_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S11_Xmt, float_buffer_L_EX, EQ11_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S12_Xmt, float_buffer_L_EX, EQ12_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S13_Xmt, float_buffer_L_EX, EQ13_float_buffer_L, 256);
+  arm_biquad_cascade_df2T_f32(&S14_Xmt, float_buffer_L_EX, EQ14_float_buffer_L, 256);
 
-  arm_scale_f32(xmt_EQ1_float_buffer_L,  -equalizerXmt[0],  xmt_EQ1_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ2_float_buffer_L,   equalizerXmt[1],  xmt_EQ2_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ3_float_buffer_L,  -equalizerXmt[2],  xmt_EQ3_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ4_float_buffer_L,   equalizerXmt[3],  xmt_EQ4_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ5_float_buffer_L,  -equalizerXmt[4],  xmt_EQ5_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ6_float_buffer_L,   equalizerXmt[5],  xmt_EQ6_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ7_float_buffer_L,  -equalizerXmt[6],  xmt_EQ7_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ8_float_buffer_L,   equalizerXmt[7],  xmt_EQ8_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ9_float_buffer_L,  -equalizerXmt[8],  xmt_EQ9_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ10_float_buffer_L,  equalizerXmt[9],  xmt_EQ10_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ11_float_buffer_L, -equalizerXmt[10], xmt_EQ11_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ12_float_buffer_L,  equalizerXmt[11], xmt_EQ12_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ13_float_buffer_L, -equalizerXmt[12], xmt_EQ13_float_buffer_L, 256);
-  arm_scale_f32(xmt_EQ14_float_buffer_L,  equalizerXmt[13], xmt_EQ14_float_buffer_L, 256);
+  arm_scale_f32(EQ1_float_buffer_L,  -equalizerXmt[0],  EQ1_float_buffer_L, 256);
+  arm_scale_f32(EQ2_float_buffer_L,   equalizerXmt[1],  EQ2_float_buffer_L, 256);
+  arm_scale_f32(EQ3_float_buffer_L,  -equalizerXmt[2],  EQ3_float_buffer_L, 256);
+  arm_scale_f32(EQ4_float_buffer_L,   equalizerXmt[3],  EQ4_float_buffer_L, 256);
+  arm_scale_f32(EQ5_float_buffer_L,  -equalizerXmt[4],  EQ5_float_buffer_L, 256);
+  arm_scale_f32(EQ6_float_buffer_L,   equalizerXmt[5],  EQ6_float_buffer_L, 256);
+  arm_scale_f32(EQ7_float_buffer_L,  -equalizerXmt[6],  EQ7_float_buffer_L, 256);
+  arm_scale_f32(EQ8_float_buffer_L,   equalizerXmt[7],  EQ8_float_buffer_L, 256);
+  arm_scale_f32(EQ9_float_buffer_L,  -equalizerXmt[8],  EQ9_float_buffer_L, 256);
+  arm_scale_f32(EQ10_float_buffer_L,  equalizerXmt[9],  EQ10_float_buffer_L, 256);
+  arm_scale_f32(EQ11_float_buffer_L, -equalizerXmt[10], EQ11_float_buffer_L, 256);
+  arm_scale_f32(EQ12_float_buffer_L,  equalizerXmt[11], EQ12_float_buffer_L, 256);
+  arm_scale_f32(EQ13_float_buffer_L, -equalizerXmt[12], EQ13_float_buffer_L, 256);
+  arm_scale_f32(EQ14_float_buffer_L,  equalizerXmt[13], EQ14_float_buffer_L, 256);
 
-  arm_add_f32(xmt_EQ1_float_buffer_L , xmt_EQ2_float_buffer_L, float_buffer_L_EX , 256 ) ;
+  arm_add_f32(EQ1_float_buffer_L , EQ2_float_buffer_L, float_buffer_L_EX , 256 ) ;
 
-  arm_add_f32(float_buffer_L_EX , xmt_EQ3_float_buffer_L,  float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ4_float_buffer_L,  float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ5_float_buffer_L,  float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ6_float_buffer_L,  float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ7_float_buffer_L,  float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ8_float_buffer_L,  float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ9_float_buffer_L,  float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ10_float_buffer_L, float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ11_float_buffer_L, float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ12_float_buffer_L, float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ13_float_buffer_L, float_buffer_L_EX , 256 ) ;
-  arm_add_f32(float_buffer_L_EX , xmt_EQ14_float_buffer_L, float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ3_float_buffer_L,  float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ4_float_buffer_L,  float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ5_float_buffer_L,  float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ6_float_buffer_L,  float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ7_float_buffer_L,  float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ8_float_buffer_L,  float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ9_float_buffer_L,  float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ10_float_buffer_L, float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ11_float_buffer_L, float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ12_float_buffer_L, float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ13_float_buffer_L, float_buffer_L_EX , 256 ) ;
+  arm_add_f32(float_buffer_L_EX , EQ14_float_buffer_L, float_buffer_L_EX , 256 ) ;
 }
 
 /*****

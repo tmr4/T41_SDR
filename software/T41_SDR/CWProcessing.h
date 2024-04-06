@@ -35,10 +35,6 @@ extern float32_t CW_Filter_Coeffs[];
 extern float32_t HP_DC_Filter_Coeffs[];
 extern float32_t HP_DC_Filter_Coeffs2[];
 
-extern float32_t float_Corr_Buffer[];
-extern float32_t float_Corr_BufferR[];
-extern float32_t float_Corr_BufferL[];
-
 extern float32_t aveCorrResult;
 extern float32_t aveCorrResultR;
 extern float32_t aveCorrResultL;

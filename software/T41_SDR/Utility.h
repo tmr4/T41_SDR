@@ -11,12 +11,10 @@
 
 extern float32_t cosBuffer2[];
 extern float32_t cosBuffer3[];
-extern float32_t cosBuffer4[];
 
 extern float32_t sinBuffer[];
 extern float32_t sinBuffer2[];
 extern float32_t sinBuffer3[];
-extern float32_t sinBuffer4[];
 
 extern double elapsed_micros_idx_t;
 extern double elapsed_micros_sum;

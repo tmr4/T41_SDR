@@ -277,8 +277,7 @@ float32_t DMAMEM FIR_int1_EX_Q_state[279];
 
 float32_t DMAMEM float_buffer_L_EX[2048];
 float32_t DMAMEM float_buffer_R_EX[2048];
-float32_t DMAMEM float_buffer_LTemp[2048];
-float32_t DMAMEM float_buffer_RTemp[2048];
+float32_t DMAMEM float_buffer_Temp[2048];
 
 const arm_cfft_instance_f32 *S;
 const arm_cfft_instance_f32 *iS;

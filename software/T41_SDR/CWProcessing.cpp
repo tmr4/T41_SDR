@@ -31,51 +31,6 @@ float32_t combinedCoeff;
 float CWLevelTimer = 0.0;
 float CWLevelTimerOld = 0.0;
 
-
-// Morse Code Tables
-char letterTable[] = {
-  // Morse coding: dit = 0, dah = 1
-  0b101,    // A                first 1 is the sentinel marker
-  0b11000,  // B
-  0b11010,  // C
-  0b1100,   // D
-  0b10,     // E
-  0b10010,  // F
-  0b1110,   // G
-  0b10000,  // H
-  0b100,    // I
-  0b10111,  // J
-  0b1101,   // K
-  0b10100,  // L
-  0b111,    // M
-  0b110,    // N
-  0b1111,   // O
-  0b10110,  // P
-  0b11101,  // Q
-  0b1010,   // R
-  0b1000,   // S
-  0b11,     // T
-  0b1001,   // U
-  0b10001,  // V
-  0b1011,   // W
-  0b11001,  // X
-  0b11011,  // Y
-  0b11100   // Z
-};
-
-char numberTable[] = {
-  0b111111,  // 0
-  0b101111,  // 1
-  0b100111,  // 2
-  0b100011,  // 3
-  0b100001,  // 4
-  0b100000,  // 5
-  0b110000,  // 6
-  0b111000,  // 7
-  0b111100,  // 8
-  0b111110   // 9
-};
-
 //=== CW Filter ===
 
 float32_t CW_Filter_state[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -92,10 +47,6 @@ arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter3 = { 6, CW_AudioFilter3_s
 arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter4 = { 6, CW_AudioFilter4_state, CW_AudioFilterCoeffs4 };
 arm_biquad_cascade_df2T_instance_f32 S1_CW_AudioFilter5 = { 6, CW_AudioFilter5_state, CW_AudioFilterCoeffs5 };
 //=== end CW Filter ===
-
-float32_t float_Corr_Buffer[511];
-float32_t float_Corr_BufferR[511];
-float32_t float_Corr_BufferL[511];
 
 float32_t aveCorrResult;
 float32_t aveCorrResultR;
@@ -125,6 +76,8 @@ int endGapFlag = 0;
 int topGapIndex;
 int topGapIndexOld;
 
+float32_t float_Corr_Buffer[511];
+
 int32_t gapHistogram[HISTOGRAM_ELEMENTS];
 int32_t signalHistogram[HISTOGRAM_ELEMENTS];
 
@@ -145,8 +98,7 @@ int dahLength;
 int gapAtom;  // Space between atoms
 int gapChar;  // Space between characters
 
-float32_t DMAMEM float_buffer_L_CW[256];
-float32_t DMAMEM float_buffer_R_CW[256];
+float32_t DMAMEM float_buffer_CW[256];
 
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
@@ -208,35 +160,35 @@ void DoCWReceiveProcessing() {
   float goertzelMagnitude2;
   int audioTemp;
 
-  //arm_copy_f32(float_buffer_R, float_buffer_R_CW, 256);
-  //arm_biquad_cascade_df2T_f32(&S1_CW_Filter, float_buffer_R, float_buffer_R_CW, 256);//AFP 09-01-22
-  //arm_biquad_cascade_df2T_f32(&S1_CW_Filter, float_buffer_L, float_buffer_L_CW, 256);//AFP 09-01-22
-
-  arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_L_CW, 256); // Park McClellan FIR filter const Group delay
-  arm_fir_f32(&FIR_CW_DecodeR, float_buffer_R, float_buffer_R_CW, 256);
-
   if (decoderFlag == ON) {
 
-    //=== end CW Filter ===
+    // left channel first
+    arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_CW, 256); // Park McClellan FIR filter const Group delay
 
     // ----------------------  Correlation calculation  -------------------------
-
     //Calculate correlation between calc sine and incoming signal
-
-    arm_correlate_f32(float_buffer_R_CW, 256, sinBuffer, 256, float_Corr_BufferR);
-    arm_max_f32(float_Corr_BufferR, 511, &corrResultR, &corrResultIndexR);
-    //running average of corr coeff. R
-    aveCorrResultR = .7 * corrResultR + .3 * aveCorrResultR;
-    arm_correlate_f32(float_buffer_L_CW, 256, sinBuffer, 256, float_Corr_BufferL);
+    arm_correlate_f32(float_buffer_CW, 256, sinBuffer, 256, float_Corr_Buffer);
     //get max value of correlation
-    arm_max_f32(float_Corr_BufferL, 511, &corrResultL, &corrResultIndexL);
+    arm_max_f32(float_Corr_Buffer, 511, &corrResultL, &corrResultIndexL);
     //running average of corr coeff. L
     aveCorrResultL = .7 * corrResultL + .3 * aveCorrResultL;
     aveCorrResult = (corrResultR + corrResultL) / 2;
+
     // Calculate Goertzel Mahnitude of incomming signal
-    goertzelMagnitude1 = goertzel_mag(256, 750, 24000, float_buffer_L_CW);
-    goertzelMagnitude2 = goertzel_mag(256, 750, 24000, float_buffer_R_CW);
+    goertzelMagnitude1 = goertzel_mag(256, 750, 24000, float_buffer_CW);
+
+    // now right channel
+    arm_fir_f32(&FIR_CW_DecodeR, float_buffer_R, float_buffer_CW, 256);
+
+    arm_correlate_f32(float_buffer_CW, 256, sinBuffer, 256, float_Corr_Buffer);
+    arm_max_f32(float_Corr_Buffer, 511, &corrResultR, &corrResultIndexR);
+    //running average of corr coeff. R
+    aveCorrResultR = .7 * corrResultR + .3 * aveCorrResultR;
+
+    goertzelMagnitude2 = goertzel_mag(256, 750, 24000, float_buffer_CW);
+
     goertzelMagnitude = (goertzelMagnitude1 + goertzelMagnitude2) / 2;
+
     //Combine Correlation and Gowetzel Coefficients
     combinedCoeff = 10 * aveCorrResult * 100 * goertzelMagnitude;
     combinedCoeff2 = combinedCoeff;

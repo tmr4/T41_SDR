@@ -26,14 +26,13 @@ const char *labels[] = { "Select", "Menu Up", "Band Up",
                          "Fine Tune", "Decoder", "Tune Increment",
                          "Reset Tuning", "Frequ Entry", "User 2" };
 
+// *** we can have some consolidation here ***
 float32_t cosBuffer2[256];
 float32_t cosBuffer3[256];
-float32_t cosBuffer4[256];
 
 float32_t sinBuffer[256];
 float32_t sinBuffer2[256];
 float32_t sinBuffer3[256];
-float32_t sinBuffer4[256];
 
 // Voltage in one-hundred 1 dB steps for volume control.
 const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016, 0.000018, 0.000020, 0.000022, 0.000025, 0.000028,
@@ -56,9 +55,11 @@ const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: Generate Array with variable sinewave frequency tone AFP 05-17-22
+  Purpose: Generate Array with variable sinewave frequency tone
+
   Parameter list:
     void
+
   Return value;
     void
 *****/
@@ -78,8 +79,6 @@ FLASHMEM void sineTone(int numCycles) {
     sinBuffer3[kf] = sin(theta);
     cosBuffer3[kf] = cos(theta);
     theta = kf * 2.0 * PI * freqSideTone4 / 24000;
-    sinBuffer4[kf] = sin(theta);
-    cosBuffer4[kf] = cos(theta);
   }
 }
 

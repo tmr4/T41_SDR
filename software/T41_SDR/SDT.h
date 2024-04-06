@@ -101,8 +101,7 @@ extern float32_t  FIR_int1_EX_Q_state[];
 
 extern float32_t  float_buffer_L_EX[];
 extern float32_t  float_buffer_R_EX[];
-extern float32_t  float_buffer_LTemp[];
-extern float32_t  float_buffer_RTemp[];
+extern float32_t  float_buffer_Temp[];
 
 extern AudioMixer4 modeSelectInR;
 extern AudioMixer4 modeSelectInL;
