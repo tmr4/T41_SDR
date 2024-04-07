@@ -23,7 +23,6 @@ extern float32_t CW_AudioFilter2_state[];
 extern float32_t CW_AudioFilter3_state[];
 extern float32_t CW_AudioFilter4_state[];
 extern float32_t CW_AudioFilter5_state[];
-extern float32_t HP_DC_Filter_Coeffs[];
 
 extern float32_t CW_AudioFilterCoeffs1[];
 extern float32_t CW_AudioFilterCoeffs2[];
@@ -32,7 +31,7 @@ extern float32_t CW_AudioFilterCoeffs4[];
 extern float32_t CW_AudioFilterCoeffs5[];
 
 extern float32_t CW_Filter_Coeffs[];
-extern float32_t HP_DC_Filter_Coeffs[];
+//extern float32_t HP_DC_Filter_Coeffs[];
 extern float32_t HP_DC_Filter_Coeffs2[];
 
 extern float32_t aveCorrResult;
@@ -67,3 +66,5 @@ void SetKeyPowerUp();
 void SetSideToneVolume();
 void ResetHistograms();
 void DoGapHistogram(long gapLen);
+
+void initCW(void);

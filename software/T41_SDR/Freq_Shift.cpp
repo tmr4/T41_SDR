@@ -7,9 +7,6 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-//const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;  // 512/2/128 * 8 = 16
-const uint32_t N_B = 16;
-
 float32_t NCO_INC;
 double OSC_COS;
 double OSC_SIN;
@@ -18,8 +15,6 @@ double Osc_Vect_I = 0.0;
 double Osc_Gain = 0.0;
 double Osc_Q = 0.0;
 double Osc_I = 0.0;
-float32_t float_buffer_L_3[BUFFER_SIZE * N_B];
-float32_t float_buffer_R_3[BUFFER_SIZE * N_B];
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -27,7 +22,6 @@ float32_t float_buffer_R_3[BUFFER_SIZE * N_B];
 
 /*****
   Purpose: void FreqShift1()
-          AFP 12-31-20
         Frequency translation by Fs/4 without multiplication from Lyons (2011): chapter 13.1.2 page 646
         together with the savings of not having to shift/rotate the FFT_buffer, this saves
         about 1% of processor use
@@ -63,8 +57,8 @@ void FreqShift1() {
     float_buffer_R[i + 3] = hh2;
   }
   for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS; i ++) {
-    float_buffer_L_3[i] = float_buffer_L[i];
-    float_buffer_R_3[i] = float_buffer_R[i];
+    float_buffer_L_EX[i] = float_buffer_L[i];
+    float_buffer_R_EX[i] = float_buffer_R[i];
   }
   // this is for -Fs/4 [moves receive frequency to the right in the spectrumdisplay]
 }
@@ -140,7 +134,7 @@ void FreqShift2() {
     //
     // do actual frequency conversion
     float freqAdjFactor = 1.1;
-    float_buffer_L[i] = (float_buffer_L_3[i] * freqAdjFactor * Osc_Q) + (float_buffer_R_3[i] * freqAdjFactor * Osc_I); // multiply I/Q data by sine/cosine data to do translation
-    float_buffer_R[i] = (float_buffer_R_3[i] * freqAdjFactor * Osc_Q) - (float_buffer_L_3[i] * freqAdjFactor * Osc_I);
+    float_buffer_L[i] = (float_buffer_L_EX[i] * freqAdjFactor * Osc_Q) + (float_buffer_R_EX[i] * freqAdjFactor * Osc_I); // multiply I/Q data by sine/cosine data to do translation
+    float_buffer_R[i] = (float_buffer_R_EX[i] * freqAdjFactor * Osc_Q) - (float_buffer_L_EX[i] * freqAdjFactor * Osc_I);
   }
 }

@@ -85,6 +85,9 @@
 
 //************************************* End: Clean up stuff to fix ************************
 
+extern byte sharedRAM1[1024 * 8];
+extern byte /*DMAMEM*/ sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));
+
 extern int radioState, lastState;  // Used by the loop to monitor current state.
 extern long CWFreqShift;
 extern long calFreqShift;
@@ -185,7 +188,6 @@ extern const float32_t DF;
 extern const float32_t DF1;           // decimation factor
 extern const float32_t n_att;         // desired stopband attenuation
 extern int xrState;
-//extern const uint32_t N_B;
 extern uint32_t N_BLOCKS;
 extern uint32_t FFT_length;
 

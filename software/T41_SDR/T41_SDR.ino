@@ -279,6 +279,10 @@ float32_t DMAMEM float_buffer_L_EX[2048];
 float32_t DMAMEM float_buffer_R_EX[2048];
 float32_t DMAMEM float_buffer_Temp[2048];
 
+byte sharedRAM1[1024 * 8];
+byte DMAMEM sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));
+
+
 const arm_cfft_instance_f32 *S;
 const arm_cfft_instance_f32 *iS;
 const arm_cfft_instance_f32 *maskS;
@@ -736,6 +740,8 @@ FLASHMEM void SoftReset() {
   menuEncoderMove = 0;
   fineTuneEncoderMove = 0L;
   xrState = RECEIVE_STATE;  // Enter loop() in receive state
+
+  initCW();
 
   mainMenuIndex = 0;             // Changed from middle to first. Do Menu Down to get to Calibrate quickly
   secondaryMenuIndex = -1;       // -1 means haven't determined secondary menu

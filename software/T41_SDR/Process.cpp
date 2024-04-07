@@ -26,18 +26,12 @@ int ft8Loop = 0;
 
 float32_t audioMaxSquaredAve = 0;
 
-//const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;  // 512/2/128 * 8 = 16
-//const uint32_t N_B = 16;
-
 int audioYPixel[1024];
 float32_t audioSpectBuffer[1024]; // This can't be DMAMEM.  It will break the S-Meter.
-//const uint32_t N_DEC_B = N_B / (uint32_t)DF;
 //float32_t DMAMEM last_sample_buffer_L[BUFFER_SIZE * N_DEC_B];
 //float32_t DMAMEM last_sample_buffer_R[BUFFER_SIZE * N_DEC_B];
 
 uint8_t NB_on = 0; // noise blanker: 0 - off, 1 - on
-int16_t *sp_L1;
-int16_t *sp_R1;
 
 char atom, currentAtom;
 float32_t HP_DC_Butter_state2[2] = { 0, 0 };
@@ -101,15 +95,12 @@ void ProcessIQData() {
       // get audio samples from the audio  buffers and convert them to float
       // read in 32 blocks á 128 samples in I and Q
       for (unsigned i = 0; i < N_BLOCKS; i++) {
-        sp_L1 = Q_in_R.readBuffer();
-        sp_R1 = Q_in_L.readBuffer();
-
         /**********************************************************************************
             Using arm_Math library, convert to float one buffer_size.
             Float_buffer samples are now standardized from > -1.0 to < 1.0
         **********************************************************************************/
-        arm_q15_to_float (sp_L1, &float_buffer_L[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
-        arm_q15_to_float (sp_R1, &float_buffer_R[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
+        arm_q15_to_float (Q_in_R.readBuffer(), &float_buffer_L[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
+        arm_q15_to_float (Q_in_L.readBuffer(), &float_buffer_R[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
         Q_in_L.freeBuffer();
         Q_in_R.freeBuffer();
       }
@@ -135,6 +126,25 @@ void ProcessIQData() {
       **********************************************************************************/
       arm_scale_f32 (float_buffer_L, bands[currentBand].RFgain, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
       arm_scale_f32 (float_buffer_R, bands[currentBand].RFgain, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
+
+      /**********************************************************************************
+        Clear Buffers
+        This is to prevent overfilled queue buffers during each switching event
+        (band change, mode change, frequency change, the audio chain runs and fills the buffers
+        if the buffers are full, the Teensy needs much more time
+        in that case, we clear the buffers to keep the whole audio chain running smoothly
+        **********************************************************************************/
+      // *** this creates loop artifacts (in my version at least) needs reworked ***
+      //if (Q_in_L.available() > 25) {
+      //  //Serial.println("audio buffer cleared ...");
+      //  Q_in_L.clear();
+      //  AudioInterrupts();
+      //}
+      //if (Q_in_R.available() > 25) {
+      //  //Serial.println("audio buffer cleared ...");
+      //  Q_in_R.clear();
+      //  AudioInterrupts();
+      //}
 
       /**********************************************************************************
         IQ amplitude and phase correction.  For this scaled down version the I an Q channels are
@@ -232,24 +242,6 @@ void ProcessIQData() {
       **********************************************************************************/
     }
 
-    /**********************************************************************************
-      Clear Buffers
-      This is to prevent overfilled queue buffers during each switching event
-      (band change, mode change, frequency change, the audio chain runs and fills the buffers
-      if the buffers are full, the Teensy needs much more time
-      in that case, we clear the buffers to keep the whole audio chain running smoothly
-      **********************************************************************************/
-    if (Q_in_L.available() > 25) {
-      Serial.println("audio buffer cleared ...");
-      Q_in_L.clear();
-      AudioInterrupts();
-    }
-    if (Q_in_R.available() > 25) {
-      Serial.println("audio buffer cleared ...");
-      Q_in_R.clear();
-      AudioInterrupts();
-    }
-
     switch(bands[currentBand].mode) {
       case DEMOD_NFM:
         // a NFM signal needs to be demodulated prior to audio processing so all we do here
@@ -334,6 +326,13 @@ void ProcessIQData() {
 
         }
         else {
+          // we're not sync'd anymore
+          // reset FT8 flags and counters
+          syncFlag = false;
+          ft8_decode_flag = 0;
+          FT_8_counter = 0;
+          ft8_flag = 0;
+
           ButtonDemodMode(); // switch back to ft8 mode
           /*
           // keep decoding w/o new audio
@@ -522,39 +521,44 @@ void ProcessIQData() {
 #ifdef FT8
           // save audio signal to FT8 buffer
         if(bands[currentBand].mode == DEMOD_FT8) {
-          if(ft8_decode_flag == 0) {
-            // Pocket_FT8 process_data()
-            // convert floats to the q15 required by FT8 routines
-            arm_float_to_q15(float_buffer_L, q15_buffer_LTemp, 256);
+          // don't process data until we're in sync
+          if(syncFlag) {
+            if(ft8_decode_flag == 0) {
+              // Pocket_FT8 process_data()
+              // convert floats to the q15 required by FT8 routines
+              arm_float_to_q15(float_buffer_L, q15_buffer_LTemp, 256);
 
-            for (unsigned i = 0; i < 68; i++) {
-              // roll ft8 dsp buffer
-              ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
-              ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+              for (unsigned i = 0; i < 68; i++) {
+                // roll ft8 dsp buffer
+                ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
+                ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
 
-              // transfer audio data to ft8_dsp_buffer
-              // decimate by 3.75 which brings us to a 6.4 ksps rate
-              //ft8_dsp_buffer[2048 + i + ft8Loop * 68] = float_buffer_L[(int)(i * 3.75)]; 
-              ft8_dsp_buffer[2048 + i + ft8Loop * 68 + leftover] = q15_buffer_LTemp[(int)(i * 15 / 4)]; // i * 3.75
-            }
+                // transfer audio data to ft8_dsp_buffer
+                // decimate by 3.75 which brings us to a 6.4 ksps rate
+                //ft8_dsp_buffer[2048 + i + ft8Loop * 68] = float_buffer_L[(int)(i * 3.75)]; 
+                ft8_dsp_buffer[2048 + i + ft8Loop * 68 + leftover] = q15_buffer_LTemp[(int)(i * 15 / 4)]; // i * 3.75
+              }
 
-            ++ft8Loop;
-            if(ft8Loop == 15) {
-              // fill last cell
-              ft8_dsp_buffer[3071] = q15_buffer_LTemp[255];
+              ++ft8Loop;
+              if(ft8Loop == 15) {
+                // fill last cell
+                ft8_dsp_buffer[3071] = q15_buffer_LTemp[255];
 
-              ft8Loop = 0;
-              leftover = 0;
+                ft8Loop = 0;
+                leftover = 0;
 
-              DSP_Flag = 1;
+                DSP_Flag = 1;
 
-            } else {
-              // take 3 more samples over the range (every 4th loop) to completely fill the buffer
-              if(ft8Loop == 4 || ft8Loop == 8 || ft8Loop == 12) {
-                ft8_dsp_buffer[2048 + ft8Loop * 68 + leftover] = q15_buffer_LTemp[255];
-                leftover++;
+              } else {
+                // take 3 more samples over the range (every 4th loop) to completely fill the buffer
+                if(ft8Loop == 4 || ft8Loop == 8 || ft8Loop == 12) {
+                  ft8_dsp_buffer[2048 + ft8Loop * 68 + leftover] = q15_buffer_LTemp[255];
+                  leftover++;
+                }
               }
             }
+          } else {
+            auto_sync_FT8();
           }
 
           if(DSP_Flag == 1 && ft8_flag == 1) {
@@ -572,7 +576,7 @@ void ProcessIQData() {
             ft8_decode_flag = 0;  
           }
 
-          if(ft8_flag == 0) update_synchronization();
+          if(ft8_flag == 0 && syncFlag) update_synchronization();
         }
 #endif // FT8
         break;

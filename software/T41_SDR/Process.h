@@ -5,8 +5,6 @@
 
 extern uint8_t ANR_notch;
 extern uint8_t ANR_notchOn;
-extern int16_t *sp_L1;
-extern int16_t *sp_R1;
 extern int audioYPixel[];
 extern float32_t audioMaxSquaredAve;
 

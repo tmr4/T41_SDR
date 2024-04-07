@@ -37,10 +37,12 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * feature/NFMDemod
   * expanded waterfall, audio spectrum and info box
 
-* feature/ft8 - adds FT8 and FT8.wav decoding as optional demodulation modes. TODO: Make FT8.wav an option of FT8 mode, not a separate demod mode.  Currently FT8.wav decodes a given wav file from the SD card and then switches to FT8 mode.
+* feature/ft8 - adds FT8 and FT8.wav decoding as optional demodulation modes. FT8.wav selectable while in FT8 mode by pressing the Mode button.  Currently FT8.wav decodes the file *"test.wav"* from the SD card and then switches back to FT8 mode.
 
-  * deleted many unused functions to free up memory for FT8
-  * moved many non-critical functions to FLASHMEM
+  * Created a few shared memory block for use by mutually exclusive modes like CW and FT8
+  * deleted many unused functions
+  * consolidated buffers where possible to free up memory for FT8
+  * moved many non-critical functions to FLASHMEM and constants to PROGMEM
   * added DEBUG_SW define to investigate switch matrix phantom press issues
   * added memInfo() debug routine to help track memory usage
   * modified way audio filters are set up when changing demodulation modes (in SetupMode()) as old method of trying to translate current settings to new mode were hard to maintain as new modes were added.  This needs reworked as the values are currently hardcoded.

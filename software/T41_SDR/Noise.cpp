@@ -36,7 +36,7 @@ float32_t ANR_w[ANR_DLINE_SIZE];
 float32_t DMAMEM NR_Hk_old[NR_FFT_L / 2];
 float32_t DMAMEM NR_long_tone_gain[NR_FFT_L / 2];
 
-int ANR_buff_size = FFT_length / 2.0;
+int ANR_buff_size = FFT_length / 2;
 int ANR_delay = 16;
 int ANR_in_idx = 0;
 int ANR_dline_size = ANR_DLINE_SIZE;
@@ -51,9 +51,8 @@ float32_t ANR_lincr = 1.0;
 float32_t ANR_ldecr = 3.0;
 float32_t ANR_ngamma = 0.001;
 float32_t ANR_two_mu = 0.0001;
-float32_t LMS_errsig1[256 + 10]; // never initialized
 
-const float32_t sqrtHann[256] = {
+PROGMEM const float32_t sqrtHann[256] = {
   0, 0.01231966, 0.024637449, 0.036951499, 0.049259941, 0.061560906,
   0.073852527, 0.086132939, 0.098400278, 0.110652682, 0.122888291, 0.135105247, 0.147301698,
   0.159475791, 0.171625679, 0.183749518, 0.195845467, 0.207911691, 0.219946358, 0.231947641, 0.24391372,
@@ -92,8 +91,6 @@ const float32_t sqrtHann[256] = {
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
-
-// void LMSNoiseReduction(int16_t blockSize, float32_t *nrbuffer);
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -641,28 +638,6 @@ void SpectralNoiseReduction() {
       // end of "for" loop which repeats the FFT_iFFT_chain two times !!!
     }
   }
-}
-
-/*****
-  Purpose: void LMSNoiseReduction(
-  
-  Parameter list:
-    void
-    
-  Return value;
-    void
-*****/
-void LMSNoiseReduction(int16_t blockSize, float32_t *nrbuffer) {
-  static ulong    lms1_inbuf = 0, lms1_outbuf = 0;
-
-  arm_copy_f32(nrbuffer, &LMS_nr_delay[lms1_inbuf], blockSize);  // put new data into the delay buffer
-
-  arm_lms_norm_f32(&LMS_Norm_instance, nrbuffer, &LMS_nr_delay[lms1_outbuf], nrbuffer, LMS_errsig1, blockSize);  // do noise reduction
-
-  lms1_inbuf += blockSize;  // bump input to the next location in our de-correlation buffer
-  lms1_outbuf = lms1_inbuf + blockSize; // advance output to same distance ahead of input
-  lms1_inbuf %= 512;
-  lms1_outbuf %= 512;
 }
 
 /*****

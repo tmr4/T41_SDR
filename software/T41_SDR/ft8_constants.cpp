@@ -46,10 +46,10 @@ FLASHMEM void initalize_constants(void) {
 }
 
 // Costas 7x7 tone pattern
-const uint8_t kCostas_map[7] = { 3,1,4,0,6,5,2 };
+PROGMEM const uint8_t kCostas_map[7] = { 3,1,4,0,6,5,2 };
 
 // Gray code map
-const uint8_t kGray_map[8] = { 0,1,3,2,5,6,4,7 };
+PROGMEM const uint8_t kGray_map[8] = { 0,1,3,2,5,6,4,7 };
 
 /*
 // Parity generator matrix for (174,91) LDPC code, stored in bitpacked format (MSB first)
@@ -160,7 +160,7 @@ uint8_t kColumn_order[174] = {
 // each number is an index into the codeword (1-origin).
 // the codeword bits mentioned in each row must xor to zero.
 // From WSJT-X's ldpc_174_91_c_reordered_parity.f90.
-uint8_t kNm[83][7] = {
+PROGMEM const uint8_t kNm[83][7] = {
   {  4,  31,  59,  91,  92,  96, 153 },
   {  5,  32,  60,  93, 115, 146,   0 },
   {  6,  24,  61,  94, 122, 151,   0 },
@@ -251,7 +251,7 @@ uint8_t kNm[83][7] = {
 // the numbers indicate which three parity
 // checks (rows in Nm) refer to the codeword bit.
 // 1-origin.
-uint8_t kMn[174][3] = {
+PROGMEM const uint8_t kMn[174][3] = {
   { 16,  45,  73 },
   { 25,  51,  62 },
   { 33,  58,  78 },
@@ -428,7 +428,7 @@ uint8_t kMn[174][3] = {
   { 42,  49,  57 }
 };
 
-uint8_t kNrw[83] = {
+PROGMEM const uint8_t kNrw[83] = {
     7,6,6,6,7,6,7,6,6,7,6,6,7,7,6,6,
     6,7,6,7,6,7,6,6,6,7,6,6,6,7,6,6,
     6,6,7,6,6,6,7,7,6,6,6,6,7,7,6,6,

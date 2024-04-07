@@ -225,28 +225,31 @@ void ButtonDemodMode() {
   }
 
 #ifdef FT8
+  if(bands[currentBand].mode == DEMOD_FT8_WAV) {
+    // continue to FT8 if we've just incremented to FT8 wave
+    bands[currentBand].mode++;
 
-  if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
     if(!ft8Init) {
-      setupFT8();
-      ft8Init = true;
+      if(setupFT8()) {
+        ft8Init = true;
+      } else {
+        // can't set up FT8, just continue to next mode
+        bands[currentBand].mode++;
+      }
     }
 
-    if(bands[currentBand].mode == DEMOD_FT8) {
-      auto_sync_FT8();
-    } else {
-      // set up message area
-      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
-      tft.writeTo(L2); // it's on layer 2 as well
-      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
-      tft.writeTo(L1);
-      wfRows = WATERFALL_H - 20 * 6 - 3;
-
-      setupFT8Wav();
-    }
+    // set up message area
+    tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+    tft.writeTo(L2); // it's on layer 2 as well
+    tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+    tft.writeTo(L1);
+    wfRows = WATERFALL_H - 20 * 6 - 3;
   } else {
-    // erase any decoded messages if w're coming from FT8
+    // erase any decoded messages if we're coming from FT8
     if(bands[currentBand].mode - 1 == DEMOD_FT8) {
+      exitFT8();
+      ft8Init = false;
+
       tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);
       wfRows = WATERFALL_H;
     }
@@ -277,30 +280,40 @@ void ButtonDemodMode() {
 *****/
 void ButtonMode() {
   // Toggle the current mode
-  if (xmtMode == CW_MODE) {  
-    xmtMode = SSB_MODE;
-
-    // return waterfall to normal if decoder is on
-    if(decoderFlag == ON) {
-      // erase any decoded CW
-      tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
-      wfRows = WATERFALL_H;
+  if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
+    if(bands[currentBand].mode == DEMOD_FT8) {
+      if(setupFT8Wav()) {
+        // switch to play a wav file
+        bands[currentBand].mode = DEMOD_FT8_WAV;
+        ShowOperatingStats();
+      }
     }
   } else {
-    xmtMode = CW_MODE;
+    if (xmtMode == CW_MODE) {  
+      xmtMode = SSB_MODE;
 
-    // reduce waterfall height if we're decoding CW
-    if(decoderFlag == ON) {
-      tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
-      tft.writeTo(L2); // it's on layer 2 as well
-      tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
-      tft.writeTo(L1);
-      wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
+      // return waterfall to normal if decoder is on
+      if(decoderFlag == ON) {
+        // erase any decoded CW
+        tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+        wfRows = WATERFALL_H;
+      }
+    } else {
+      xmtMode = CW_MODE;
+
+      // reduce waterfall height if we're decoding CW
+      if(decoderFlag == ON) {
+        tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+        tft.writeTo(L2); // it's on layer 2 as well
+        tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+        tft.writeTo(L1);
+        wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
+      }
     }
-  }
 
-  UpdateCWFilter();
-  ShowOperatingStats();
+    UpdateCWFilter();
+    ShowOperatingStats();
+  }
 }
 
 /*****

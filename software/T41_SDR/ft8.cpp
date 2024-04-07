@@ -22,10 +22,13 @@
 
 #define ft8_msg_samples 92
 
-q15_t DMAMEM ft8_dsp_buffer[3*input_gulp_size] __attribute__ ((aligned (4)));
-q15_t DMAMEM dsp_output[FFT_SIZE *2] __attribute__ ((aligned (4)));
-q15_t DMAMEM window_ft8_dsp_buffer[FFT_SIZE] __attribute__ ((aligned (4)));
-float DMAMEM window[FFT_SIZE];
+//q15_t DMAMEM ft8_dsp_buffer[3*input_gulp_size] __attribute__ ((aligned (4)));
+//q15_t DMAMEM dsp_output[FFT_SIZE *2] __attribute__ ((aligned (4)));
+//q15_t DMAMEM window_ft8_dsp_buffer[FFT_SIZE] __attribute__ ((aligned (4)));
+//float DMAMEM window[FFT_SIZE];
+
+q15_t *ft8_dsp_buffer, *dsp_output, *window_ft8_dsp_buffer;
+float *window;
 
 uint32_t current_time, start_time, ft8_time;
 
@@ -36,14 +39,18 @@ int num_decoded_msg;
 int master_offset, offset_step;
 
 bool ft8Init = false;
+bool syncFlag = false;
 
-q15_t DMAMEM FFT_Scale[FFT_SIZE * 2]; 
+//q15_t DMAMEM FFT_Scale[FFT_SIZE * 2]; 
 q15_t DMAMEM FFT_Magnitude[FFT_SIZE]; 
 int32_t DMAMEM FFT_Mag_10[FFT_SIZE/2];
 float  DMAMEM mag_db[FFT_SIZE/2 + 1];
 
+q15_t *FFT_Scale; //, *FFT_Magnitude;
+
 arm_rfft_instance_q15 fft_inst;
-uint8_t DMAMEM export_fft_power[ft8_msg_samples*ft8_buffer*4] ;
+//uint8_t DMAMEM export_fft_power[ft8_msg_samples*ft8_buffer*4] ;
+uint8_t *export_fft_power;
 
 typedef struct Candidate {
     int16_t      score;
@@ -69,6 +76,7 @@ typedef struct
 } Decode;
 
 Decode new_decoded[20];
+//Decode *new_decoded;
 
 // from: https://github.com/kgoba/ft8_lib/issues/3
 // decode time can be adjusted by changing the number of candidates (kMax_candidates) and LDPC iterations (kLDPC_iterations).
@@ -109,20 +117,39 @@ char charn(int c, int table_idx);
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
+void displaySync(const char *message, int color) {
+  // clear old line
+  tft.fillRect(WATERFALL_L + 400, YPIXELS - 35, WATERFALL_W - 400, 35, RA8875_BLACK);
+  tft.setFontScale(0,1);
+  tft.setTextColor(color);
+
+  tft.setCursor(WATERFALL_L + 425, YPIXELS - 35);
+  tft.print(message);
+}
+
 void auto_sync_FT8() {
-  while ((second())%15 != 0){
+  // allow process to loop until we're within 1 second
+  if((second())%15 <= 1) {
+    // now we can sync up without causing a long delay
+    while ((second())%15 != 0){
+    }
+
+    start_time =millis();
+    ft8_flag = 1;
+    FT_8_counter = 0;
+    syncFlag = true;
+    displaySync("sync'd", RA8875_GREEN);
   }
-
-  start_time =millis();
-  ft8_flag = 1;
-  FT_8_counter = 0;
+  else {
+    displaySync("not sync'd", RA8875_RED);
+  }
 }
 
-void sync_FT8() {
-  start_time =millis();
-  ft8_flag = 1;
-  FT_8_counter = 0;
-}
+//void sync_FT8() {
+//  start_time =millis();
+//  ft8_flag = 1;
+//  FT_8_counter = 0;
+//}
 
 // called when ft8_flag = 0
 void update_synchronization() {
@@ -151,12 +178,46 @@ float ft_blackman_i(int i, int N) {
   return a0 - a1*x1 + a2*x2;
 }
 
-FLASHMEM void init_DSP(void) {
+FLASHMEM bool init_DSP(void) {
+  //Serial.println(sizeof(float32_t));
+  
+  export_fft_power = new uint8_t[ft8_msg_samples*ft8_buffer*4];
+
+  if(export_fft_power == NULL) {
+    Serial.println("Insufficient memory to activate FT8");
+    return false;
+  }
+
+  int offset = 0;
+
+  ft8_dsp_buffer = (q15_t *)&sharedRAM2[offset]; // 3 * input_gulp_size * 2 bytes = 3 * FFT_SIZE / 2 * 2 bytes
+  offset += 3 * input_gulp_size * 2;
+  dsp_output = (q15_t *)&sharedRAM2[offset]; // FFT_SIZE * 2 * 2 bytes
+  offset += FFT_SIZE * 2 * 2;
+  window_ft8_dsp_buffer = (q15_t *)&sharedRAM2[offset]; // FFT_SIZE * 2 bytes
+  offset += FFT_SIZE * 2;
+  window = (float *)&sharedRAM2[offset]; // FFT_SIZE * 4 bytes
+  offset += FFT_SIZE * 4;
+
+  //Serial.println(offset);
+
+  offset = 0;
+  //new_decoded = (Decode *)&sharedRAM1[offset]; // using 1280
+  //offset += 1280;
+  FFT_Scale = (q15_t *)&sharedRAM1[offset]; // FFT_SIZE * 2 * 2
+  offset += FFT_SIZE * 2 * 2;
+  //FFT_Magnitude = (q15_t *)&sharedRAM1[offset]; // FFT_SIZE * 2
+  //offset += FFT_SIZE * 2;
+
+  //Serial.println(offset);
+
   arm_rfft_init_q15(&fft_inst, FFT_SIZE, 0, 1);
   for (int i = 0; i < FFT_SIZE; ++i) {
     window[i] = ft_blackman_i(i, FFT_SIZE);
   }
   offset_step = (int) ft8_buffer*4;
+
+  return true;
 }
 
 // Compute FFT magnitudes (log power) for each timeslot in the signal
@@ -1208,12 +1269,12 @@ char charn(int c, int table_idx) {
 // other
 //-------------------------------------------------------------------------------------------------------------
 
-FLASHMEM void setupFT8() {
-  init_DSP();
+FLASHMEM bool setupFT8() {
   initalize_constants();
+  return init_DSP();
 }
 
-FLASHMEM void setupFT8Wav() {
+FLASHMEM bool setupFT8Wav() {
   int result;
   uint32_t slot_period = 15;
   uint32_t sample_rate = 12000;
@@ -1223,9 +1284,21 @@ FLASHMEM void setupFT8Wav() {
 
   if(result != 0) {
     Serial.println("Invalid wave file!");
+    return false;
   }
 
   FT_8_counter = 0;
+  return true;
+}
+
+FLASHMEM void exitFT8() {
+  delete[] export_fft_power;
+
+  // reset FT8 flags and counters
+  syncFlag = false;
+  ft8_decode_flag = 0;
+  FT_8_counter = 0;
+  ft8_flag = 0;
 }
 
 File f;

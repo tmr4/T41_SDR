@@ -76,10 +76,12 @@ int endGapFlag = 0;
 int topGapIndex;
 int topGapIndexOld;
 
-float32_t float_Corr_Buffer[511];
+//float32_t float_Corr_Buffer[511];
+float32_t *float_Corr_Buffer;
 
-int32_t gapHistogram[HISTOGRAM_ELEMENTS];
-int32_t signalHistogram[HISTOGRAM_ELEMENTS];
+//int32_t gapHistogram[HISTOGRAM_ELEMENTS];
+//int32_t signalHistogram[HISTOGRAM_ELEMENTS];
+int32_t *gapHistogram, *signalHistogram;
 
 long valRef1;
 long valRef2;
@@ -799,4 +801,20 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
 
   magnitude = sqrtf(real * real + imag * imag);
   return magnitude;
+}
+
+void initCW(void) {
+  //Serial.println(sizeof(float32_t));
+  
+  int offset = 0;
+
+  float_Corr_Buffer = (float32_t *)&sharedRAM1[0]; // 511 * 4 bytes (round up to 2048)
+  offset += 512 * 4;
+  gapHistogram = (int32_t *)&sharedRAM2[offset]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 3072)
+  offset += 3072 * 4;
+  signalHistogram = (int32_t *)&sharedRAM2[offset]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 3072)
+  offset += 3072 * 4;
+
+  //Serial.println(offset);
+
 }

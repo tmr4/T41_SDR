@@ -5,9 +5,11 @@
 
 #define input_gulp_size 1024
 
-extern q15_t ft8_dsp_buffer[] __attribute__ ((aligned (4)));
+//extern q15_t ft8_dsp_buffer[] __attribute__ ((aligned (4)));
+extern q15_t *ft8_dsp_buffer;
 
 extern int ft8_flag, ft8_decode_flag;
+extern bool syncFlag;
 
 extern bool ft8Init;
 
@@ -28,9 +30,10 @@ int ft8_decode(void);
 void display_details(int decoded_messages, int message_limit);
 void update_synchronization();
 
-void setupFT8();
+bool setupFT8();
+bool setupFT8Wav();
+void exitFT8();
 
 void auto_sync_FT8();
 
 bool readWave(float32_t *buf, int sizeBuf);
-void setupFT8Wav();
