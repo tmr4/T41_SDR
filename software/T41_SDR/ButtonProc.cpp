@@ -286,6 +286,8 @@ void ButtonMode() {
         // switch to play a wav file
         bands[currentBand].mode = DEMOD_FT8_WAV;
         ShowOperatingStats();
+        ft8State = 2;
+        UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
       }
     }
   } else {

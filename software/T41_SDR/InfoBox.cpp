@@ -3,6 +3,7 @@
 #include "CWProcessing.h"
 #include "Display.h"
 #include "EEPROM.h"
+#include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "Process.h"
@@ -12,13 +13,14 @@
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
 
-void IBDecoderFollowup();
-void IBCompressionFollowup();
-void IBWPMFollowup();
-void IBVolFollowup();
-void IBEQFollowup();
-void IBTempFollowup();
-void IBLoadFollowup();
+void IBDecoderFollowup(int row, int col);
+void IBCompressionFollowup(int row, int col);
+void IBWPMFollowup(int row, int col);
+void IBVolFollowup(int row, int col);
+void IBEQFollowup(int row, int col);
+void IBTempFollowup(int row, int col);
+void IBLoadFollowup(int row, int col);
+void IBFT8Followup(int row, int col);
 void DrawInfoBoxFrame();
 
 //-------------------------------------------------------------------------------------------------------------
@@ -48,8 +50,9 @@ const char *filter[] = { "Off", "Kim", "Spectral", "LMS" };
 const char *onOff[2] = { "Off", "On" };
 const char *optionsWPM[2] = { "Straight Key", "Paddles " };
 const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
+const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
 
-#define IB_NUM_ITEMS 13
+#define IB_NUM_ITEMS 14
 PROGMEM const infoBoxItem infoBox[] = 
 { //                                                     font    # chars
   // label         Options      option                   size    to erase  flag  col            row,           follow-up function
@@ -57,16 +60,17 @@ PROGMEM const infoBoxItem infoBox[] =
   { "AGC",         agcOpts,     &AGCMode,                 1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
   { "Increment:",  tuneValues,  &tuneIndex,               0,        7,      0,   IB_COL_1_X,    IB_ROW_3_Y,    NULL                   }, // Tune Inc
   { "FT Inc:",     ftValues,    &ftIndex,                 0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    NULL                   }, // FT Inc
-  { "AutoNotch:",  onOff,       (int*)&ANR_notchOn,       0,        3,      1,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Auto Notch
-  { "Noise:",      filter,      &nrOptionSelect,          0,        8,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Noise Filter
-  { "Zoom:",       zoomOptions, (int*)&spectrum_zoom,     0,        3,      0,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   }, // Zoom
-  { "Compress:",   onOff,       &compressorFlag,          0,        6,      1,   IB_COL_1_X,    IB_ROW_7_Y,    &IBCompressionFollowup }, // Compress
+  { "AutoNotch:",  onOff,       (int*)&ANR_notchOn,       0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Auto Notch
+  { "Noise:",      filter,      &nrOptionSelect,          0,        8,      1,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   }, // Noise Filter
+  { "Zoom:",       zoomOptions, (int*)&spectrum_zoom,     0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
+  { "Compress:",   onOff,       &compressorFlag,          0,        6,      1,   IB_COL_2_X,    IB_ROW_5_Y,    &IBCompressionFollowup }, // Compress
   { "Keyer:",      optionsWPM,  &EEPROMData.keyType,      0,       12,      0,   IB_COL_1_X,    IB_ROW_8_Y,    &IBWPMFollowup         }, // Keyer
   { "Decoder:",    onOff,       &decoderFlag,             0,        3,      1,   IB_COL_1_X,    IB_ROW_9_Y,    NULL                   }, // Decoder
-  { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_6_Y,    NULL                   }, // Noise Floor
+  { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
   //{ "Equalizers:", NULL,        NULL,                     0,       10,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBEQFollowup          }  // Equalizers
-  { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBTempFollowup          }, // Teensy Temp
-  { "Load:",       NULL,        NULL,                     0,        3,      1,   IB_COL_2_X,    IB_ROW_10_Y,   &IBLoadFollowup          }  // Teensy Load
+  { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBTempFollowup        }, // Teensy Temp
+  { "Load:",       NULL,        NULL,                     0,        3,      1,   IB_COL_2_X,    IB_ROW_10_Y,   &IBLoadFollowup        },  // Teensy Load
+  { "FT8:",        ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_7_Y,    NULL                   },  // FT8 sync
 
   //{ "Vol:",       NULL,        NULL,                      1,        2,      0,   IB_COL_1_X,    IB_ROW_1_Y,    &IBVolFollowup         }, // Tune Inc
   //{ "AGC",        agcOpts,     &AGCMode,                  1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
@@ -110,8 +114,10 @@ void UpdateInfoBoxItem(const infoBoxItem *item) {
   tft.print(item->label);
 
   if(item->Options != NULL) {
-    if(item->highlightFlag && (*item->option == 0) ) {
+    if((item->highlightFlag > 0) && (*item->option == 0)) {
       tft.setTextColor(RA8875_WHITE);
+    } else if((item->highlightFlag == 2) && (*item->option == 1)) {
+      tft.setTextColor(RA8875_RED);
     } else {
       tft.setTextColor(RA8875_GREEN);
     }
@@ -121,7 +127,7 @@ void UpdateInfoBoxItem(const infoBoxItem *item) {
   }
 
   if(item->followFnPtr != NULL) {
-    item->followFnPtr();
+    item->followFnPtr(item->row, item->col);
   }
 }
 
@@ -166,7 +172,7 @@ void UpdateInfoBox() {
   Return value:
     void
 *****/
-void IBCompressionFollowup() {
+void IBCompressionFollowup(int row, int col) {
   if (compressorFlag == 1) {
     tft.print(" ");
     tft.print(currentMicThreshold);
@@ -183,7 +189,7 @@ void IBCompressionFollowup() {
   Return value:
     void
 *****/
-void IBWPMFollowup() {
+void IBWPMFollowup(int row, int col) {
   if (EEPROMData.keyType == 1) { // 1 = paddles
     if (paddleFlip == 0) {
       tft.print("R");
@@ -205,7 +211,7 @@ void IBWPMFollowup() {
   Return value:
     void
 *****/
-void IBVolFollowup() {
+void IBVolFollowup(int row, int col) {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_GREEN);
   tft.setCursor(IB_COL_1_X, IB_ROW_1_Y);
@@ -222,7 +228,7 @@ void IBVolFollowup() {
   Return value:
     void
 *****/
-void IBEQFollowup() {
+void IBEQFollowup(int row, int col) {
   tft.setCursor(IB_COL_1_X, IB_ROW_10_Y);
   if (receiveEQFlag) {
     tft.setTextColor(RA8875_RED);
@@ -263,7 +269,7 @@ void IBEQFollowup() {
   Return value:
     void
 *****/
-void IBTempFollowup() {
+void IBTempFollowup(int row, int col) {
   char buff[10];
 
   if (elapsed_micros_idx_t > (SampleRate / 960)) {
@@ -284,7 +290,7 @@ void IBTempFollowup() {
   Return value:
     void
 *****/
-void IBLoadFollowup() {
+void IBLoadFollowup(int row, int col) {
   char buff[10];
   int valueColor = RA8875_GREEN;
   double block_time;
@@ -312,6 +318,31 @@ void IBLoadFollowup() {
     elapsed_micros_idx_t = 0;
     elapsed_micros_sum = 0;
     elapsed_micros_mean = 0;
+  }
+}
+
+/*****
+  Purpose: Information box follow up function for the FT8 item
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+void IBFT8Followup(int row, int col) {
+  //tft.setCursor(col, row);
+  if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
+    if(syncFlag) {
+      tft.setTextColor(RA8875_GREEN);
+      tft.print("sync'd");
+    } else {
+      tft.setTextColor(RA8875_RED);
+      tft.print("not sync'd");
+    }
+  } else {
+    tft.setTextColor(RA8875_WHITE);
+    tft.print("Off");
   }
 }
 

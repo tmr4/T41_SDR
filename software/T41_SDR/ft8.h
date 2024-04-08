@@ -10,6 +10,7 @@ extern q15_t *ft8_dsp_buffer;
 
 extern int ft8_flag, ft8_decode_flag;
 extern bool syncFlag;
+extern int ft8State;
 
 extern bool ft8Init;
 

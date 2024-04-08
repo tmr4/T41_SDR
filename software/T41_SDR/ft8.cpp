@@ -6,6 +6,7 @@
 
 #include "SDT.h"
 #include "Display.h"
+#include "InfoBox.h"
 
 #ifdef FT8
 
@@ -35,6 +36,7 @@ uint32_t current_time, start_time, ft8_time;
 int DSP_Flag;
 int ft8_flag, FT_8_counter, ft8_decode_flag;
 int num_decoded_msg;
+int ft8State = 0; // 0 - off, 1 - not sync'd, 2 - sync'd
 
 int master_offset, offset_step;
 
@@ -52,6 +54,23 @@ arm_rfft_instance_q15 fft_inst;
 //uint8_t DMAMEM export_fft_power[ft8_msg_samples*ft8_buffer*4] ;
 uint8_t *export_fft_power;
 
+int max_score;
+// from: https://github.com/kgoba/ft8_lib/issues/3
+// decode time can be adjusted by changing the number of candidates (kMax_candidates) and LDPC iterations (kLDPC_iterations).
+const int kLDPC_iterations = 10;
+const int kMax_candidates = 20;
+
+const int kMax_decoded_messages = 10;  //chhh 27 feb
+//const int kMax_message_length = 20;
+const int kMax_message_length = 35; // from ft8_lib < max message length = callsign[13] + space + callsign[13] + space + report[6] + terminator
+                                    // difference is included detail and spacing (Pocket_FT8 excludes some spacing I included)
+
+const int kMin_score = 40;		// Minimum sync score threshold for candidates
+//const int kMin_score = 30;
+//const int kMin_score = 20;
+//const int kMin_score = 10;		// try a lower score to see if we get anything
+//const int kMin_score = 5;
+
 typedef struct Candidate {
     int16_t      score;
     int16_t      time_offset;
@@ -59,8 +78,6 @@ typedef struct Candidate {
     uint8_t      time_sub;
     uint8_t      freq_sub;
 } Candidate;
-
-int max_score;
 
 typedef struct
 {
@@ -77,22 +94,6 @@ typedef struct
 
 Decode new_decoded[20];
 //Decode *new_decoded;
-
-// from: https://github.com/kgoba/ft8_lib/issues/3
-// decode time can be adjusted by changing the number of candidates (kMax_candidates) and LDPC iterations (kLDPC_iterations).
-const int kLDPC_iterations = 10;
-const int kMax_candidates = 20;
-
-const int kMax_decoded_messages = 10;  //chhh 27 feb
-//const int kMax_message_length = 20;
-const int kMax_message_length = 35; // from ft8_lib < max message length = callsign[13] + space + callsign[13] + space + report[6] + terminator
-                                    // difference is included detail and spacing (Pocket_FT8 excludes some spacing I included)
-
-const int kMin_score = 40;		// Minimum sync score threshold for candidates
-//const int kMin_score = 30;
-//const int kMin_score = 20;
-//const int kMin_score = 10;		// try a lower score to see if we get anything
-//const int kMin_score = 5;
 
 //-------------------------------------------------------------------------------------------------------------
 // forwards
@@ -117,16 +118,6 @@ char charn(int c, int table_idx);
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void displaySync(const char *message, int color) {
-  // clear old line
-  tft.fillRect(WATERFALL_L + 400, YPIXELS - 35, WATERFALL_W - 400, 35, RA8875_BLACK);
-  tft.setFontScale(0,1);
-  tft.setTextColor(color);
-
-  tft.setCursor(WATERFALL_L + 425, YPIXELS - 35);
-  tft.print(message);
-}
-
 void auto_sync_FT8() {
   // allow process to loop until we're within 1 second
   if((second())%15 <= 1) {
@@ -138,10 +129,13 @@ void auto_sync_FT8() {
     ft8_flag = 1;
     FT_8_counter = 0;
     syncFlag = true;
-    displaySync("sync'd", RA8875_GREEN);
+    ft8State = 2;
+    //displaySync("sync'd", RA8875_GREEN);
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
   }
   else {
-    displaySync("not sync'd", RA8875_RED);
+    ft8State = 1;
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
   }
 }
 
@@ -722,6 +716,8 @@ int validate_locator(char locator[]) {
   return 0;
 }
 
+int num_decoded = 0;
+
 int ft8_decode(void) {
   char rtc_string[10];   // print format stuff
   Candidate candidate_list[kMax_candidates];
@@ -735,7 +731,6 @@ int ft8_decode(void) {
   int raw_RSL;
   int display_RSL;
   float distance;
-  int num_decoded = 0;
   float   log174[N];
   uint8_t plain[N];
   int n_errors;
@@ -832,7 +827,9 @@ int ft8_decode(void) {
         else {
           new_decoded[num_decoded].distance = 0;
         }
-        ++num_decoded;
+        if(++num_decoded >= kMax_decoded_messages) {
+          num_decoded = 0;
+        };
       }
 
     }
@@ -877,7 +874,8 @@ void display_details(int decoded_messages, int message_limit) {
     tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount);
     tft.print(message);
 
-    if(--rowCount == 0) {
+    --rowCount;
+    if(i == 3) {
       // start in column 2
       rowCount = 5;
       columnOffset = 256;

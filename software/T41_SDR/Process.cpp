@@ -11,6 +11,7 @@
 #include "FIR.h"
 #include "Freq_Shift.h"
 #include "ft8.h"
+#include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Noise.h"
@@ -105,6 +106,7 @@ void ProcessIQData() {
         Q_in_R.freeBuffer();
       }
 
+      // *** consider if this is needed for FT8 ***
       /*******************************
               Set RFGain - for all bands
       */
@@ -334,6 +336,8 @@ void ProcessIQData() {
           ft8_flag = 0;
 
           ButtonDemodMode(); // switch back to ft8 mode
+          ft8State = 1;
+          UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
           /*
           // keep decoding w/o new audio
           for (unsigned i = 0; i < 68; i++) {
