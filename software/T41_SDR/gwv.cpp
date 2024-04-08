@@ -19,7 +19,7 @@ int spectrumNoiseFloor = 247; // SPECTRUM_NOISE_FLOOR;
 int tuneIndex = DEFAULTFREQINDEX;
 int ftIndex = DEFAULT_FT_INDEX;
 float32_t transmitPowerLevel = DEFAULT_POWER_LEVEL;
-int xmtMode = SSB_MODE;  // 0 = SSB, 1 = CW
+int xmtMode = SSB_MODE;  // 0 = SSB, 1 = CW, 2 = FT8
 int nrOptionSelect = 0;
 int currentScale = 1;  // 20 dB/division
 long spectrum_zoom = 1; // SPECTRUM_ZOOM_2

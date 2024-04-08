@@ -20,7 +20,6 @@ void IBVolFollowup(int row, int col);
 void IBEQFollowup(int row, int col);
 void IBTempFollowup(int row, int col);
 void IBLoadFollowup(int row, int col);
-void IBFT8Followup(int row, int col);
 void DrawInfoBoxFrame();
 
 //-------------------------------------------------------------------------------------------------------------
@@ -50,9 +49,15 @@ const char *filter[] = { "Off", "Kim", "Spectral", "LMS" };
 const char *onOff[2] = { "Off", "On" };
 const char *optionsWPM[2] = { "Straight Key", "Paddles " };
 const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
-const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
 
+#ifdef FT8
+void IBFT8Followup(int row, int col);
+const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
 #define IB_NUM_ITEMS 14
+#else
+#define IB_NUM_ITEMS 13
+#endif // FT8
+
 PROGMEM const infoBoxItem infoBox[] = 
 { //                                                     font    # chars
   // label         Options      option                   size    to erase  flag  col            row,           follow-up function
@@ -70,7 +75,9 @@ PROGMEM const infoBoxItem infoBox[] =
   //{ "Equalizers:", NULL,        NULL,                     0,       10,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBEQFollowup          }  // Equalizers
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBTempFollowup        }, // Teensy Temp
   { "Load:",       NULL,        NULL,                     0,        3,      1,   IB_COL_2_X,    IB_ROW_10_Y,   &IBLoadFollowup        },  // Teensy Load
+#ifdef FT8
   { "FT8:",        ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_7_Y,    NULL                   },  // FT8 sync
+#endif // FT8
 
   //{ "Vol:",       NULL,        NULL,                      1,        2,      0,   IB_COL_1_X,    IB_ROW_1_Y,    &IBVolFollowup         }, // Tune Inc
   //{ "AGC",        agcOpts,     &AGCMode,                  1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
@@ -321,6 +328,7 @@ void IBLoadFollowup(int row, int col) {
   }
 }
 
+#ifdef FT8
 /*****
   Purpose: Information box follow up function for the FT8 item
 
@@ -345,6 +353,7 @@ void IBFT8Followup(int row, int col) {
     tft.print("Off");
   }
 }
+#endif // FT8
 
 /*****
   Purpose: Show estimated WPM in information box

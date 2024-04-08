@@ -10,6 +10,7 @@
 #include "Encoders.h"
 #include "Exciter.h"
 #include "Filter.h"
+#include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
@@ -556,7 +557,7 @@ void MicOptions() {
 
 /*****
   Purpose: Present the bands available and return the selection
-
+            *** consider FT8 power options ***
   Parameter list:
     void
 
@@ -660,6 +661,13 @@ void DoPaddleFlip() {
     void
 *****/
 void VFOSelect() {
+#ifdef FT8
+  if(xmtMode == DATA_MODE) {
+    // restore old demodulation mode before we change bands
+    bands[currentBand].mode = priorDemodMode;
+  }
+#endif
+
   //delay(10);
   NCOFreq = 0L;
   switch (secondaryMenuIndex) {
@@ -685,6 +693,16 @@ void VFOSelect() {
       return;
       break;
   }
+
+#ifdef FT8
+  if(xmtMode == DATA_MODE) {
+    priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+    bands[currentBand].mode = DEMOD_FT8;
+    syncFlag = false; 
+    ft8State = 1;
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+  }
+#endif
 
   bands[currentBand].freq = TxRxFreq;
   SetBand();                            // SetBand updates the display

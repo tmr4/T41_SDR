@@ -1,5 +1,6 @@
 #include "SDT.h"
 #include "Exciter.h"
+#include "EEPROM.h"
 #include "Filter.h"
 #include "Menu.h"
 #include "Utility.h"
@@ -182,5 +183,5 @@ void SetBandRelay(int state) {
   digitalWrite(bandswitchPins[i], LOW); // Set ALL band relays low.  KF5N July 21, 2023
   }
 // Set current band relay "on".  Ignore 12M and 10M.  15M and 17M use the same relay.  KF5N September 27, 2023.
-  if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], state);  
+  if(currentBand < BAND_12M) digitalWrite(bandswitchPins[currentBand], state);  
 }

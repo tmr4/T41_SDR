@@ -104,7 +104,7 @@ void FreqShift2() {
 
   TxRxFreq = centerFreq + NCOFreq;
 
-  if (xmtMode == SSB_MODE ) {
+  if (xmtMode == SSB_MODE || xmtMode == DATA_MODE) {
     sideToneShift = 0;
   } else {
     if (xmtMode == CW_MODE ) {

@@ -30,6 +30,7 @@ bool nfmBWFilterActive = false; // false - audio, true - demod BW filter active
 bool save_last_frequency = false;
 bool directFreqFlag = false;
 long TxRxFreqOld;
+int priorDemodMode;
 
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
@@ -98,7 +99,6 @@ void ButtonMenuUp() {
       break;
   }
 }
-//==================  AFP 09-27-22
 
 /*****
   Purpose: To process a band increase/decrease button push
@@ -151,6 +151,16 @@ void ButtonBandChange() {
   }
 
   EEPROMWrite();
+
+#ifdef FT8
+  if(xmtMode == DATA_MODE) {
+    priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+    bands[currentBand].mode = DEMOD_FT8;
+    syncFlag = false; 
+    ft8State = 1;
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+  }
+#endif
 
   SetBand();
 }
@@ -219,47 +229,44 @@ void ButtonFilter() {
     void
 *****/
 void ButtonDemodMode() {
+#ifdef FT8
+  if(bands[currentBand].mode == DEMOD_FT8) {
+    // try to load wav file
+    if(setupFT8Wav()) {
+      // switch to play a wav file
+      bands[currentBand].mode = DEMOD_FT8_WAV;
+      ShowOperatingStats();
+      syncFlag = true;
+      ft8State = 2;
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    } else {
+      // couldn't load wav file
+      syncFlag = false; 
+      ft8State = 1;
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    }
+    return;
+  } else if(bands[currentBand].mode == DEMOD_FT8_WAV) {
+    // changed demod mode during wav file playback
+    // switch back to FT8
+    bands[currentBand].mode = DEMOD_FT8;
+    ShowOperatingStats();
+    syncFlag = false; 
+    ft8State = 1;
+    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    return;
+  }
+#endif
+
   bands[currentBand].mode++;
   if(bands[currentBand].mode > DEMOD_MAX) {
     bands[currentBand].mode = DEMOD_MIN;  // cycle thru demod modes
   }
 
-#ifdef FT8
-  if(bands[currentBand].mode == DEMOD_FT8_WAV) {
-    // continue to FT8 if we've just incremented to FT8 wave
-    bands[currentBand].mode++;
-
-    if(!ft8Init) {
-      if(setupFT8()) {
-        ft8Init = true;
-      } else {
-        // can't set up FT8, just continue to next mode
-        bands[currentBand].mode++;
-      }
-    }
-
-    // set up message area
-    tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
-    tft.writeTo(L2); // it's on layer 2 as well
-    tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
-    tft.writeTo(L1);
-    wfRows = WATERFALL_H - 20 * 6 - 3;
-  } else {
-    // erase any decoded messages if we're coming from FT8
-    if(bands[currentBand].mode - 1 == DEMOD_FT8) {
-      exitFT8();
-      ft8Init = false;
-
-      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);
-      wfRows = WATERFALL_H;
-    }
-  }
-#else
   // skip FT8 modes
   if(bands[currentBand].mode == DEMOD_FT8_WAV) {
     bands[currentBand].mode += 2;
   }
-#endif
 
   SetupMode();
   //UpdateBWFilters();
@@ -270,7 +277,7 @@ void ButtonDemodMode() {
 }
 
 /*****
-  Purpose: Toggle operating mode (SSB or CW)
+  Purpose: Toggle operating mode, SSB, CW or FT8 (if available)
 
   Parameter list:
     void
@@ -279,28 +286,9 @@ void ButtonDemodMode() {
     void
 *****/
 void ButtonMode() {
-  // Toggle the current mode
-  if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
-    if(bands[currentBand].mode == DEMOD_FT8) {
-      if(setupFT8Wav()) {
-        // switch to play a wav file
-        bands[currentBand].mode = DEMOD_FT8_WAV;
-        ShowOperatingStats();
-        ft8State = 2;
-        UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
-      }
-    }
-  } else {
-    if (xmtMode == CW_MODE) {  
-      xmtMode = SSB_MODE;
-
-      // return waterfall to normal if decoder is on
-      if(decoderFlag == ON) {
-        // erase any decoded CW
-        tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
-        wfRows = WATERFALL_H;
-      }
-    } else {
+  // Toggle the current mode: SSB -> CW -> FT8 (if available) -> SSB
+  switch(xmtMode) {
+    case SSB_MODE:
       xmtMode = CW_MODE;
 
       // reduce waterfall height if we're decoding CW
@@ -311,11 +299,54 @@ void ButtonMode() {
         tft.writeTo(L1);
         wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
       }
-    }
+      break;
 
-    UpdateCWFilter();
-    ShowOperatingStats();
+    case CW_MODE:
+#ifdef FT8
+      // try to set up FT8
+      if(setupFT8()) {
+        // FT8 set up successful
+        xmtMode = DATA_MODE;
+        priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+        bands[currentBand].mode = DEMOD_FT8;
+      } else {
+        // can't set up FT8, just continue to next mode (thus CW -> SSB)
+        xmtMode = SSB_MODE;
+
+        // return waterfall to normal if decoder is on
+        if(decoderFlag == ON) {
+          // erase any decoded CW
+          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+          wfRows = WATERFALL_H;
+        }
+      }
+#else
+      xmtMode = SSB_MODE;
+
+      // return waterfall to normal if decoder is on
+      if(decoderFlag == ON) {
+        // erase any decoded CW
+        tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+        wfRows = WATERFALL_H;
+      }
+#endif
+      break;
+
+#ifdef FT8
+    case DATA_MODE:
+      xmtMode = SSB_MODE;
+
+      // return demod mode to previous mode
+      bands[currentBand].mode = priorDemodMode;
+
+      exitFT8();
+      UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+      break;
+#endif
   }
+
+  UpdateCWFilter();
+  ShowOperatingStats();
 }
 
 /*****

@@ -704,12 +704,22 @@ void ShowOperatingStats() {
   tft.setTextColor(RA8875_GREEN);
   tft.setCursor(OPERATION_STATS_MD, OPERATION_STATS_T);
 
-  if (xmtMode == CW_MODE) {
-    tft.print("CW ");
-    tft.setCursor(OPERATION_STATS_CWF, OPERATION_STATS_T);
-    tft.print(CWFilter[CWFilterIndex]);
-  } else {
-    tft.print("SSB");  // Which mode, *** need to rethink this as we add additional modes ***
+  switch(xmtMode) {
+    case CW_MODE:
+      tft.print("CW ");
+      tft.setCursor(OPERATION_STATS_CWF, OPERATION_STATS_T);
+      tft.print(CWFilter[CWFilterIndex]);
+      break;
+
+    case SSB_MODE:
+      tft.print("SSB");
+      break;
+
+#ifdef FT8
+    case DATA_MODE:
+      tft.print("DATA");
+      break;
+#endif
   }
 
   tft.setCursor(OPERATION_STATS_DMD, OPERATION_STATS_T);
@@ -818,11 +828,13 @@ void UpdateCWFilter() {
 *****/
 FASTRUN void ShowFrequency() {
   char freqBuffer[15];
-  if (activeVFO == VFO_A) {  // Needed for edge checking
-    currentBand = currentBandA;
-  } else {
-    currentBand = currentBandB;
-  }
+
+  // *** do this in the proper place if this is needed ***
+  //if (activeVFO == VFO_A) {  // Needed for edge checking
+  //  currentBand = currentBandA;
+  //} else {
+  //  currentBand = currentBandB;
+  //}
 
   FormatFrequency(TxRxFreq, freqBuffer);
   tft.setFontScale(3, 2);

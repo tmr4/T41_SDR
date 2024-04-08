@@ -424,9 +424,16 @@ void ExecuteButtonPress(int val) {
 
     case BAND_UP:  // 2
       // Added if so unused GPOs will not be touched
-      if(currentBand < 5) {
+      if(currentBand < BAND_12M) {
         digitalWrite(bandswitchPins[currentBand], LOW);  
       }
+
+#ifdef FT8
+      if(xmtMode == DATA_MODE) {
+        // restore old demodulation mode before we change bands
+        bands[currentBand].mode = priorDemodMode;
+      }
+#endif
 
       currentBand++;
       if(currentBand == NUMBER_OF_BANDS) {  // Incremented too far?
@@ -435,7 +442,7 @@ void ExecuteButtonPress(int val) {
 
       ButtonBandChange();
 
-      if(currentBand < 5) {
+      if(currentBand < BAND_12M) {
         digitalWrite(bandswitchPins[currentBand], HIGH);
       }
       break;
@@ -482,9 +489,16 @@ void ExecuteButtonPress(int val) {
       break;
 
     case BAND_DN:  // 5
-      if(currentBand < 5) {
+      if(currentBand < BAND_12M) {
         digitalWrite(bandswitchPins[currentBand], LOW);
       }
+
+#ifdef FT8
+      if(xmtMode == DATA_MODE) {
+        // restore old demodulation mode before we change bands
+        bands[currentBand].mode = priorDemodMode;
+      }
+#endif
 
       currentBand--;
       if(currentBand < 0) {                 // Incremented too far?
@@ -493,7 +507,7 @@ void ExecuteButtonPress(int val) {
 
       ButtonBandChange();
 
-      if(currentBand < 5) {
+      if(currentBand < BAND_12M) {
         digitalWrite(bandswitchPins[currentBand], HIGH);
       }
       break;

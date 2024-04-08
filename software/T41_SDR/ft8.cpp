@@ -119,8 +119,8 @@ char charn(int c, int table_idx);
 //-------------------------------------------------------------------------------------------------------------
 
 void auto_sync_FT8() {
-  // allow process to loop until we're within 1 second
-  if((second())%15 <= 1) {
+  // allow process to loop until we're within 1 second of the next T/R sequence
+  if((second())%15 == 14) {
     // now we can sync up without causing a long delay
     while ((second())%15 != 0){
     }
@@ -1268,8 +1268,23 @@ char charn(int c, int table_idx) {
 //-------------------------------------------------------------------------------------------------------------
 
 FLASHMEM bool setupFT8() {
-  initalize_constants();
-  return init_DSP();
+  if(!ft8Init) {
+    initalize_constants();
+    if(init_DSP()) {
+      ft8Init = true;
+
+      // set up message area
+      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      tft.writeTo(L2); // it's on layer 2 as well
+      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      tft.writeTo(L1);
+      wfRows = WATERFALL_H - 20 * 6 - 3;
+
+      return true;
+    }
+  }
+
+  return false;
 }
 
 FLASHMEM bool setupFT8Wav() {
@@ -1292,11 +1307,17 @@ FLASHMEM bool setupFT8Wav() {
 FLASHMEM void exitFT8() {
   delete[] export_fft_power;
 
+  // restore message area
+  tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);
+  wfRows = WATERFALL_H;
+
   // reset FT8 flags and counters
+  ft8Init = false;
   syncFlag = false;
   ft8_decode_flag = 0;
   FT_8_counter = 0;
   ft8_flag = 0;
+  ft8State = 0;
 }
 
 File f;

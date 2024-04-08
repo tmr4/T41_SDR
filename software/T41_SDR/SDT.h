@@ -37,8 +37,11 @@
 
 #define BOGUS_PIN_READ             -1 // If no push button read
 #define FFT_LENGTH                512
+
 #define SSB_MODE                    0
 #define CW_MODE                     1
+#define DATA_MODE                    2
+
 #define OFF                         0
 #define ON                          1
 

@@ -964,6 +964,12 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
     radioState = CW_TRANSMIT_KEYER_STATE;
   }
 
+#ifdef FT8
+  if(xmtMode == DATA_MODE) {
+    radioState = SSB_RECEIVE_STATE;
+  }
+#endif
+
   if(lastState != radioState) {
     SetFreq();  // Update frequencies if the radio state has changed.
   }
