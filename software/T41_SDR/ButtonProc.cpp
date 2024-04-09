@@ -345,8 +345,11 @@ void ButtonMode() {
 #endif
   }
 
+  SetupMode();
   UpdateCWFilter();
   ShowOperatingStats();
+  ShowBandwidthBarValues();
+  DrawBandwidthBar();
 }
 
 /*****

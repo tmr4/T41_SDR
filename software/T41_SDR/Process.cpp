@@ -574,7 +574,7 @@ void ProcessIQData() {
           if(ft8_decode_flag == 1) {
             num_decoded_msg = ft8_decode();
             if(num_decoded_msg > 0) {
-              display_details(num_decoded_msg, 5);
+              display_details(num_decoded_msg, kMax_decoded_messages);
             }
 
             ft8_decode_flag = 0;  

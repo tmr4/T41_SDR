@@ -22,7 +22,7 @@ float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: ZoomFFTPrep() is used to alter the x axis for the spectrum display, thus narrowing its badwidth.
+  Purpose: change IIR and decimation filters for altered frequency spectrum badwidth.
   
   Parameter list:
     void

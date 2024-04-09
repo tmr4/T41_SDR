@@ -40,6 +40,8 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
 * feature/dataMode - adds DATA as a separate receiver mode with FT8 as the default demodulation mode.  Transmit DATA mode to come in the future.  FT8 wav files can be played by pressing the Demod button.  Currently FT8.wav decodes the file *"test.wav"* from the SD card and then switches back to regular FT8 decoding.  I plan to move forward with this branch for FT8 rather than tge feature/ft8 branch.
 
   * Note that similar to the SSB and CW modes, the DATA mode doesn't change when you change bands or VFOs.
+  * Fixed DrawBandwidthBar to reset tuning if it will draw outside frequency spectrum box
+  * Refined how FT8 messages are printed on screen.  This will be ongong as I work on this feature.
 
 * feature/ft8 - adds FT8 and FT8.wav decoding as optional demodulation modes. FT8.wav selectable while in FT8 mode by pressing the Mode button.  Currently FT8.wav decodes the file *"test.wav"* from the SD card and then switches back to FT8 mode.
 

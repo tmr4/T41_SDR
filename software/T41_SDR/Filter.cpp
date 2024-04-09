@@ -353,6 +353,7 @@ void SetupMode() {
       break;
 
     case DEMOD_AM:
+    case DEMOD_SAM:
       //bands[currentBand].FHiCut =  -bands[currentBand].FLoCut;
       bands[currentBand].FHiCut =  3000;
       bands[currentBand].FLoCut = -3000;

@@ -92,8 +92,8 @@ typedef struct
 
 } Decode;
 
-Decode new_decoded[20];
-//Decode *new_decoded;
+Decode decoded[20];
+//Decode *decoded;
 
 //-------------------------------------------------------------------------------------------------------------
 // forwards
@@ -196,7 +196,7 @@ FLASHMEM bool init_DSP(void) {
   //Serial.println(offset);
 
   offset = 0;
-  //new_decoded = (Decode *)&sharedRAM1[offset]; // using 1280
+  //decoded = (Decode *)&sharedRAM1[offset]; // using 1280
   //offset += 1280;
   FFT_Scale = (q15_t *)&sharedRAM1[offset]; // FFT_SIZE * 2 * 2
   offset += FFT_SIZE * 2 * 2;
@@ -722,7 +722,7 @@ int ft8_decode(void) {
   char rtc_string[10];   // print format stuff
   Candidate candidate_list[kMax_candidates];
   Candidate cand;
-  char decoded[kMax_decoded_messages][kMax_message_length];
+  char newlyDecoded[kMax_decoded_messages][kMax_message_length];
   float freq_hz;
   int num_candidates;
   //char message[kMax_message_length];
@@ -741,6 +741,7 @@ int ft8_decode(void) {
   int rc;
   const float fsk_dev = 6.25f;    // tone deviation in Hz and symbol rate
   bool found;
+  int numNewlyDecoded = 0;
 
   // Find top candidates by Costas sync score and localize them in time and frequency
   num_candidates = find_sync(export_fft_power, ft8_msg_samples, ft8_buffer, kCostas_map, kMax_candidates, candidate_list, kMin_score);
@@ -781,61 +782,79 @@ int ft8_decode(void) {
     //  Serial.print("rc = "); Serial.println(rc);
     //  }
     
-    sprintf(message,"%7s %7s %4s ",field1, field2, field3);
+    sprintf(message,"%.13s %.13s %.6s",field1, field2, field3);
     //if(strlen(message) > 10) Serial.println(message);
 
     // Check for duplicate messages (TODO: use hashing)
     found = false;
-    for (int i = 0; i < num_decoded; ++i) {
-      if (0 == strcmp(decoded[i], message)) {
+    for (int i = 0; i < numNewlyDecoded; ++i) {
+      if (0 == strcmp(newlyDecoded[i], message)) {
         found = true;
         break;
+      }
+    }
+    // check in decoded as well
+    if(!found) {
+      char msg[48];
+
+      for (int i = 0; i < num_decoded; ++i) {
+        sprintf(msg,"%.13s %.13s %.6s",decoded[i].field1, decoded[i].field2, decoded[i].field3);
+
+        if (0 == strcmp(msg, message)) {
+          found = true;
+          break;
+        } else {
+          //Serial.println(message);
+          //Serial.println(msg);
+        }
       }
     }
 
     getTeensy3Time();
     sprintf(rtc_string,"%2i:%2i:%2i",hour(),minute(),second());
 
-    if (!found && num_decoded < kMax_decoded_messages) {
+    if (!found && numNewlyDecoded < kMax_decoded_messages) {
       if(strlen(message) < kMax_message_length) {
         //Serial.println("creating message");
         //Serial.println(message);
-        strcpy(decoded[num_decoded], message);
+        strcpy(newlyDecoded[numNewlyDecoded++], message);
 
-        new_decoded[num_decoded].sync_score = cand.score;
-        new_decoded[num_decoded].freq_hz = (int)freq_hz;
-        strcpy(new_decoded[num_decoded].field1, field1);
-        strcpy(new_decoded[num_decoded].field2, field2);
-        strcpy(new_decoded[num_decoded].field3, field3);
-        strcpy(new_decoded[num_decoded].decode_time, rtc_string);
+        decoded[num_decoded].sync_score = cand.score;
+        decoded[num_decoded].freq_hz = (int)freq_hz;
+        strcpy(decoded[num_decoded].field1, field1);
+        strcpy(decoded[num_decoded].field2, field2);
+        strcpy(decoded[num_decoded].field3, field3);
+        strcpy(decoded[num_decoded].decode_time, rtc_string);
           
-        raw_RSL = new_decoded[num_decoded].sync_score;
+        raw_RSL = decoded[num_decoded].sync_score;
         if (raw_RSL > 160) {
           raw_RSL = 160;
         }
         display_RSL = (raw_RSL - 160 ) / 6;
-        new_decoded[num_decoded].snr = display_RSL;
+        decoded[num_decoded].snr = display_RSL;
 
         char Target_Locator[] = "    ";
 
-        strcpy(Target_Locator, new_decoded[num_decoded].field3);
+        strcpy(Target_Locator, decoded[num_decoded].field3);
 
         if (validate_locator(Target_Locator)  == 1) {
           distance = 0;
-          new_decoded[num_decoded].distance = (int)distance;
+          decoded[num_decoded].distance = (int)distance;
         }
         else {
-          new_decoded[num_decoded].distance = 0;
+          decoded[num_decoded].distance = 0;
         }
-        if(++num_decoded >= kMax_decoded_messages) {
+        if(++num_decoded > kMax_decoded_messages) {
+          // reset message area
+          // *** impliment a bubble sort of some kind ***
+          tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
           num_decoded = 0;
         };
       }
-
     }
   }  //End of big decode loop
 
-  return num_decoded;
+  return numNewlyDecoded;
 }
 
 void display_messages(int decoded_messages, int message_limit){
@@ -846,9 +865,9 @@ void display_messages(int decoded_messages, int message_limit){
   tft.fillRect(0, 120, 320, 195, HX8357_BLACK);
 
   for (int i = 0; i<decoded_messages && i < message_limit; i++ ) {
-    sprintf(message,"%s %s %s",new_decoded[i].field1, new_decoded[i].field2, new_decoded[i].field3);
+    sprintf(message,"%s %s %s",decoded[i].field1, decoded[i].field2, decoded[i].field3);
 
-    sprintf(big_gulp,"%s %s", new_decoded[i].decode_time, message);
+    sprintf(big_gulp,"%s %s", decoded[i].decode_time, message);
     tft.setTextColor(HX8357_YELLOW , HX8357_BLACK);
     tft.setTextSize(2);
     tft.setCursor(0, 120 + i *25 );
@@ -869,18 +888,23 @@ void display_details(int decoded_messages, int message_limit) {
   tft.setTextColor(RA8875_WHITE);
 
   // print messages in 2 columns
-  for (int i = 0; i < decoded_messages && i < message_limit; i++){
-    sprintf(message,"%.13s %.13s %.6s",new_decoded[i].field1, new_decoded[i].field2, new_decoded[i].field3);
-    tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount);
+  //for (int i = 0; i < decoded_messages && i < message_limit; i++){
+  for (int i = 0; i < num_decoded && i < message_limit; i++){
+    sprintf(message,"%.13s %.13s %.6s",decoded[i].field1, decoded[i].field2, decoded[i].field3);
+    tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
     tft.print(message);
 
+    Serial.print(i); Serial.print(" : ");
+    Serial.println(message);
+
     --rowCount;
-    if(i == 3) {
+    if(i == 4) {
       // start in column 2
       rowCount = 5;
       columnOffset = 256;
     }
   }
+  Serial.println("");
 }
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1274,11 +1298,12 @@ FLASHMEM bool setupFT8() {
       ft8Init = true;
 
       // set up message area
-      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      // Erase waterfall in decode area
+      tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
       tft.writeTo(L2); // it's on layer 2 as well
-      tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);  // Erase waterfall in decode area
+      tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
       tft.writeTo(L1);
-      wfRows = WATERFALL_H - 20 * 6 - 3;
+      wfRows = WATERFALL_H - 25 * 5 - 3;
 
       return true;
     }
@@ -1308,7 +1333,7 @@ FLASHMEM void exitFT8() {
   delete[] export_fft_power;
 
   // restore message area
-  tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 20 * 6 + 3, RA8875_BLACK);
+  tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
   wfRows = WATERFALL_H;
 
   // reset FT8 flags and counters

@@ -247,9 +247,9 @@ FASTRUN void ShowSpectrum() {
       DrawBandwidthBar();
       fineTuneFlag = false;
     }
-    if (resetTuningFlag) {
+    if(resetTuningFlag) {
+      resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
       ResetTuning();
-      resetTuningFlag = false;
     }
 
     if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
@@ -1055,39 +1055,68 @@ FASTRUN void DrawBandwidthBar() {
   }
   newCursorPosition = (int)(NCOFreq * 0.0053333) * zoomMultFactor - Zoom1Offset;
 
-  tft.writeTo(L2);
-
-  // erase old bar
-  tft.fillRect(SPECTRUM_LEFT_X, SPECTRUM_TOP_Y + 20, SPECTRUM_RES, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
-
   pixel_per_khz = ((1 << spectrum_zoom) * SPECTRUM_RES * 1000.0 / SampleRate);
   filterWidth = (int)(((bands[currentBand].FHiCut - bands[currentBand].FLoCut) / 1000.0) * pixel_per_khz * 1.06);
 
+  // make sure bandwidth is within zoom range
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
     case DEMOD_FT8: // ft8 is USB
     case DEMOD_FT8_WAV: // ft8 is USB
-      tft.fillRect(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+      if(centerLine + newCursorPosition + filterWidth > SPECTRUM_RES) {
+        resetTuningFlag = true;
+      }
       break;
 
     case DEMOD_LSB:
-      tft.fillRect(centerLine - filterWidth + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+      if(centerLine + newCursorPosition - filterWidth < 0) {
+        resetTuningFlag = true;
+      }
       break;
 
     case DEMOD_NFM:
       filterWidth = (int)((nfmFilterBW / 1000.0) * pixel_per_khz * 1.06);
-      tft.fillRect(centerLine - (filterWidth / 2) * 0.93 + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth * 0.95, SPECTRUM_HEIGHT - 20, FILTER_WIN);
-      break;
 
     case DEMOD_AM:
     case DEMOD_SAM:
-      tft.fillRect(centerLine - (filterWidth / 2) * 0.93 + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth * 0.95, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+      if((centerLine - (filterWidth / 2) * 0.93 + newCursorPosition < 0) || (centerLine + (filterWidth / 2) * 0.93 + newCursorPosition > SPECTRUM_RES)) {
+        resetTuningFlag = true;
+      }
       break;
   }
 
-  tft.drawFastVLine(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 20, RA8875_CYAN);
+  // erase old bar
+  tft.writeTo(L2);
+  tft.fillRect(SPECTRUM_LEFT_X, SPECTRUM_TOP_Y + 20, SPECTRUM_RES, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
 
-  oldCursorPosition = newCursorPosition;
+  // update bar if we haven't reset tuning, otherwise this gets recalled by that routine
+  if(!resetTuningFlag) {
+    switch (bands[currentBand].mode) {
+      case DEMOD_USB:
+      case DEMOD_FT8: // ft8 is USB
+      case DEMOD_FT8_WAV: // ft8 is USB
+        tft.fillRect(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        break;
+
+      case DEMOD_LSB:
+        tft.fillRect(centerLine - filterWidth + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        break;
+
+      case DEMOD_NFM:
+        filterWidth = (int)((nfmFilterBW / 1000.0) * pixel_per_khz * 1.06);
+        tft.fillRect(centerLine - (filterWidth / 2) * 0.93 + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth * 0.95, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        break;
+
+      case DEMOD_AM:
+      case DEMOD_SAM:
+        tft.fillRect(centerLine - (filterWidth / 2) * 0.93 + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth * 0.95, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        break;
+    }
+
+    tft.drawFastVLine(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 20, RA8875_CYAN);
+
+    oldCursorPosition = newCursorPosition;
+  }
 
   tft.writeTo(L1);
 }
