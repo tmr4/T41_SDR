@@ -81,15 +81,16 @@ typedef struct Candidate {
 
 typedef struct
 {
-    char field1[14];
-    char field2[14];
-    char field3[7];
-    int  freq_hz;
-    char decode_time[10];
-    int  sync_score;
-    int  snr;
-    int  distance;
+  char field1[14];
+  char field2[14];
+  char field3[7];
+  int  freq_hz;
+  char decode_time[10];
+  int  sync_score;
+  int  snr;
+  int  distance;
 
+  int count;
 } Decode;
 
 Decode decoded[20];
@@ -802,6 +803,7 @@ int ft8_decode(void) {
 
         if (0 == strcmp(msg, message)) {
           found = true;
+          decoded[i].count++;
           break;
         } else {
           //Serial.println(message);
@@ -826,6 +828,8 @@ int ft8_decode(void) {
         strcpy(decoded[num_decoded].field3, field3);
         strcpy(decoded[num_decoded].decode_time, rtc_string);
           
+        decoded[num_decoded].count = 1;
+
         raw_RSL = decoded[num_decoded].sync_score;
         if (raw_RSL > 160) {
           raw_RSL = 160;
@@ -887,10 +891,13 @@ void display_details(int decoded_messages, int message_limit) {
   tft.setFontScale(0,1);
   tft.setTextColor(RA8875_WHITE);
 
+  // reset message area
+  tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
+
   // print messages in 2 columns
   //for (int i = 0; i < decoded_messages && i < message_limit; i++){
   for (int i = 0; i < num_decoded && i < message_limit; i++){
-    sprintf(message,"%.13s %.13s %.6s",decoded[i].field1, decoded[i].field2, decoded[i].field3);
+    sprintf(message,"%2d: %.13s %.13s %.6s", decoded[i].count, decoded[i].field1, decoded[i].field2, decoded[i].field3);
     tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
     tft.print(message);
 
