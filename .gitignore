@@ -1,3 +1,6 @@
 .vscode/c_cpp_properties.json
 .vscode/settings.json
 software/T41_SDR/debug.txt
+software/T41_SDR/default_config.cpp
+software/T41_SDR/DMAMEM.txt
+software/T41_SDR/ft8.txt
