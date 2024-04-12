@@ -8,7 +8,7 @@
 #include "Display.h"
 #include "InfoBox.h"
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
 
 #include "ft8.h"
 #include "ft8_constants.h"
@@ -851,7 +851,7 @@ int ft8_decode(void) {
         if(++num_decoded > kMax_decoded_messages) {
           // reset message area
           // *** impliment a bubble sort of some kind ***
-          tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
+          tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
           num_decoded = 0;
         };
       }
@@ -892,7 +892,7 @@ void display_details(int decoded_messages, int message_limit) {
   tft.setTextColor(RA8875_WHITE);
 
   // reset message area
-  tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
+  tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
 
   // print messages in 2 columns
   //for (int i = 0; i < decoded_messages && i < message_limit; i++){
@@ -1467,4 +1467,4 @@ bool readWave(float32_t *buf, int sizeBuf) {
   return true;
 }
 
-#endif // #ifdef FT8
+#endif // #ifdef FT8_SUPPORT

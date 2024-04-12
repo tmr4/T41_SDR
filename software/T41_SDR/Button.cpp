@@ -428,7 +428,7 @@ void ExecuteButtonPress(int val) {
         digitalWrite(bandswitchPins[currentBand], LOW);  
       }
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
       if(xmtMode == DATA_MODE) {
         // restore old demodulation mode before we change bands
         bands[currentBand].mode = priorDemodMode;
@@ -493,7 +493,7 @@ void ExecuteButtonPress(int val) {
         digitalWrite(bandswitchPins[currentBand], LOW);
       }
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
       if(xmtMode == DATA_MODE) {
         // restore old demodulation mode before we change bands
         bands[currentBand].mode = priorDemodMode;

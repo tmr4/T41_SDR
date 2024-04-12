@@ -152,7 +152,7 @@ void ButtonBandChange() {
 
   EEPROMWrite();
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
   if(xmtMode == DATA_MODE) {
     priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
     bands[currentBand].mode = DEMOD_FT8;
@@ -229,7 +229,7 @@ void ButtonFilter() {
     void
 *****/
 void ButtonDemodMode() {
-#ifdef FT8
+#ifdef FT8_SUPPORT
   if(bands[currentBand].mode == DEMOD_FT8) {
     // try to load wav file
     if(setupFT8Wav()) {
@@ -302,7 +302,7 @@ void ButtonMode() {
       break;
 
     case CW_MODE:
-#ifdef FT8
+#ifdef FT8_SUPPORT
       // try to set up FT8
       if(setupFT8()) {
         // FT8 set up successful
@@ -332,7 +332,7 @@ void ButtonMode() {
 #endif
       break;
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
     case DATA_MODE:
       xmtMode = SSB_MODE;
 

@@ -7,7 +7,7 @@
 
 #include "SDT.h"
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
 
 #include "ft8_constants.h"
 
@@ -437,4 +437,4 @@ PROGMEM const uint8_t kNrw[83] = {
     6,6,6
 };
 
-#endif // #ifdef FT8
+#endif // #ifdef FT8_SUPPORT

@@ -19,6 +19,9 @@
 #include "Tune.h"
 #include "Utility.h"
 
+#include "keyboard.h"
+unsigned long last_usb_read = 0;
+
 //-------------------------------------------------------------------------------------------------------------
 /*
   The T41 Display Functions:
@@ -236,6 +239,16 @@ FASTRUN void ShowSpectrum() {
       ShowBandwidthBarValues();
       DrawBandwidthBar();
     }
+
+  // handle USB keyboard
+#ifdef KEYBOARD_SUPPORT
+  // poll keyboard at about 125 Hz
+  int now = millis();
+  if (now - last_usb_read > 8) {
+    usbLoop();
+    last_usb_read = now;
+  }
+#endif
 
     // Handle tuning changes
     // Done here to minimize interruption to signal stream during tuning.  There
@@ -715,7 +728,7 @@ void ShowOperatingStats() {
       tft.print("SSB");
       break;
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
     case DATA_MODE:
       tft.print("DATA");
       break;
@@ -1343,3 +1356,15 @@ void DrawStaticDisplayItems() {
   DrawAudioSpectContainer();
   DrawInfoBoxFrame();
 }
+
+#ifdef KEYBOARD_SUPPORT
+// for testing only
+FLASHMEM void PrintKeyboardBuffer() {
+  tft.setFontScale(0,1);
+  tft.setCursor(WATERFALL_L, YPIXELS - 32); // this is minimum above bottom of display to get lower case characters to fully show
+  tft.setTextColor(RA8875_WHITE);
+
+  kbBuffer[kbIndexIn] = 0; // terminate buffer
+  tft.print((char *)kbBuffer);
+}
+#endif

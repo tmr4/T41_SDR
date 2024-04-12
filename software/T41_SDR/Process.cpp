@@ -271,7 +271,7 @@ void ProcessIQData() {
         }
         break;
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
       case DEMOD_FT8_WAV:
         // get samples from wave file
         // let's pull the data at the same rate as the T41 pulls from the I/Q stream
@@ -522,7 +522,7 @@ void ProcessIQData() {
           audiotmp = AlphaBetaMag(iFFT_buffer[FFT_length + (i * 2)], iFFT_buffer[FFT_length + (i * 2) + 1]);
         }
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
           // save audio signal to FT8 buffer
         if(bands[currentBand].mode == DEMOD_FT8) {
           // don't process data until we're in sync

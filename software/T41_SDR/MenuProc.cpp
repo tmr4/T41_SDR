@@ -661,7 +661,7 @@ void DoPaddleFlip() {
     void
 *****/
 void VFOSelect() {
-#ifdef FT8
+#ifdef FT8_SUPPORT
   if(xmtMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
     bands[currentBand].mode = priorDemodMode;
@@ -694,7 +694,7 @@ void VFOSelect() {
       break;
   }
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
   if(xmtMode == DATA_MODE) {
     priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
     bands[currentBand].mode = DEMOD_FT8;

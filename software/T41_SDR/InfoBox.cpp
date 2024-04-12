@@ -50,7 +50,7 @@ const char *onOff[2] = { "Off", "On" };
 const char *optionsWPM[2] = { "Straight Key", "Paddles " };
 const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
 void IBFT8Followup(int row, int col);
 const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
 #define IB_NUM_ITEMS 14
@@ -75,7 +75,7 @@ PROGMEM const infoBoxItem infoBox[] =
   //{ "Equalizers:", NULL,        NULL,                     0,       10,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBEQFollowup          }  // Equalizers
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBTempFollowup        }, // Teensy Temp
   { "Load:",       NULL,        NULL,                     0,        3,      1,   IB_COL_2_X,    IB_ROW_10_Y,   &IBLoadFollowup        },  // Teensy Load
-#ifdef FT8
+#ifdef FT8_SUPPORT
   { "FT8:",        ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_7_Y,    NULL                   },  // FT8 sync
 #endif // FT8
 
@@ -328,7 +328,7 @@ void IBLoadFollowup(int row, int col) {
   }
 }
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
 /*****
   Purpose: Information box follow up function for the FT8 item
 

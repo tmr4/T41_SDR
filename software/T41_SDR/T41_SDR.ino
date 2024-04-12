@@ -40,6 +40,7 @@
 #include "Utility.h"
 
 #include "debug.h"
+#include "keyboard.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -905,9 +906,15 @@ FLASHMEM void setup() {
   SoftReset();
 
   //memCheck = true;
+
+#ifdef KEYBOARD_SUPPORT
+  usbSetup();
+#endif
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
+//double old_elapsed_micros_idx_t = 0;
+//unsigned long last_usb_read = 0;
 
 /*****
   Purpose: Code here executes forever, or until: 1) power is removed, 2) user does a reset, 3) a component
@@ -919,7 +926,7 @@ elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necess
   Return value:
     void
 *****/
-FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
+FASTRUN void loop()
 {
   int pushButtonSwitchIndex = -1;
   int valPin;
@@ -964,7 +971,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
     radioState = CW_TRANSMIT_KEYER_STATE;
   }
 
-#ifdef FT8
+#ifdef FT8_SUPPORT
   if(xmtMode == DATA_MODE) {
     radioState = SSB_RECEIVE_STATE;
   }
@@ -1029,8 +1036,8 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
       modeSelectInExL.gain(0, 1);
       modeSelectOutL.gain(0, 0);
       modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, powerOutSSB[currentBand]);  //AFP 10-21-22
-      modeSelectOutExR.gain(0, powerOutSSB[currentBand]);  //AFP 10-21-22
+      modeSelectOutExL.gain(0, powerOutSSB[currentBand]);
+      modeSelectOutExR.gain(0, powerOutSSB[currentBand]);
       ShowTransmitReceiveStatus();
 
       while (digitalRead(PTT) == LOW) {
@@ -1088,12 +1095,12 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
       cwTimer = millis();
       while (millis() - cwTimer <= cwTransmitDelay) {  //Start CW transmit timer on
         digitalWrite(RXTX, HIGH);
-        if (digitalRead(paddleDit) == LOW && keyType == 0) {       // AFP 09-25-22  Turn on CW signal
+        if (digitalRead(paddleDit) == LOW && keyType == 0) {       // Turn on CW signal
           cwTimer = millis();                                      //Reset timer
-          modeSelectOutExL.gain(0, powerOutCW[currentBand]);       //AFP 10-21-22
-          modeSelectOutExR.gain(0, powerOutCW[currentBand]);       //AFP 10-21-22
+          modeSelectOutExL.gain(0, powerOutCW[currentBand]);
+          modeSelectOutExR.gain(0, powerOutCW[currentBand]);
           digitalWrite(MUTE, LOW);                                 // unmutes audio
-          modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone  AFP 10-01-22
+          modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone
         } else {
           if (digitalRead(paddleDit) == HIGH && keyType == 0) {  //Turn off CW signal
             keyPressedOn = 0;
@@ -1138,9 +1145,9 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           cwTimer = millis();
           ditTimerOn = millis();
           //          while (millis() - ditTimerOn <= ditLength) {
-          while (millis() - ditTimerOn <= transmitDitLength) {       // JJP 8/19/23
-            modeSelectOutExL.gain(0, powerOutCW[currentBand]);       //AFP 10-21-22
-            modeSelectOutExR.gain(0, powerOutCW[currentBand]);       //AFP 10-21-22
+          while (millis() - ditTimerOn <= transmitDitLength) {
+            modeSelectOutExL.gain(0, powerOutCW[currentBand]);
+            modeSelectOutExR.gain(0, powerOutCW[currentBand]);
             digitalWrite(MUTE, LOW);                                 // unmutes audio
             modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone
             CW_ExciterIQData();                                      // Creates CW output signal
@@ -1148,7 +1155,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           }
           ditTimerOff = millis();
           //          while (millis() - ditTimerOff <= ditLength - 10) {  //Time between
-          while (millis() - ditTimerOff <= transmitDitLength - 10L) {  // JJP 8/19/23
+          while (millis() - ditTimerOff <= transmitDitLength - 10L) {
             modeSelectOutExL.gain(0, 0);                               //Power =0
             modeSelectOutExR.gain(0, 0);
             modeSelectOutL.gain(1, 0);  // Sidetone off
@@ -1161,9 +1168,9 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
             cwTimer = millis();
             dahTimerOn = millis();
             //            while (millis() - dahTimerOn <= 3UL * ditLength) {
-            while (millis() - dahTimerOn <= 3UL * transmitDitLength) {  // JJP 8/19/23
-              modeSelectOutExL.gain(0, powerOutCW[currentBand]);        //AFP 10-21-22
-              modeSelectOutExR.gain(0, powerOutCW[currentBand]);        //AFP 10-21-22
+            while (millis() - dahTimerOn <= 3UL * transmitDitLength) {
+              modeSelectOutExL.gain(0, powerOutCW[currentBand]);
+              modeSelectOutExR.gain(0, powerOutCW[currentBand]);
               digitalWrite(MUTE, LOW);                                  // unmutes audio
               modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);   // Dah sidetone was using constants.  KD0RC
               CW_ExciterIQData();                                       // Creates CW output signal
@@ -1171,7 +1178,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
             }
             ditTimerOff = millis();
             //            while (millis() - ditTimerOff <= ditLength - 10UL) {  //Time between characters                         // mutes audio
-            while (millis() - ditTimerOff <= transmitDitLength - 10UL) {  // JJP 8/19/23
+            while (millis() - ditTimerOff <= transmitDitLength - 10UL) {
               modeSelectOutExL.gain(0, 0);                                //Power =0
               modeSelectOutExR.gain(0, 0);
               modeSelectOutL.gain(1, 0);  // Sidetone off
@@ -1181,11 +1188,11 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           }
         }
         CW_ExciterIQData();
-        keyPressedOn = 0;  // Fix for keyer click-clack.  KF5N August 16, 2023
+        keyPressedOn = 0;  // Fix for keyer click-clack
       }                    //End Relay timer
 
-      modeSelectOutExL.gain(0, 0);  //Power = 0 //AFP 10-11-22
-      modeSelectOutExR.gain(0, 0);  //AFP 10-11-22
+      modeSelectOutExL.gain(0, 0);  //Power = 0
+      modeSelectOutExR.gain(0, 0);
       digitalWrite(RXTX, LOW);
       xmtMode = CW_MODE;
       break;
@@ -1199,8 +1206,16 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
     ShowTransmitReceiveStatus();
   }
 
-  // update processor load and temp info box items every 200 loops
-  if (elapsed_micros_idx_t > (SampleRate / 960)) {
+#ifdef KEYBOARD_SUPPORT
+  // just for testing
+  if (elapsed_micros_idx_t > 200) {
+    PrintKeyboardBuffer();
+  }
+#endif
+
+  // update load/temp about every 15 seconds
+  if (elapsed_micros_idx_t > 1400) {
+    //Serial.println(millis());
     UpdateInfoBoxItem(&infoBox[IB_ITEM_TEMP]);
     UpdateInfoBoxItem(&infoBox[IB_ITEM_LOAD]);
   }
