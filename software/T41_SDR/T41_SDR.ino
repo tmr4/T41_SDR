@@ -905,11 +905,12 @@ FLASHMEM void setup() {
 
   SoftReset();
 
-  //memCheck = true;
-
 #ifdef KEYBOARD_SUPPORT
   usbSetup();
 #endif
+
+  //memCheck = true;
+  PrimeMallInfo();
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
@@ -1213,16 +1214,23 @@ FASTRUN void loop()
   }
 #endif
 
+  // update memory about every second
+  if (elapsed_micros_idx_t > 100) {
+    // Stack is more informative when called from within a function that might be stressing the stack
+    UpdateInfoBoxItem(IB_ITEM_STACK);
+    UpdateInfoBoxItem(IB_ITEM_HEAP);
+  }
+
   // update load/temp about every 15 seconds
   if (elapsed_micros_idx_t > 1400) {
     //Serial.println(millis());
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_TEMP]);
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_LOAD]);
+    UpdateInfoBoxItem(IB_ITEM_TEMP);
+    UpdateInfoBoxItem(IB_ITEM_LOAD);
   }
 
   if (volumeChangeFlag == true) {
     volumeChangeFlag = false;
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_VOL]);
+    UpdateInfoBoxItem(IB_ITEM_VOL);
   }
 
 #ifdef DEBUG_LOOP

@@ -176,7 +176,7 @@ void CWOptions() {
     case 1:          // Type of key:
       SetKeyType();  // Straight key or keyer? Stored in EEPROMData.keyType; no heap/stack variable
       SetKeyPowerUp();
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
+      UpdateInfoBoxItem(IB_ITEM_KEY);
       break;
 
     case 2:              // CW Filter BW
@@ -240,7 +240,7 @@ void AGCOptions() {
 
   EEPROMData.AGCMode = AGCMode; // Store in EEPROM and...
   EEPROMWrite();  // ...save it
-  UpdateInfoBoxItem(&infoBox[IB_ITEM_AGC]);
+  UpdateInfoBoxItem(IB_ITEM_AGC);
 }
 
 /*****
@@ -528,11 +528,11 @@ void MicOptions() {
   switch (secondaryMenuIndex) {
     case 0:                // On
       compressorFlag = 1;
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_COMPRESS]);
+      UpdateInfoBoxItem(IB_ITEM_COMPRESS);
       break;
     case 1:  // Off
       compressorFlag = 0;
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_COMPRESS]);
+      UpdateInfoBoxItem(IB_ITEM_COMPRESS);
       break;
     case 2:
       SetCompressionLevel();
@@ -644,7 +644,7 @@ void DoPaddleFlip() {
         EEPROMData.paddleDit = paddleDit;
         EEPROMData.paddleDah = paddleDah;
         EraseMenus();
-        UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
+        UpdateInfoBoxItem(IB_ITEM_KEY);
         return;
       }
     }
@@ -700,7 +700,7 @@ void VFOSelect() {
     bands[currentBand].mode = DEMOD_FT8;
     syncFlag = false; 
     ft8State = 1;
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    UpdateInfoBoxItem(IB_ITEM_FT8);
   }
 #endif
 

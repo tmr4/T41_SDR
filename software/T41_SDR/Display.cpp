@@ -1334,7 +1334,7 @@ void ShowTransmitReceiveStatus() {
 *****/
 void SetZoom() {
   ZoomFFTPrep();
-  UpdateInfoBoxItem(&infoBox[IB_ITEM_ZOOM]);
+  UpdateInfoBoxItem(IB_ITEM_ZOOM);
   DrawBandwidthBar();
   ShowSpectrumFreqValues();
 }

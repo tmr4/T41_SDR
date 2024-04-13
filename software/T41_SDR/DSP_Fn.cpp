@@ -672,7 +672,7 @@ void SetCompressionLevel() {
       // micCompression = currentMicThreshold;
       EEPROMData.currentMicThreshold = currentMicThreshold;
       EEPROMWrite();
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_COMPRESS]);
+      UpdateInfoBoxItem(IB_ITEM_COMPRESS);
       break;
     }
   }

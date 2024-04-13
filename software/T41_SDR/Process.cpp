@@ -337,7 +337,7 @@ void ProcessIQData() {
 
           ButtonDemodMode(); // switch back to ft8 mode
           ft8State = 1;
-          UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+          UpdateInfoBoxItem(IB_ITEM_FT8);
           /*
           // keep decoding w/o new audio
           for (unsigned i = 0; i < 68; i++) {

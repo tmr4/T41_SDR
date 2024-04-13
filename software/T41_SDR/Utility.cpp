@@ -700,3 +700,38 @@ FLASHMEM int SetI2SFreq(int freq) {
                | CCM_CS2CDR_SAI2_CLK_PODF(n2 - 1);  // &0x3f)
   return freq;
 }
+
+/*****
+  Purpose: fully allocate the heap and then free it
+            mallinfo() will provide useful heap size info if we prime it with this info
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void PrimeMallInfo() {
+  char *alloc[30];
+  for(size_t j = 0; j < 30; j++) {
+    alloc[j] = NULL;
+  }
+  for(size_t j = 0; j < 30; j++) {
+    alloc[j] = malloc(10240);
+    if(alloc[j] == NULL) {
+      //Serial.print("10k blocks: "); Serial.println(j+1);
+      for(size_t i = j; i < 30; i++) {
+        alloc[i] = malloc(1024);
+        if(alloc[i] == NULL) {
+          //Serial.print("1k blocks: "); Serial.println(i-j+1);
+          break;
+        }
+      }
+      break;
+    }
+  }
+  for(size_t j = 0; j < 30; j++) {
+    if(alloc[j] != NULL) {
+      free(alloc[j]);
+    }
+  }
+}

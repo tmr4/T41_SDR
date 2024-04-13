@@ -530,7 +530,7 @@ void ExecuteButtonPress(int val) {
 
     case NOTCH_FILTER:  // 10
       ButtonNotchFilter();
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_NOTCH]);
+      UpdateInfoBoxItem(IB_ITEM_NOTCH);
       break;
 
     case NOISE_FLOOR:  // 11
@@ -543,7 +543,7 @@ void ExecuteButtonPress(int val) {
 
     case DECODER_TOGGLE:  // 13
       decoderFlag = !decoderFlag;
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_DECODER]);
+      UpdateInfoBoxItem(IB_ITEM_DECODER);
 
       if(xmtMode == CW_MODE) {
         if(decoderFlag == ON) {
@@ -641,7 +641,7 @@ void ButtonFreqIncrement() {
     tuneIndex = MAX_FREQ_INDEX - 1;
   freqIncrement = incrementValues[tuneIndex];
 
-  UpdateInfoBoxItem(&infoBox[IB_ITEM_TUNE]);
+  UpdateInfoBoxItem(IB_ITEM_TUNE);
 }
 
 /*****
@@ -662,7 +662,7 @@ void ButtonFTIncrement() {
   }
   ftIncrement = selectFT[ftIndex];
 
-  UpdateInfoBoxItem(&infoBox[IB_ITEM_FINE]);
+  UpdateInfoBoxItem(IB_ITEM_FINE);
 }
 
 /*****

@@ -45,3 +45,5 @@ void FormatFrequency(long freq, char *freqBuffer);
 float TGetTemp();
 
 int  SetI2SFreq(int freq);
+
+void PrimeMallInfo();

@@ -444,7 +444,7 @@ int SetWPM() {
       currentWPM = lastWPM;
       EEPROMData.currentWPM = currentWPM;
       EEPROMWrite();
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
+      UpdateInfoBoxItem(IB_ITEM_KEY);
       break;
     }
   }

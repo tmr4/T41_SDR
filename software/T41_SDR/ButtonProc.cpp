@@ -158,7 +158,7 @@ void ButtonBandChange() {
     bands[currentBand].mode = DEMOD_FT8;
     syncFlag = false; 
     ft8State = 1;
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    UpdateInfoBoxItem(IB_ITEM_FT8);
   }
 #endif
 
@@ -238,12 +238,12 @@ void ButtonDemodMode() {
       ShowOperatingStats();
       syncFlag = true;
       ft8State = 2;
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+      UpdateInfoBoxItem(IB_ITEM_FT8);
     } else {
       // couldn't load wav file
       syncFlag = false; 
       ft8State = 1;
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+      UpdateInfoBoxItem(IB_ITEM_FT8);
     }
     return;
   } else if(bands[currentBand].mode == DEMOD_FT8_WAV) {
@@ -253,7 +253,7 @@ void ButtonDemodMode() {
     ShowOperatingStats();
     syncFlag = false; 
     ft8State = 1;
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    UpdateInfoBoxItem(IB_ITEM_FT8);
     return;
   }
 #endif
@@ -340,7 +340,7 @@ void ButtonMode() {
       bands[currentBand].mode = priorDemodMode;
 
       exitFT8();
-      UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+      UpdateInfoBoxItem(IB_ITEM_FT8);
       break;
 #endif
   }
@@ -367,7 +367,7 @@ void ButtonNR() {
     nrOptionSelect = 0;
   }
 
-  UpdateInfoBoxItem(&infoBox[IB_ITEM_FILTER]);
+  UpdateInfoBoxItem(IB_ITEM_FILTER);
 }
 
 /*****
@@ -405,7 +405,7 @@ void ToggleLiveNoiseFloorFlag() {
   }
 
   liveNoiseFloorFlag = !liveNoiseFloorFlag;
-  UpdateInfoBoxItem(&infoBox[IB_ITEM_FLOOR]);
+  UpdateInfoBoxItem(IB_ITEM_FLOOR);
 }
 
 /*****

@@ -132,11 +132,11 @@ void auto_sync_FT8() {
     syncFlag = true;
     ft8State = 2;
     //displaySync("sync'd", RA8875_GREEN);
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    UpdateInfoBoxItem(IB_ITEM_FT8);
   }
   else {
     ft8State = 1;
-    UpdateInfoBoxItem(&infoBox[IB_ITEM_FT8]);
+    UpdateInfoBoxItem(IB_ITEM_FT8);
   }
 }
 
@@ -746,6 +746,8 @@ int ft8_decode(void) {
 
   // Find top candidates by Costas sync score and localize them in time and frequency
   num_candidates = find_sync(export_fft_power, ft8_msg_samples, ft8_buffer, kCostas_map, kMax_candidates, candidate_list, kMin_score);
+
+  //Serial.print("Call from ft8_decode(): "); UpdateInfoBoxItem(IB_ITEM_STACK);
 
   // Go over candidates and attempt to decode messages
   for(int idx = 0; idx < num_candidates; ++idx) {

@@ -1,3 +1,5 @@
+#include <malloc.h>
+
 #include "SDT.h"
 #include "ButtonProc.h"
 #include "CWProcessing.h"
@@ -26,6 +28,22 @@ void DrawInfoBoxFrame();
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
+typedef  struct {
+  const char *label;      // info box label
+  const char **Options;   // label options
+  int *option;            // pointer to option selector
+  int fontSize;           // 0 - small or 1 - large font (large font takes two rows, adjust item rows and/or IB_ROW_#_Y accordingly)
+  int clearWidth;         // maximum number of characters to clear when updating field
+  int highlightFlag;      // 0 - highlight all options in green, 1 - don't highlight first option, 2 - first option white, second option red, other options green
+
+  // specifying row and col index is easiest but less flexible especailly if you use both small and large fonts
+  // as in the fefault info box
+  //int col, row;           // item column and row (up to 10 rows, 2 columns)
+  int col, row;           // item placement by screen pixel (up to 10 rows with small font)
+  void (*followFnPtr)(int row, int col);  // function to run after info box field is updated (note that these may be hard-coded to a particular location
+                          // and will need updated if the underlying item is moved)
+} infoBoxItem;
+
 #define IB_COL_1_X        INFO_BOX_L + 90  // X coordinate for info box 1st column field
 #define IB_COL_2_X        INFO_BOX_L + 220 // X coordinate for info box 2nd column field
 #define IB_COL_2L_X       INFO_BOX_L + 205 // X coordinate for info box 2nd column field
@@ -52,10 +70,12 @@ const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine wi
 
 #ifdef FT8_SUPPORT
 void IBFT8Followup(int row, int col);
+void IBStackFollowup(int row, int col);
+void IBHeapFollowup(int row, int col);
 const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
-#define IB_NUM_ITEMS 14
+#define IB_NUM_ITEMS 12
 #else
-#define IB_NUM_ITEMS 13
+#define IB_NUM_ITEMS 9
 #endif // FT8
 
 PROGMEM const infoBoxItem infoBox[] = 
@@ -65,19 +85,21 @@ PROGMEM const infoBoxItem infoBox[] =
   { "AGC",         agcOpts,     &AGCMode,                 1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
   { "Increment:",  tuneValues,  &tuneIndex,               0,        7,      0,   IB_COL_1_X,    IB_ROW_3_Y,    NULL                   }, // Tune Inc
   { "FT Inc:",     ftValues,    &ftIndex,                 0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    NULL                   }, // FT Inc
-  { "AutoNotch:",  onOff,       (int*)&ANR_notchOn,       0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Auto Notch
-  { "Noise:",      filter,      &nrOptionSelect,          0,        8,      1,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   }, // Noise Filter
   { "Zoom:",       zoomOptions, (int*)&spectrum_zoom,     0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
-  { "Compress:",   onOff,       &compressorFlag,          0,        6,      1,   IB_COL_2_X,    IB_ROW_5_Y,    &IBCompressionFollowup }, // Compress
-  { "Keyer:",      optionsWPM,  &EEPROMData.keyType,      0,       12,      0,   IB_COL_1_X,    IB_ROW_8_Y,    &IBWPMFollowup         }, // Keyer
-  { "Decoder:",    onOff,       &decoderFlag,             0,        3,      1,   IB_COL_1_X,    IB_ROW_9_Y,    NULL                   }, // Decoder
+  { "Decoder:",    onOff,       &decoderFlag,             0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Decoder
   { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
-  //{ "Equalizers:", NULL,        NULL,                     0,       10,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBEQFollowup          }  // Equalizers
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBTempFollowup        }, // Teensy Temp
-  { "Load:",       NULL,        NULL,                     0,        3,      1,   IB_COL_2_X,    IB_ROW_10_Y,   &IBLoadFollowup        },  // Teensy Load
+  { "Load:",       NULL,        NULL,                     0,        4,      1,   IB_COL_2_X,    IB_ROW_10_Y,   &IBLoadFollowup        },  // Teensy Load
 #ifdef FT8_SUPPORT
-  { "FT8:",        ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_7_Y,    NULL                   },  // FT8 sync
+  { "FT8:",        ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   },  // FT8 sync
+  { "Stack:",      NULL,        NULL,                     0,        4,      2,   IB_COL_1_X,    IB_ROW_9_Y,    &IBStackFollowup       },  // Stack
+  { "Heap:",       NULL,        NULL,                     0,        4,      2,   IB_COL_2_X,    IB_ROW_9_Y,    &IBHeapFollowup        },  // Heap
 #endif // FT8
+  //{ "AutoNotch:",  onOff,       (int*)&ANR_notchOn,       0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Auto Notch
+  //{ "Noise:",      filter,      &nrOptionSelect,          0,        8,      1,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   }, // Noise Filter
+  //{ "Compress:",   onOff,       &compressorFlag,          0,        6,      1,   IB_COL_2_X,    IB_ROW_5_Y,    &IBCompressionFollowup }, // Compress
+  //{ "Keyer:",      optionsWPM,  &EEPROMData.keyType,      0,       12,      0,   IB_COL_1_X,    IB_ROW_8_Y,    &IBWPMFollowup         }, // Keyer
+  //{ "Equalizers:", NULL,        NULL,                     0,       10,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBEQFollowup          }  // Equalizers
 
   //{ "Vol:",       NULL,        NULL,                      1,        2,      0,   IB_COL_1_X,    IB_ROW_1_Y,    &IBVolFollowup         }, // Tune Inc
   //{ "AGC",        agcOpts,     &AGCMode,                  1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
@@ -106,35 +128,37 @@ PROGMEM const infoBoxItem infoBox[] =
   Return value:
     void
 *****/
-void UpdateInfoBoxItem(const infoBoxItem *item) {
+void UpdateInfoBoxItem(uint8_t item) {
   int label_x;
-//  int xOffset = item->col == 1 ? IB_COL_1_X : IB_COL_2_X;
-//  int yOffset = IB_ROW_1_Y + (item->row - 1) * 20;
-  int xOffset = item->col;
-  int yOffset = item->row;
+//  int xOffset = infoBox[item].col == 1 ? IB_COL_1_X : IB_COL_2_X;
+//  int yOffset = IB_ROW_1_Y + (infoBox[item].row - 1) * 20;
+  int xOffset = infoBox[item].col;
+  int yOffset = infoBox[item].row;
 
-  tft.setFontScale((enum RA8875tsize)item->fontSize);
-  tft.fillRect(xOffset, yOffset, tft.getFontWidth() * item->clearWidth, tft.getFontHeight(), RA8875_BLACK);
+  if(item >= IB_NUM_ITEMS) return;
+
+  tft.setFontScale((enum RA8875tsize)infoBox[item].fontSize);
+  tft.fillRect(xOffset, yOffset, tft.getFontWidth() * infoBox[item].clearWidth, tft.getFontHeight(), RA8875_BLACK);
   tft.setTextColor(RA8875_WHITE);
-  label_x = xOffset - 5 - strlen(item->label) * tft.getFontWidth();
+  label_x = xOffset - 5 - strlen(infoBox[item].label) * tft.getFontWidth();
   tft.setCursor(label_x, yOffset);
-  tft.print(item->label);
+  tft.print(infoBox[item].label);
 
-  if(item->Options != NULL) {
-    if((item->highlightFlag > 0) && (*item->option == 0)) {
+  if(infoBox[item].Options != NULL) {
+    if((infoBox[item].highlightFlag > 0) && (*infoBox[item].option == 0)) {
       tft.setTextColor(RA8875_WHITE);
-    } else if((item->highlightFlag == 2) && (*item->option == 1)) {
+    } else if((infoBox[item].highlightFlag == 2) && (*infoBox[item].option == 1)) {
       tft.setTextColor(RA8875_RED);
     } else {
       tft.setTextColor(RA8875_GREEN);
     }
 
     tft.setCursor(xOffset, yOffset);
-    tft.print(item->Options[*item->option]);
+    tft.print(infoBox[item].Options[*infoBox[item].option]);
   }
 
-  if(item->followFnPtr != NULL) {
-    item->followFnPtr(item->row, item->col);
+  if(infoBox[item].followFnPtr != NULL) {
+    infoBox[item].followFnPtr(infoBox[item].row, infoBox[item].col);
   }
 }
 
@@ -151,21 +175,21 @@ void UpdateInfoBox() {
   DrawInfoBoxFrame();
 
   // you can update each item individually if they need done in a particular order ...
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_VOL]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_AGC]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_TUNE]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_FINE]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_COMPRESS]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_DECODER]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_FILTER]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_FLOOR]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_NOTCH]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_KEY]);
-  //UpdateInfoBoxItem(&infoBox[IB_ITEM_ZOOM]);
+  //UpdateInfoBoxItem(IB_ITEM_VOL);
+  //UpdateInfoBoxItem(IB_ITEM_AGC);
+  //UpdateInfoBoxItem(IB_ITEM_TUNE);
+  //UpdateInfoBoxItem(IB_ITEM_FINE);
+  //UpdateInfoBoxItem(IB_ITEM_COMPRESS);
+  //UpdateInfoBoxItem(IB_ITEM_DECODER);
+  //UpdateInfoBoxItem(IB_ITEM_FILTER);
+  //UpdateInfoBoxItem(IB_ITEM_FLOOR);
+  //UpdateInfoBoxItem(IB_ITEM_NOTCH);
+  //UpdateInfoBoxItem(IB_ITEM_KEY);
+  //UpdateInfoBoxItem(IB_ITEM_ZOOM);
 
   // ... or update them in order
   for(int i = 0; i < IB_NUM_ITEMS; i++) {
-    UpdateInfoBoxItem(&infoBox[i]);
+    UpdateInfoBoxItem(i);
   }
 }
 
@@ -221,7 +245,7 @@ void IBWPMFollowup(int row, int col) {
 void IBVolFollowup(int row, int col) {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_GREEN);
-  tft.setCursor(IB_COL_1_X, IB_ROW_1_Y);
+  tft.setCursor(col, row);
   tft.print(audioVolume);
 }
 
@@ -236,32 +260,32 @@ void IBVolFollowup(int row, int col) {
     void
 *****/
 void IBEQFollowup(int row, int col) {
-  tft.setCursor(IB_COL_1_X, IB_ROW_10_Y);
+  tft.setCursor(col, row);
   if (receiveEQFlag) {
     tft.setTextColor(RA8875_RED);
     tft.print("Rx");
     tft.setTextColor(RA8875_GREEN);
-    tft.setCursor(IB_COL_1_X + 25, IB_ROW_10_Y);
+    tft.setCursor(col + 25, row);
     tft.print("On");
   } else {
     tft.setTextColor(RA8875_RED);
     tft.print("Rx");
-    tft.setCursor(IB_COL_1_X + 25, IB_ROW_10_Y);
+    tft.setCursor(col + 25, row);
     tft.setTextColor(RA8875_WHITE);
     tft.print("Off");
   }
-  tft.setCursor(IB_COL_1_X + 55, IB_ROW_10_Y);
+  tft.setCursor(col + 55, row);
   if (xmitEQFlag) {
     tft.setTextColor(RA8875_RED);
     tft.print("Tx");
     tft.setTextColor(RA8875_GREEN);
-    tft.setCursor(IB_COL_1_X + 80, IB_ROW_10_Y);
+    tft.setCursor(col + 80, row);
     tft.print("On");
   } else {
     tft.setTextColor(RA8875_RED);
     tft.print("Tx");
     tft.setTextColor(RA8875_WHITE);
-    tft.setCursor(IB_COL_1_X + 80, IB_ROW_10_Y);
+    tft.setCursor(col + 80, row);
     tft.print("Off");
   }
 }
@@ -279,11 +303,12 @@ void IBEQFollowup(int row, int col) {
 void IBTempFollowup(int row, int col) {
   char buff[10];
 
-  if (elapsed_micros_idx_t > (SampleRate / 960)) {
+  //if (elapsed_micros_idx_t > (SampleRate / 960))
+  {
     tft.setFontScale((enum RA8875tsize)0);
     tft.setTextColor(RA8875_GREEN);
-    MyDrawFloatP(TGetTemp(), 0, IB_COL_1_X, IB_ROW_10_Y, buff, 2);
-    tft.drawCircle(IB_COL_1_X + 22, IB_ROW_10_Y + 5, 3, RA8875_GREEN);
+    MyDrawFloatP(TGetTemp(), 0, col, row, buff, 2);
+    tft.drawCircle(col + 22, row + 5, 3, RA8875_GREEN);
   }
 }
 
@@ -304,7 +329,8 @@ void IBLoadFollowup(int row, int col) {
   double processor_load;
   double elapsed_micros_mean;
 
-  if (elapsed_micros_idx_t > (SampleRate / 960)) {
+  //if (elapsed_micros_idx_t > (SampleRate / 960))
+  {
     elapsed_micros_mean = elapsed_micros_sum / elapsed_micros_idx_t;
 
     block_time = 128.0 / (double)SampleRate;  // one audio block is 128 samples and uses this in seconds
@@ -320,11 +346,11 @@ void IBLoadFollowup(int row, int col) {
 
     tft.setFontScale((enum RA8875tsize)0);
     tft.setTextColor(valueColor);
-    MyDrawFloatP(processor_load, 0, IB_COL_2_X, IB_ROW_10_Y, buff, 2);
+    MyDrawFloatP(processor_load, 0, col, row, buff, 2);
     tft.print("%");
     elapsed_micros_idx_t = 0;
     elapsed_micros_sum = 0;
-    elapsed_micros_mean = 0;
+    //elapsed_micros_mean = 0;
   }
 }
 
@@ -355,6 +381,7 @@ void IBFT8Followup(int row, int col) {
 }
 #endif // FT8
 
+// *** TODO: eliminate hard coded column/row references in next two ***
 /*****
   Purpose: Show estimated WPM in information box
            Assumes decoder is in column 1 row 9
@@ -368,8 +395,8 @@ void IBFT8Followup(int row, int col) {
 void UpdateIBWPM() {
   tft.setFontScale((enum RA8875tsize)0);
   tft.setTextColor(RA8875_GREEN);
-  tft.fillRect(IB_COL_1_X + 37, IB_ROW_9_Y, tft.getFontWidth() * 10, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(IB_COL_1_X + 38, IB_ROW_9_Y);
+  tft.fillRect(IB_COL_1_X + 37, IB_ROW_4_Y, tft.getFontWidth() * 10, tft.getFontHeight(), RA8875_BLACK);
+  tft.setCursor(IB_COL_1_X + 38, IB_ROW_4_Y);
   tft.print("(");
   tft.print(1200L / (dahLength / 3));
   tft.print(" WPM)");
@@ -390,7 +417,7 @@ void UpdateDecodeLockIndicator()
   // ==========  CW decode "lock" indicator
   if (combinedCoeff > 50)
   {
-    tft.fillRect(IB_COL_2_X - 20, IB_ROW_9_Y, 15, 15, RA8875_GREEN);
+    tft.fillRect(IB_COL_2_X - 20, IB_ROW_4_Y, 15, 15, RA8875_GREEN);
   }
   else if (combinedCoeff < 50)
   {
@@ -398,7 +425,7 @@ void UpdateDecodeLockIndicator()
     if (CWLevelTimer - CWLevelTimerOld > 2000)
     {
       CWLevelTimerOld = millis();
-      tft.fillRect(IB_COL_2_X - 20, IB_ROW_9_Y, 17, 17, RA8875_BLACK);
+      tft.fillRect(IB_COL_2_X - 20, IB_ROW_4_Y, 17, 17, RA8875_BLACK);
     }
   }
 }
@@ -415,4 +442,84 @@ void UpdateDecodeLockIndicator()
 void DrawInfoBoxFrame() {
   tft.fillRect(INFO_BOX_L + 2, INFO_BOX_T + 2, INFO_BOX_W - 4, INFO_BOX_H - 4, RA8875_BLACK); // clear info box contents
   tft.drawRect(INFO_BOX_L, INFO_BOX_T, INFO_BOX_W, INFO_BOX_H, RA8875_LIGHT_GREY); // draw info box
+}
+
+/*****
+  Purpose: Information box follow up function for the Stack item
+            The stack value is more informative when called from within a function that might be stressing the stack
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+void IBStackFollowup(int row, int col) {
+  // note: these values are defined by the linker, they are not valid memory
+  // locations in all cases - by defining them as arrays, the C++ compiler
+  // will use the address of these definitions - it's a big hack, but there's
+  // really no clean way to get at linker-defined symbols from the .ld file
+
+  extern char _ebss[];
+
+  auto sp = (char*) __builtin_frame_address(0);
+
+  auto stack = (sp - _ebss) >> 10;
+
+  //Serial.print("Stack: ");
+  //Serial.println((int)(sp - _ebss));
+  //Serial.println("");
+
+  tft.setFontScale((enum RA8875tsize)0);
+  tft.setTextColor(RA8875_GREEN);
+  tft.setCursor(col, row);
+  tft.print(stack);
+  tft.print("k");
+}
+
+
+/*****
+  Purpose: Information box follow up function for the Heap item
+           Note: mallinfo() must be primed by fully allocating the
+           heap at startup.  See PrimeMallInfo() in Utility.cpp.
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+void IBHeapFollowup(int row, int col) {
+  // note: these values are defined by the linker, they are not valid memory
+  // locations in all cases - by defining them as arrays, the C++ compiler
+  // will use the address of these definitions - it's a big hack, but there's
+  // really no clean way to get at linker-defined symbols from the .ld file
+
+  //extern char _heap_end[], *__brkval; // this is only useful at startup
+
+  //struct mallinfo mi = mallinfo();
+
+  //Serial.println(mi.arena);
+  //Serial.println(mi.ordblks);
+  //Serial.println(mi.smblks);
+  //Serial.println(mi.hblks);
+  //Serial.println(mi.hblkhd);
+  //Serial.println(mi.usmblks);
+  //Serial.println(mi.fsmblks);
+  //Serial.println(mi.uordblks);
+  //Serial.println(mi.fordblks);
+  //Serial.println(mi.keepcost);
+
+  size_t heap = mallinfo().fordblks;
+
+  //Serial.println(mallinfo().fordblks);
+  //Serial.println(heap);
+
+  heap = mallinfo().fordblks >> 10;
+
+  tft.setFontScale((enum RA8875tsize)0);
+  tft.setTextColor(RA8875_GREEN);
+  tft.setCursor(col, row);
+  tft.print(heap);
+  tft.print("k");
 }
