@@ -1,33 +1,26 @@
-// modified from: Arduino IDE -> File -> Examples -> USBHost_t36 -> keyboard_viewer.ino
 // library: https://github.com/PaulStoffregen/USBHost_t36
 //
 
-//#include "SDT.h"
 #include "MyConfigurationFile.h"
 
 #ifdef KEYBOARD_SUPPORT
 
-//#ifdef BUFFER_SIZE
-//#undef BUFFER_SIZE
-//#endif
-
-//#include "t41_keyboard.h"
 #include <USBHost_t36.h>
-//#include "Display.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-USBHost myusb;
-//T41KeyboardController keyboard1(myusb);
-KeyboardController keyboard1(myusb);
-USBHIDParser hid1(myusb);
-
+// *** it would be nice to save this memory until a keyboard is plugged in
+// *** but both USBHost and USBHIDParser are needed to automatically detect
+// *** a new devise so we don't really save that much.  Doing this manually
+// is a possibility if we need to save memory when not using a keyboard.
+USBHost usbHost;
+USBHIDParser hidParser(usbHost);
+KeyboardController kbController(usbHost);
 
 uint8_t kbIndexIn, kbIndexOut;
 DMAMEM uint8_t kbBuffer[256];
-//char kbBuffer[] = { "abcdefghijklmnopqrstuvwxyz/0"};
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -52,8 +45,8 @@ void OnRelease(int unicode) {
 }
 
 FLASHMEM void usbSetup() {
-  myusb.begin();
-  keyboard1.attachRelease(OnRelease);
+  usbHost.begin();
+  kbController.attachRelease(OnRelease);
 
   kbBuffer[0] = 0;
 
@@ -61,7 +54,7 @@ FLASHMEM void usbSetup() {
 }
 
 void usbLoop() {
-  myusb.Task();
+  usbHost.Task();
 }
 
 #endif
