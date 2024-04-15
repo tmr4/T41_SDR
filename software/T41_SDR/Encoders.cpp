@@ -6,6 +6,7 @@
 #include "EEPROM.h"
 #include "Encoders.h"
 #include "Filter.h"
+#include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
@@ -379,13 +380,26 @@ FASTRUN void EncoderMenuChangeFilter() {
       break;
   }
 
+  if(calibrateFlag != 0) return; // we're calibrating
+
   // interpret encoder according to flag settings
   if(liveNoiseFloorFlag) {
     // we're setting noise floor
     currentNoiseFloor[currentBand] += menuEncoderMove;
   } else {
-    if (calibrateFlag == 0) {
-      // we're not calibrating
+    if (ft8MsgSelectActive) {
+      if(num_decoded_msg > 0) {
+        activeMsg += menuEncoderMove;
+        if(activeMsg >= num_decoded_msg) {
+          activeMsg = 0;
+        } else {
+          if(activeMsg < 0) {
+            activeMsg = num_decoded_msg - 1;
+          }
+        }
+      }
+      menuEncoderMove = 0;
+    } else {
       if (bands[currentBand].mode == DEMOD_NFM && nfmBWFilterActive) {
         // we're adjusting NFM demod bandwidth
         filter_pos_BW = last_filter_pos_BW - 5 * menuEncoderMove;

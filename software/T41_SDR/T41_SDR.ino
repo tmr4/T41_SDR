@@ -41,6 +41,7 @@
 
 #include "debug.h"
 #include "keyboard.h"
+#include "locator.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -911,6 +912,9 @@ FLASHMEM void setup() {
 
   //memCheck = true;
   PrimeMallInfo();
+
+  char myGrid[] = "CM87";
+  set_Station_Coordinates(myGrid);
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.

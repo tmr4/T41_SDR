@@ -331,8 +331,13 @@ FASTRUN void ShowSpectrum() {
               filterLoColor = RA8875_GREEN;
               filterHiColor = RA8875_LIGHT_GREY;
             } else {
-              filterLoColor = RA8875_LIGHT_GREY;
-              filterHiColor = RA8875_GREEN;
+              if(ft8MsgSelectActive) {
+                filterLoColor = RA8875_LIGHT_GREY;
+                filterHiColor = RA8875_LIGHT_GREY;
+              } else {
+                filterLoColor = RA8875_LIGHT_GREY;
+                filterHiColor = RA8875_GREEN;
+              }
             } 
             break;
 
@@ -412,6 +417,12 @@ FASTRUN void ShowSpectrum() {
   // write new row of data into the top row to finish the scrolling effect
   tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);
 
+  // update FT8 msg if appropriate
+  //if(ft8MsgSelectActive) {
+  if(ft8MsgSelectActive) {
+    DisplayMessages();
+  }
+
   // update clock
   if (ms_500.check() == 1) {
     DisplayClock();
@@ -463,11 +474,13 @@ void ShowBandwidthBarValues() {
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
     case DEMOD_FT8: // ft8 is USB
-      if (lowerAudioFilterActive) {
-        loColor = RA8875_GREEN;
-      } else {
-        hiColor = RA8875_GREEN;
-      } 
+      if(!ft8MsgSelectActive) {
+        if (lowerAudioFilterActive) {
+          loColor = RA8875_GREEN;
+        } else {
+          hiColor = RA8875_GREEN;
+        } 
+      }
       break;
 
     case DEMOD_LSB:

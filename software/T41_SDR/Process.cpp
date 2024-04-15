@@ -310,9 +310,10 @@ void ProcessIQData() {
             ft8Loop = 0;
             process_FT8_FFT();
             if(ft8_decode_flag == 1) {
-              num_decoded_msg = ft8_decode();
+              //num_decoded_msg = ft8_decode();
+              ft8_decode();
               if(num_decoded_msg > 0) {
-                display_details(num_decoded_msg, kMax_decoded_messages);
+                DisplayMessages();
               }
               ft8_decode_flag = 0;
               FT_8_counter = 0;
@@ -355,7 +356,7 @@ void ProcessIQData() {
             if(ft8_decode_flag == 1) {
               num_decoded_msg = ft8_decode();
               if(num_decoded_msg > 0) {
-                display_details(num_decoded_msg, kMax_decoded_messages);
+                DisplayMessages();
               }
               ft8_decode_flag = 0;
               FT_8_counter = 0;
@@ -572,9 +573,10 @@ void ProcessIQData() {
           }
 
           if(ft8_decode_flag == 1) {
-            num_decoded_msg = ft8_decode();
+            //num_decoded_msg = ft8_decode();
+            ft8_decode();
             if(num_decoded_msg > 0) {
-              display_details(num_decoded_msg, kMax_decoded_messages);
+              DisplayMessages();
             }
 
             ft8_decode_flag = 0;  

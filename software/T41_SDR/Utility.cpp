@@ -716,11 +716,11 @@ void PrimeMallInfo() {
     alloc[j] = NULL;
   }
   for(size_t j = 0; j < 30; j++) {
-    alloc[j] = malloc(10240);
+    alloc[j] = (char *)malloc(10240);
     if(alloc[j] == NULL) {
       //Serial.print("10k blocks: "); Serial.println(j+1);
       for(size_t i = j; i < 30; i++) {
-        alloc[i] = malloc(1024);
+        alloc[i] = (char *)malloc(1024);
         if(alloc[i] == NULL) {
           //Serial.print("1k blocks: "); Serial.println(i-j+1);
           break;

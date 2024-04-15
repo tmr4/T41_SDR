@@ -25,6 +25,7 @@ bool lowerAudioFilterActive = false; // false - upper, true - lower audio filter
 int liveNoiseFloorFlag = OFF;
 
 bool nfmBWFilterActive = false; // false - audio, true - demod BW filter active
+bool ft8MsgSelectActive = false; // false - audio filters, true - msg select active
 
 //------------------------- Local Variables ----------
 bool save_last_frequency = false;
@@ -194,7 +195,8 @@ void ButtonZoom() {
     void
 *****/
 void ButtonFilter() {
-  if (bands[currentBand].mode == DEMOD_NFM) {
+  switch(bands[currentBand].mode) {
+    case DEMOD_NFM:
     // Active filter in NFM demod mode:
     // At startup:  high audio
     // 1st press:   NFM BW
@@ -204,6 +206,7 @@ void ButtonFilter() {
     if(nfmBWFilterActive) {
       nfmBWFilterActive = !nfmBWFilterActive;
       lowerAudioFilterActive = !lowerAudioFilterActive;
+      DisplayMessages();
     } else {
       if(lowerAudioFilterActive) {
         lowerAudioFilterActive = !lowerAudioFilterActive;
@@ -211,9 +214,31 @@ void ButtonFilter() {
         nfmBWFilterActive = !nfmBWFilterActive;
       }
     }
-  }
-  else {
+    break;
+
+  case DEMOD_FT8:
+  case DEMOD_FT8_WAV:
+    // Filter sequence in FT8 mode:
+    // At startup:  high audio
+    // 1st press:   FT8 msg selection
+    // 2nd press:   low audio
+    // 3rd press:   high audio
+    // repeat @ 1
+    if(ft8MsgSelectActive) {
+      ft8MsgSelectActive = !ft8MsgSelectActive;
+      lowerAudioFilterActive = !lowerAudioFilterActive;
+    } else {
+      if(lowerAudioFilterActive) {
+        lowerAudioFilterActive = !lowerAudioFilterActive;
+      } else {
+        ft8MsgSelectActive = !ft8MsgSelectActive;
+      }
+    }
+    break;
+
+  default:
     lowerAudioFilterActive = !lowerAudioFilterActive;
+    break;
   }
 
   ShowBandwidthBarValues(); // change color of active filter value

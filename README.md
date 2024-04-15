@@ -35,7 +35,9 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * feature/liveNoiseFloor
   * feature/infoBoxCons
   * feature/NFMDemod
-  * expanded waterfall, audio spectrum and info box
+  * feature/dataMode
+  * feature/keyboard
+  * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
 * feature/keyboard - adds optional keyboard support to the T41. It uses about 7k RAM.  Keyboard connects to the Teensy USB Host connection.
 
@@ -44,6 +46,8 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * Note that similar to the SSB and CW modes, the DATA mode doesn't change when you change bands or VFOs.
   * Fixed DrawBandwidthBar to reset tuning if it will draw outside frequency spectrum box
   * Refined how FT8 messages are printed on screen.  This will be ongong as I work on this feature.
+  * FT8 messages are selectable using the filter encoder after toggling this option with the filter button
+  * Added detail of the selected FT8 message to the info box.  Information currently included is time message received, frequency, snr and distance from specified grid location.
 
 * feature/ft8 - adds FT8 and FT8.wav decoding as optional demodulation modes. FT8.wav selectable while in FT8 mode by pressing the Mode button.  Currently FT8.wav decodes the file *"test.wav"* from the SD card and then switches back to FT8 mode.
 

@@ -22,13 +22,18 @@ extern int num_decoded_msg;
 extern int FT_8_counter;
 extern const int kMax_decoded_messages;
 
+extern uint8_t activeMsg;
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
 void process_FT8_FFT();
 int ft8_decode(void);
-void display_details(int decoded_messages, int message_limit);
+//void DisplayMessages(int decoded_messages, int message_limit);
+void DisplayMessages();
+void DisplayActiveMessageDetails(int row, int col);
+
 void update_synchronization();
 
 bool setupFT8();

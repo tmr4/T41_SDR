@@ -88,12 +88,12 @@ PROGMEM const infoBoxItem infoBox[] =
   { "Zoom:",       zoomOptions, (int*)&spectrum_zoom,     0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
   { "Decoder:",    onOff,       &decoderFlag,             0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Decoder
   { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
-  { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_10_Y,   &IBTempFollowup        }, // Teensy Temp
-  { "Load:",       NULL,        NULL,                     0,        4,      1,   IB_COL_2_X,    IB_ROW_10_Y,   &IBLoadFollowup        },  // Teensy Load
+  { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_7_Y,    &IBTempFollowup        }, // Teensy Temp
+  { "Load:",       NULL,        NULL,                     0,        4,      1,   IB_COL_2_X,    IB_ROW_7_Y,    &IBLoadFollowup        },  // Teensy Load
 #ifdef FT8_SUPPORT
-  { "FT8:",        ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   },  // FT8 sync
-  { "Stack:",      NULL,        NULL,                     0,        4,      2,   IB_COL_1_X,    IB_ROW_9_Y,    &IBStackFollowup       },  // Stack
-  { "Heap:",       NULL,        NULL,                     0,        4,      2,   IB_COL_2_X,    IB_ROW_9_Y,    &IBHeapFollowup        },  // Heap
+  { "FT8       ",  ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_8_Y,    &IBFT8Followup         },  // FT8 sync
+  { "Stack:",      NULL,        NULL,                     0,        4,      2,   IB_COL_1_X,    IB_ROW_6_Y,    &IBStackFollowup       },  // Stack
+  { "Heap:",       NULL,        NULL,                     0,        4,      2,   IB_COL_2_X,    IB_ROW_6_Y,    &IBHeapFollowup        },  // Heap
 #endif // FT8
   //{ "AutoNotch:",  onOff,       (int*)&ANR_notchOn,       0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Auto Notch
   //{ "Noise:",      filter,      &nrOptionSelect,          0,        8,      1,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   }, // Noise Filter
@@ -365,18 +365,25 @@ void IBLoadFollowup(int row, int col) {
     void
 *****/
 void IBFT8Followup(int row, int col) {
-  //tft.setCursor(col, row);
   if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
-    if(syncFlag) {
+    tft.setTextColor(WHITE);
+    tft.setCursor(INFO_BOX_L + 5, row + 20);
+
+    //                  1         2         3
+    //         1234567890123456789012345678901
+    //         10:48 1   943    0  xxxx
+    tft.print("PST   I  Freq  SNR  Dist");
+
+    if(ft8MsgSelectActive) {
       tft.setTextColor(RA8875_GREEN);
-      tft.print("sync'd");
     } else {
-      tft.setTextColor(RA8875_RED);
-      tft.print("not sync'd");
+      tft.setTextColor(YELLOW);
     }
-  } else {
-    tft.setTextColor(RA8875_WHITE);
-    tft.print("Off");
+
+    // give details of active message if any
+    if(num_decoded_msg > 0) {
+      DisplayActiveMessageDetails(row + 40, INFO_BOX_L + 5);
+    }
   }
 }
 #endif // FT8
