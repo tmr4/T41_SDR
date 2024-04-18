@@ -22,7 +22,7 @@ extern int num_decoded_msg;
 extern int FT_8_counter;
 extern const int kMax_decoded_messages;
 
-extern uint8_t activeMsg;
+extern int activeMsg;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -41,5 +41,3 @@ bool setupFT8Wav();
 void exitFT8();
 
 void auto_sync_FT8();
-
-bool readWave(float32_t *buf, int sizeBuf);

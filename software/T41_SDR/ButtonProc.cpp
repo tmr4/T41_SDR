@@ -12,6 +12,7 @@
 #include "Menu.h"
 #include "Noise.h"
 #include "Process.h"
+#include "psk31.h"
 #include "Tune.h"
 #include "Utility.h"
 
@@ -31,7 +32,8 @@ bool ft8MsgSelectActive = false; // false - audio filters, true - msg select act
 bool save_last_frequency = false;
 bool directFreqFlag = false;
 long TxRxFreqOld;
-int priorDemodMode;
+int priorDemodMode; // preserves SSB demod mode between mode and band changes
+int currentDataMode = DEMOD_PSK31; // preserves data mode between mode and band changes
 
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
@@ -153,15 +155,24 @@ void ButtonBandChange() {
 
   EEPROMWrite();
 
-#ifdef FT8_SUPPORT
   if(xmtMode == DATA_MODE) {
     priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
-    bands[currentBand].mode = DEMOD_FT8;
-    syncFlag = false; 
-    ft8State = 1;
-    UpdateInfoBoxItem(IB_ITEM_FT8);
+
+    switch(currentDataMode) {
+      case DEMOD_PSK31:
+      case DEMOD_PSK31_WAV:
+        break;
+
+      case DEMOD_FT8:
+      case DEMOD_FT8_WAV:
+        syncFlag = false; 
+        ft8State = 1;
+        UpdateInfoBoxItem(IB_ITEM_FT8);
+        break;
+    }
+
+    bands[currentBand].mode = currentDataMode;
   }
-#endif
 
   SetBand();
 }
@@ -227,6 +238,7 @@ void ButtonFilter() {
     if(ft8MsgSelectActive) {
       ft8MsgSelectActive = !ft8MsgSelectActive;
       lowerAudioFilterActive = !lowerAudioFilterActive;
+      DisplayMessages();
     } else {
       if(lowerAudioFilterActive) {
         lowerAudioFilterActive = !lowerAudioFilterActive;
@@ -254,34 +266,38 @@ void ButtonFilter() {
     void
 *****/
 void ButtonDemodMode() {
-#ifdef FT8_SUPPORT
-  if(bands[currentBand].mode == DEMOD_FT8) {
-    // try to load wav file
-    if(setupFT8Wav()) {
-      // switch to play a wav file
-      bands[currentBand].mode = DEMOD_FT8_WAV;
-      ShowOperatingStats();
-      syncFlag = true;
-      ft8State = 2;
-      UpdateInfoBoxItem(IB_ITEM_FT8);
-    } else {
-      // couldn't load wav file
-      syncFlag = false; 
-      ft8State = 1;
-      UpdateInfoBoxItem(IB_ITEM_FT8);
+  if(xmtMode == DATA_MODE) {
+    switch(currentDataMode) {
+      case DEMOD_PSK31:
+        // try to set up FT8
+        if(setupFT8()) {
+          // FT8 set up successful
+          bands[currentBand].mode = DEMOD_FT8;
+          currentDataMode = DEMOD_FT8;
+          ShowOperatingStats();
+          syncFlag = false; 
+          ft8State = 1;
+          UpdateInfoBoxItem(IB_ITEM_FT8);
+          return;
+        }
+        break;
+
+      case DEMOD_FT8:
+        exitFT8();
+        UpdateInfoBoxItem(IB_ITEM_FT8);
+        bands[currentBand].mode = DEMOD_PSK31;
+        currentDataMode = DEMOD_PSK31;
+        ShowOperatingStats();
+        return;
+        break;
+
+      case DEMOD_PSK31_WAV:
+      case DEMOD_FT8_WAV:
+      default:
+        return;
+        break;
     }
-    return;
-  } else if(bands[currentBand].mode == DEMOD_FT8_WAV) {
-    // changed demod mode during wav file playback
-    // switch back to FT8
-    bands[currentBand].mode = DEMOD_FT8;
-    ShowOperatingStats();
-    syncFlag = false; 
-    ft8State = 1;
-    UpdateInfoBoxItem(IB_ITEM_FT8);
-    return;
   }
-#endif
 
   bands[currentBand].mode++;
   if(bands[currentBand].mode > DEMOD_MAX) {
@@ -289,8 +305,8 @@ void ButtonDemodMode() {
   }
 
   // skip FT8 modes
-  if(bands[currentBand].mode == DEMOD_FT8_WAV) {
-    bands[currentBand].mode += 2;
+  if(bands[currentBand].mode == DEMOD_PSK31_WAV) {
+    bands[currentBand].mode += 4;
   }
 
   SetupMode();
@@ -311,7 +327,7 @@ void ButtonDemodMode() {
     void
 *****/
 void ButtonMode() {
-  // Toggle the current mode: SSB -> CW -> FT8 (if available) -> SSB
+  // Toggle the current mode: SSB -> CW -> DATA -> SSB
   switch(xmtMode) {
     case SSB_MODE:
       xmtMode = CW_MODE;
@@ -327,47 +343,37 @@ void ButtonMode() {
       break;
 
     case CW_MODE:
-#ifdef FT8_SUPPORT
-      // try to set up FT8
-      if(setupFT8()) {
-        // FT8 set up successful
-        xmtMode = DATA_MODE;
-        priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
-        bands[currentBand].mode = DEMOD_FT8;
-      } else {
-        // can't set up FT8, just continue to next mode (thus CW -> SSB)
-        xmtMode = SSB_MODE;
+      xmtMode = DATA_MODE;
+      priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
 
-        // return waterfall to normal if decoder is on
-        if(decoderFlag == ON) {
-          // erase any decoded CW
-          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
-          wfRows = WATERFALL_H;
+      if(currentDataMode == DEMOD_FT8) {
+        // try to set up FT8
+        if(setupFT8()) {
+          // FT8 set up successful
+          bands[currentBand].mode = DEMOD_FT8;
+        } else {
+          // can't set up FT8, move to psk31
+          bands[currentBand].mode = DEMOD_PSK31;
         }
+      } else {
+        setupPSK31();
+        bands[currentBand].mode = DEMOD_PSK31;
       }
-#else
-      xmtMode = SSB_MODE;
-
-      // return waterfall to normal if decoder is on
-      if(decoderFlag == ON) {
-        // erase any decoded CW
-        tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
-        wfRows = WATERFALL_H;
-      }
-#endif
       break;
 
-#ifdef FT8_SUPPORT
     case DATA_MODE:
       xmtMode = SSB_MODE;
 
       // return demod mode to previous mode
       bands[currentBand].mode = priorDemodMode;
 
-      exitFT8();
-      UpdateInfoBoxItem(IB_ITEM_FT8);
+      if(bands[currentBand].mode == DEMOD_FT8) {
+        exitFT8();
+        UpdateInfoBoxItem(IB_ITEM_FT8);
+      } else {
+        exitPSK31();
+      }
       break;
-#endif
   }
 
   SetupMode();

@@ -139,12 +139,14 @@ struct DEMOD_Descriptor
 { const uint8_t DEMOD_n;
   const char* const text;
 };
-const DEMOD_Descriptor DEMOD[6] = {
+const DEMOD_Descriptor DEMOD[8] = {
   //   DEMOD_n, name
   { DEMOD_USB, "(USB)" },
   { DEMOD_LSB, "(LSB)" },
   { DEMOD_AM, "(AM)" },
   { DEMOD_NFM, "(NFM)" },
+  { DEMOD_PSK31_WAV, "(PSK31.wav)" },
+  { DEMOD_PSK31, "(PSK31)" },
   { DEMOD_FT8_WAV, "(FT8.wav)" },
   { DEMOD_FT8, "(FT8)" },
 };
@@ -326,7 +328,10 @@ FASTRUN void ShowSpectrum() {
         // set color of active filter bar to green
         switch (bands[currentBand].mode) {
           case DEMOD_USB:
-          case DEMOD_FT8: // ft8 is USB
+          case DEMOD_PSK31_WAV:
+          case DEMOD_PSK31:
+          case DEMOD_FT8_WAV:
+          case DEMOD_FT8:
             if (lowerAudioFilterActive) {
               filterLoColor = RA8875_GREEN;
               filterHiColor = RA8875_LIGHT_GREY;
@@ -473,7 +478,10 @@ void ShowBandwidthBarValues() {
   // set color of active filter value to green
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
-    case DEMOD_FT8: // ft8 is USB
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8_WAV:
+    case DEMOD_FT8:
       if(!ft8MsgSelectActive) {
         if (lowerAudioFilterActive) {
           loColor = RA8875_GREEN;
@@ -741,11 +749,9 @@ void ShowOperatingStats() {
       tft.print("SSB");
       break;
 
-#ifdef FT8_SUPPORT
     case DATA_MODE:
       tft.print("DATA");
       break;
-#endif
   }
 
   tft.setCursor(OPERATION_STATS_DMD, OPERATION_STATS_T);
@@ -754,8 +760,10 @@ void ShowOperatingStats() {
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
     case DEMOD_LSB:
-    case DEMOD_FT8: // ft8 is USB
-    case DEMOD_FT8_WAV: // ft8 is USB
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8:
+    case DEMOD_FT8_WAV:
       if (activeVFO == VFO_A) {
         tft.print(DEMOD[bands[currentBandA].mode].text);
       } else {
@@ -1087,8 +1095,10 @@ FASTRUN void DrawBandwidthBar() {
   // make sure bandwidth is within zoom range
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
-    case DEMOD_FT8: // ft8 is USB
-    case DEMOD_FT8_WAV: // ft8 is USB
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8:
+    case DEMOD_FT8_WAV:
       if(centerLine + newCursorPosition + filterWidth > SPECTRUM_RES) {
         resetTuningFlag = true;
       }
@@ -1119,8 +1129,10 @@ FASTRUN void DrawBandwidthBar() {
   if(!resetTuningFlag) {
     switch (bands[currentBand].mode) {
       case DEMOD_USB:
-      case DEMOD_FT8: // ft8 is USB
-      case DEMOD_FT8_WAV: // ft8 is USB
+      case DEMOD_PSK31_WAV:
+      case DEMOD_PSK31:
+      case DEMOD_FT8:
+      case DEMOD_FT8_WAV:
         tft.fillRect(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
         break;
 

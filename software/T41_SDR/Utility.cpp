@@ -735,3 +735,143 @@ void PrimeMallInfo() {
     }
   }
 }
+
+File f;
+unsigned long position, sizeWav;
+uint16_t bitsPerSample;
+
+uint8_t readUint8() {
+  uint8_t tmp;
+  f.read((char *)&tmp, sizeof(uint8_t));
+  return tmp;
+}
+uint16_t readUint16() {
+  uint16_t tmp;
+  f.read((char *)&tmp, sizeof(uint16_t));
+  return tmp;
+}
+uint32_t readUint32() {
+  uint32_t tmp;
+  f.read((char *)&tmp, sizeof(uint32_t));
+  return tmp;
+}
+
+// modified from: ft8_lib wave.c
+// Load signal in floating point format (-1 .. +1) as a WAVE file using 16-bit signed integers.
+int load_wav(const char* inputFile, uint32_t num_samples) {
+  char tmp[15];
+
+  // wav file format https://www.mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
+  // comments indicate supported file structures
+
+  // master RIFF chunk
+  char chunkID[4];    // = {'R', 'I', 'F', 'F'};
+  uint32_t chunkSize; // = 4 + (8 + subChunk1Size) + (8 + subChunk2Size);
+  char format[4];     // = {'W', 'A', 'V', 'E'};
+
+  // format chunk
+  char subChunk1ID[4];    // = {'f', 'm', 't', ' '};
+  uint32_t subChunk1Size; // = 16, 18 or 40
+  uint16_t audioFormat;   // = 1;     // PCM = 1
+  uint16_t numChannels;   // = 1;
+  uint32_t sampleRate;    // samples per second
+  uint32_t byteRate;      // bytes per second = sampleRate * blockAlign;
+  uint16_t blockAlign;    // = numChannels * bitsPerSample / 8;
+  //uint16_t bitsPerSample; // = 16;
+
+  // data chunk
+  char subChunk2ID[4];    // = {'d', 'a', 't', 'a'};
+  uint32_t subChunk2Size; // = num_samples * blockAlign;
+
+  f = SD.open(inputFile, FILE_READ);
+
+  if (!f)
+    return -1;
+
+  f.seek(0);
+  sizeWav = f.size();
+
+  // master RIFF chunk
+  f.read(tmp, sizeof(chunkID));
+  chunkSize = readUint32();
+  f.read(tmp, sizeof(format));
+
+  // format chunk
+  f.read(tmp, sizeof(subChunk1ID));
+  subChunk1Size = readUint32();
+
+  if(!((subChunk1Size == 16) || (subChunk1Size == 18) || (subChunk1Size == 40))) {
+    Serial.print("chunkSize = "); Serial.println(chunkSize);
+    Serial.print("subChunk1Size = "); Serial.println(subChunk1Size);
+    return -2;
+  }
+
+  audioFormat = readUint16();
+  numChannels = readUint16();
+  sampleRate = readUint32();
+  
+  byteRate = readUint32();
+  blockAlign = readUint16();
+  bitsPerSample = readUint16();
+
+
+  if(audioFormat != 1 || numChannels != 1 || bitsPerSample != 16) {
+    Serial.print("audioFormat = "); Serial.println(audioFormat);
+    Serial.print("numChannels = "); Serial.println(numChannels);
+    Serial.print("bitsPerSample = "); Serial.println(bitsPerSample);
+
+    Serial.print("sampleRate = "); Serial.println(sampleRate);
+
+    return -3;
+  }
+
+  // skip over extension stuff if needed
+  if(subChunk1Size == 18) {
+    f.seek(38);
+  } else {
+    if(subChunk1Size == 40) {
+      f.seek(60);
+    }
+  }
+
+  f.read(tmp, sizeof(subChunk2ID));
+
+  subChunk2Size = readUint32();
+
+  if(subChunk2Size / blockAlign > num_samples) {
+    Serial.print("subChunk2Size = "); Serial.println(subChunk2Size);
+    Serial.print("blockAlign = "); Serial.println(blockAlign);
+    Serial.print("num_samples = "); Serial.println(num_samples);
+    Serial.print("byteRate = "); Serial.println(byteRate);
+    return -4;
+  }
+
+  position = f.position();
+
+  return 0;
+}
+
+// read wave file scaling data into 16 bit floats between -1 to 1
+// accomodates 8 or 16 bit sample size
+bool readWave(float32_t *buf, int sizeBuf) {
+  unsigned long currentPos = f.position();
+  int16_t raw_data[sizeBuf];
+
+  //Serial.print("sizeBuf = "); Serial.println(sizeBuf);
+
+  // close file if we're done
+  // *** likely missing the end of file here ***
+  if(currentPos + sizeBuf >= sizeWav) {
+    //f.seek(position); // reset wave file to beginning of data if needed
+    f.close();
+    return false;
+  }
+
+  f.read((void*)raw_data, sizeBuf * bitsPerSample / 8);
+  for (int i = 0; i < sizeBuf; i++) {
+    buf[i] = raw_data[i] / 32768.0f;
+    //Serial.println(buf[i]);
+  }
+  return true;
+}
+

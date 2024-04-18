@@ -68,15 +68,12 @@ const char *onOff[2] = { "Off", "On" };
 const char *optionsWPM[2] = { "Straight Key", "Paddles " };
 const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
 
-#ifdef FT8_SUPPORT
 void IBFT8Followup(int row, int col);
 void IBStackFollowup(int row, int col);
 void IBHeapFollowup(int row, int col);
 const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
+
 #define IB_NUM_ITEMS 12
-#else
-#define IB_NUM_ITEMS 9
-#endif // FT8
 
 PROGMEM const infoBoxItem infoBox[] = 
 { //                                                     font    # chars
@@ -90,11 +87,9 @@ PROGMEM const infoBoxItem infoBox[] =
   { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_7_Y,    &IBTempFollowup        }, // Teensy Temp
   { "Load:",       NULL,        NULL,                     0,        4,      1,   IB_COL_2_X,    IB_ROW_7_Y,    &IBLoadFollowup        },  // Teensy Load
-#ifdef FT8_SUPPORT
   { "FT8       ",  ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_8_Y,    &IBFT8Followup         },  // FT8 sync
   { "Stack:",      NULL,        NULL,                     0,        4,      2,   IB_COL_1_X,    IB_ROW_6_Y,    &IBStackFollowup       },  // Stack
   { "Heap:",       NULL,        NULL,                     0,        4,      2,   IB_COL_2_X,    IB_ROW_6_Y,    &IBHeapFollowup        },  // Heap
-#endif // FT8
   //{ "AutoNotch:",  onOff,       (int*)&ANR_notchOn,       0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Auto Notch
   //{ "Noise:",      filter,      &nrOptionSelect,          0,        8,      1,   IB_COL_1_X,    IB_ROW_6_Y,    NULL                   }, // Noise Filter
   //{ "Compress:",   onOff,       &compressorFlag,          0,        6,      1,   IB_COL_2_X,    IB_ROW_5_Y,    &IBCompressionFollowup }, // Compress
@@ -292,7 +287,6 @@ void IBEQFollowup(int row, int col) {
 
 /*****
   Purpose: Information box follow up function for the Temp item
-           Assumes temp is in column 1 row 10
 
   Parameter list:
     void
@@ -314,7 +308,6 @@ void IBTempFollowup(int row, int col) {
 
 /*****
   Purpose: Information box follow up function for the Load item
-           Assumes load is in column 2 row 10
 
   Parameter list:
     void
@@ -354,7 +347,6 @@ void IBLoadFollowup(int row, int col) {
   }
 }
 
-#ifdef FT8_SUPPORT
 /*****
   Purpose: Information box follow up function for the FT8 item
 
@@ -382,11 +374,10 @@ void IBFT8Followup(int row, int col) {
 
     // give details of active message if any
     if(num_decoded_msg > 0) {
-      DisplayActiveMessageDetails(row + 40, INFO_BOX_L + 5);
+      DisplayActiveMessageDetails(row + 40 - 2, INFO_BOX_L + 5);
     }
   }
 }
-#endif // FT8
 
 // *** TODO: eliminate hard coded column/row references in next two ***
 /*****

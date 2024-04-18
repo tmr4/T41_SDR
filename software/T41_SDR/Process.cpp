@@ -6,6 +6,7 @@
 #include "Display.h"
 #include "DSP_Fn.h"
 #include "Encoders.h"
+#include "Exciter.h"
 #include "FFT.h"
 #include "Filter.h"
 #include "FIR.h"
@@ -16,6 +17,7 @@
 #include "MenuProc.h"
 #include "Noise.h"
 #include "Process.h"
+#include "psk31.h"
 #include "Tune.h"
 #include "Utility.h"
 
@@ -23,7 +25,8 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-int ft8Loop = 0;
+int dataLoop = 0;
+int dataIndex = 0;
 
 float32_t audioMaxSquaredAve = 0;
 
@@ -92,7 +95,7 @@ void ProcessIQData() {
     // we allow input buffer availability to regulate FT8 wav file decoding
     // otherwise we'll process the wav file too fast.  This is better than 
     // using delays
-    if(bands[currentBand].mode != DEMOD_FT8_WAV) {
+    if(!((bands[currentBand].mode == DEMOD_FT8_WAV) || (bands[currentBand].mode == DEMOD_PSK31_WAV))) {
       // get audio samples from the audio  buffers and convert them to float
       // read in 32 blocks á 128 samples in I and Q
       for (unsigned i = 0; i < N_BLOCKS; i++) {
@@ -271,7 +274,6 @@ void ProcessIQData() {
         }
         break;
 
-#ifdef FT8_SUPPORT
       case DEMOD_FT8_WAV:
         // get samples from wave file
         // let's pull the data at the same rate as the T41 pulls from the I/Q stream
@@ -284,30 +286,33 @@ void ProcessIQData() {
         // wav file sample rate is 12 kHz, T41 audio is 24 kHz
         // get a half sample size that we'll interpolate to the proper rate
         if(readWave(float_buffer_R, FFT_length / 2 / 2)) {
-          // prepare audio stream (mostly just to verify proper wav file transfer)
-          // interpolate by 2 to 24 kHz
+          // prepare audio stream (mostly just allow user to verify proper wav file transfer)
+
+          // interpolate by 2 to 24 kHz to get audio signal for T41
           float_buffer_L[0] = float_buffer_R[0];
           for (unsigned i = 1; i < FFT_length / 2; i++) {
             float_buffer_L[2*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) / 2;
             float_buffer_L[2*i] = float_buffer_R[i];
           }
           
+          // prepare FT8 data
           // convert floats to the q15 required by FT8 routines
           arm_float_to_q15(float_buffer_R, q15_buffer_LTemp, FFT_length / 2 / 2);
 
-          // decimate by 1.875
+          // decimate by 1.875 (12kHz / 1.875 = 6.4kHz)
+          // we'll take 15 loops to get 1024 samples (128 samples per loop / 1.875 = 68.27 * 15 loops = 1024)
           for (unsigned i = 0; i < 68; i++) {
-            // roll ft8 dsp buffer
-            ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
-            ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+            // roll ft8 dsp buffer each loop
+            ft8_dsp_buffer[i + dataLoop * 68] = ft8_dsp_buffer[i + 1024 + dataLoop * 68];
+            ft8_dsp_buffer[1024 + i + dataLoop * 68] = ft8_dsp_buffer[i + 2048 + dataLoop * 68];
 
             // transfer audio data to ft8_dsp_buffer
             // decimate by 1.875 which brings us to a 6.4 ksps rate
-            ft8_dsp_buffer[2048 + i + ft8Loop * 68] = q15_buffer_LTemp[(int)(((float)i) * 120.0 / 64.0)]; // i * 1.875
+            ft8_dsp_buffer[2048 + i + dataLoop * 68] = q15_buffer_LTemp[(int)(((float)i) * 120.0 / 64.0)]; // i * 1.875
           }
 
-          if(++ft8Loop == 15) {
-            ft8Loop = 0;
+          if(++dataLoop == 15) {
+            dataLoop = 0;
             process_FT8_FFT();
             if(ft8_decode_flag == 1) {
               //num_decoded_msg = ft8_decode();
@@ -326,7 +331,6 @@ void ProcessIQData() {
           //      not a big priority unless we want this to be a standard feature ***
           Q_in_L.clear();
           Q_in_R.clear();
-
         }
         else {
           // we're not sync'd anymore
@@ -336,22 +340,24 @@ void ProcessIQData() {
           FT_8_counter = 0;
           ft8_flag = 0;
 
-          ButtonDemodMode(); // switch back to ft8 mode
+          bands[currentBand].mode = DEMOD_FT8;
+          currentDataMode = DEMOD_FT8;
+          ShowOperatingStats();
           ft8State = 1;
           UpdateInfoBoxItem(IB_ITEM_FT8);
           /*
           // keep decoding w/o new audio
           for (unsigned i = 0; i < 68; i++) {
             // roll ft8 dsp buffer
-            ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
-            ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+            ft8_dsp_buffer[i + dataLoop * 68] = ft8_dsp_buffer[i + 1024 + dataLoop * 68];
+            ft8_dsp_buffer[1024 + i + dataLoop * 68] = ft8_dsp_buffer[i + 2048 + dataLoop * 68];
 
-            ft8_dsp_buffer[2048 + i + ft8Loop * 68] = 0;
+            ft8_dsp_buffer[2048 + i + dataLoop * 68] = 0;
           }
 
-          if(++ft8Loop == 15) {
-            //Serial.println(ft8Loop);
-            ft8Loop = 0;
+          if(++dataLoop == 15) {
+            //Serial.println(dataLoop);
+            dataLoop = 0;
             process_FT8_FFT();
             if(ft8_decode_flag == 1) {
               num_decoded_msg = ft8_decode();
@@ -365,7 +371,87 @@ void ProcessIQData() {
           */
         }
         break;
-#endif // FT8
+
+      case DEMOD_PSK31:
+        // decimation-by-4 in-place!
+        arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
+        arm_fir_decimate_f32(&FIR_dec1_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS);
+
+        // we're now at 48k samples per second, the rate used by the PSK31 routines
+        // transfer this to the PSK31 buffer
+
+        // decimation-by-2 in-place
+        arm_fir_decimate_f32(&FIR_dec2_I, float_buffer_L, float_buffer_L, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+        arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1);
+        break;
+
+      case DEMOD_PSK31_WAV:
+        // test file has a sample rate of 8000 sps
+        // T41 worls with audio samples at 24 kHz and 256 byte blocks (FFT_length / 2)
+        if(readWave(float_buffer_R, FFT_length / 2 / 3)) {
+          // prepare audio stream (mostly just allow user to verify proper wav file transfer)
+
+          // interpolate by 3 to 24 kHz to get audio signal for T41
+          float_buffer_L[0] = float_buffer_R[0];
+          for (unsigned i = 1; i < FFT_length / 2; i++) {
+            float_buffer_L[3*i-2] = (float_buffer_R[i-1] + float_buffer_R[i]) / 3;
+            float_buffer_L[3*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) * 2 / 3;
+            float_buffer_L[3*i] = float_buffer_R[i];
+          }
+
+          // generate I and Q
+          //arm_copy_f32 (float_buffer_L, float_buffer_R, 256);
+          //arm_fir_f32(&FIR_Hilbert_L, float_buffer_L, float_buffer_L, 256);
+          //arm_fir_f32(&FIR_Hilbert_R, float_buffer_R, float_buffer_R, 256);
+
+          // Prepare psk decoder input buffer
+          // use FFT_buffer (left channel: re, right channel: im)
+          //for (unsigned i = 0; i < 256; i++) {
+          //  FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
+          //  FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
+          //}
+
+          // accumulate psk decoder input buffer at 31.25 Hz
+          // 8000 / 31.25 = 256, 256 / 85 = 3
+          // thus we only need to capture 1 sample every three loops
+          if(dataLoop == 0) {
+            FFT_buffer[dataIndex] = float_buffer_R[0]; // real
+            FFT_buffer[dataIndex + 1] = 0; // imaginary
+            dataLoop = 3;
+            dataIndex += 2;
+          }
+          dataLoop--;
+
+          if(dataIndex == 256) {
+            Serial.println("decoding ...");
+            dbpsk_decoder_c_u8(FFT_buffer, psk31Buffer, 256);
+
+            for(int i = 0; i < 256; i++) {
+              //Serial.println(psk31Buffer[i]);
+              char tmp = psk31_varicode_decoder_push(psk31Buffer[i]);
+              if(tmp) {
+                Serial.print(tmp);
+              }
+            }
+
+            Serial.println("");
+            dataLoop = 3;
+            dataIndex = 0;
+          }
+
+          // we're using the audio input buffers to regulate the pace of the output stream
+          // without this we'll play the wave file about 3 times faster than normal
+          // *** need to check whether we're clipping any of our output with this
+          //      not a big priority unless we want this to be a standard feature ***
+          Q_in_L.clear();
+          Q_in_R.clear();
+        }
+        else {
+          bands[currentBand].mode = DEMOD_PSK31;
+          currentDataMode = DEMOD_PSK31;
+          ShowOperatingStats();
+        }
+        break;
 
       default:
         // prepare signals for all other modes
@@ -523,7 +609,6 @@ void ProcessIQData() {
           audiotmp = AlphaBetaMag(iFFT_buffer[FFT_length + (i * 2)], iFFT_buffer[FFT_length + (i * 2) + 1]);
         }
 
-#ifdef FT8_SUPPORT
           // save audio signal to FT8 buffer
         if(bands[currentBand].mode == DEMOD_FT8) {
           // don't process data until we're in sync
@@ -535,29 +620,29 @@ void ProcessIQData() {
 
               for (unsigned i = 0; i < 68; i++) {
                 // roll ft8 dsp buffer
-                ft8_dsp_buffer[i + ft8Loop * 68] = ft8_dsp_buffer[i + 1024 + ft8Loop * 68];
-                ft8_dsp_buffer[1024 + i + ft8Loop * 68] = ft8_dsp_buffer[i + 2048 + ft8Loop * 68];
+                ft8_dsp_buffer[i + dataLoop * 68] = ft8_dsp_buffer[i + 1024 + dataLoop * 68];
+                ft8_dsp_buffer[1024 + i + dataLoop * 68] = ft8_dsp_buffer[i + 2048 + dataLoop * 68];
 
                 // transfer audio data to ft8_dsp_buffer
                 // decimate by 3.75 which brings us to a 6.4 ksps rate
-                //ft8_dsp_buffer[2048 + i + ft8Loop * 68] = float_buffer_L[(int)(i * 3.75)]; 
-                ft8_dsp_buffer[2048 + i + ft8Loop * 68 + leftover] = q15_buffer_LTemp[(int)(i * 15 / 4)]; // i * 3.75
+                //ft8_dsp_buffer[2048 + i + dataLoop * 68] = float_buffer_L[(int)(i * 3.75)]; 
+                ft8_dsp_buffer[2048 + i + dataLoop * 68 + leftover] = q15_buffer_LTemp[(int)(i * 15 / 4)]; // i * 3.75
               }
 
-              ++ft8Loop;
-              if(ft8Loop == 15) {
+              ++dataLoop;
+              if(dataLoop == 15) {
                 // fill last cell
                 ft8_dsp_buffer[3071] = q15_buffer_LTemp[255];
 
-                ft8Loop = 0;
+                dataLoop = 0;
                 leftover = 0;
 
                 DSP_Flag = 1;
 
               } else {
                 // take 3 more samples over the range (every 4th loop) to completely fill the buffer
-                if(ft8Loop == 4 || ft8Loop == 8 || ft8Loop == 12) {
-                  ft8_dsp_buffer[2048 + ft8Loop * 68 + leftover] = q15_buffer_LTemp[255];
+                if(dataLoop == 4 || dataLoop == 8 || dataLoop == 12) {
+                  ft8_dsp_buffer[2048 + dataLoop * 68 + leftover] = q15_buffer_LTemp[255];
                   leftover++;
                 }
               }
@@ -584,7 +669,6 @@ void ProcessIQData() {
 
           if(ft8_flag == 0 && syncFlag) update_synchronization();
         }
-#endif // FT8
         break;
 
       case DEMOD_LSB:
@@ -633,6 +717,7 @@ void ProcessIQData() {
         //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
 
         // buzz and muffled sound with this deemphasis filter
+        // *** TODO: see: https://sdr.hu/static/bsc-thesis.pdf section 10.6 De-emphasis to investigate problems here ***
         //deemphasis_nfm_ff(float_buffer_L, float_buffer_R, FFT_length / 2, 24000);
         //arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
 
@@ -643,17 +728,22 @@ void ProcessIQData() {
         //deemphasis_nfm_ff(float_buffer_R, float_buffer_L, FFT_length / 2, 24000);
         break;
 
+      case DEMOD_PSK31:
+        break;
+        
       case DEMOD_SAM:
         AMDecodeSAM();
         break;
 
-      case DEMOD_FT8_WAV: // demodulate FT8 signals via wave file
+      case DEMOD_PSK31_WAV:
+      case DEMOD_FT8_WAV:
       default:
         break;
     }
 
     // update audio spectrum for NFM or FT8_WAV
-    if(bands[currentBand].mode == DEMOD_NFM || bands[currentBand].mode == DEMOD_FT8_WAV) {
+    //if(bands[currentBand].mode == DEMOD_NFM || bands[currentBand].mode == DEMOD_FT8_WAV) {
+    if(bands[currentBand].mode == DEMOD_NFM || bands[currentBand].mode == DEMOD_FT8_WAV || bands[currentBand].mode == DEMOD_PSK31_WAV) {
 
       // Prepare the audio signal buffers
       for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF); i++) {

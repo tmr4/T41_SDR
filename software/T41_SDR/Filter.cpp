@@ -293,8 +293,10 @@ void UpdateBWFilters() {
 
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
-    case DEMOD_FT8: // ft8 is USB
-    case DEMOD_FT8_WAV: // ft8 is USB
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8:
+    case DEMOD_FT8_WAV:
       if (bands[currentBand].FLoCut < 0) bands[currentBand].FLoCut = 200;
       break;
 
@@ -335,8 +337,10 @@ void UpdateBWFilters() {
 void SetupMode() {
   switch(bands[currentBand].mode) {
     case DEMOD_USB:
-    case DEMOD_FT8: // ft8 is USB
-    case DEMOD_FT8_WAV: // ft8 is USB
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8:
+    case DEMOD_FT8_WAV:
       //temp = bands[currentBand].FHiCut;
       //bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
       //bands[currentBand].FLoCut = -temp;

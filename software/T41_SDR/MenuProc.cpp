@@ -661,12 +661,10 @@ void DoPaddleFlip() {
     void
 *****/
 void VFOSelect() {
-#ifdef FT8_SUPPORT
   if(xmtMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
     bands[currentBand].mode = priorDemodMode;
   }
-#endif
 
   //delay(10);
   NCOFreq = 0L;
@@ -694,15 +692,24 @@ void VFOSelect() {
       break;
   }
 
-#ifdef FT8_SUPPORT
   if(xmtMode == DATA_MODE) {
     priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
-    bands[currentBand].mode = DEMOD_FT8;
-    syncFlag = false; 
-    ft8State = 1;
-    UpdateInfoBoxItem(IB_ITEM_FT8);
+
+    switch (currentDataMode) {
+      case DEMOD_PSK31_WAV:
+      case DEMOD_PSK31:
+        bands[currentBand].mode = DEMOD_PSK31;
+        break;
+
+      case DEMOD_FT8:
+      case DEMOD_FT8_WAV:
+        bands[currentBand].mode = DEMOD_FT8;
+        syncFlag = false; 
+        ft8State = 1;
+        UpdateInfoBoxItem(IB_ITEM_FT8);
+        break;
+    }
   }
-#endif
 
   bands[currentBand].freq = TxRxFreq;
   SetBand();                            // SetBand updates the display

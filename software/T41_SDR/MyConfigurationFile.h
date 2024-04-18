@@ -70,7 +70,6 @@
 // uncomment to enable FT8
 // this requires about an additional 86k FLASH, 111k of RAM1 and 183k of RAM2
 // ultimately I'll probably delete this option as I've decided to keep this feature
-#define FT8_SUPPORT
 #define KEYBOARD_SUPPORT
 
 struct maps {

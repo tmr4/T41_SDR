@@ -4,11 +4,13 @@
 #include "ButtonProc.h"
 #include "Display.h"
 #include "EEPROM.h"
+#include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Process.h"
 #include "Process2.h"
+#include "psk31.h"
 #include "Tune.h"
 #include "Utility.h"
 
@@ -428,12 +430,10 @@ void ExecuteButtonPress(int val) {
         digitalWrite(bandswitchPins[currentBand], LOW);  
       }
 
-#ifdef FT8_SUPPORT
       if(xmtMode == DATA_MODE) {
         // restore old demodulation mode before we change bands
         bands[currentBand].mode = priorDemodMode;
       }
-#endif
 
       currentBand++;
       if(currentBand == NUMBER_OF_BANDS) {  // Incremented too far?
@@ -493,12 +493,10 @@ void ExecuteButtonPress(int val) {
         digitalWrite(bandswitchPins[currentBand], LOW);
       }
 
-#ifdef FT8_SUPPORT
       if(xmtMode == DATA_MODE) {
         // restore old demodulation mode before we change bands
         bands[currentBand].mode = priorDemodMode;
       }
-#endif
 
       currentBand--;
       if(currentBand < 0) {                 // Incremented too far?
@@ -570,8 +568,40 @@ void ExecuteButtonPress(int val) {
       break;
 
     case UNUSED_1:  // 16
-      if (calOnFlag == 0) {
-        ButtonFrequencyEntry();
+      if(xmtMode == DATA_MODE) {
+        switch (bands[currentBand].mode) {
+          case DEMOD_PSK31:
+            // try to load wav file
+            if(setupPSK31Wav()) {
+              // switch to play a wav file
+              bands[currentBand].mode = DEMOD_PSK31_WAV;
+              currentDataMode = DEMOD_PSK31_WAV;
+              ShowOperatingStats();
+            }
+            break;
+
+          case DEMOD_FT8:
+            // try to load wav file
+            if(setupFT8Wav()) {
+              // switch to play a wav file
+              bands[currentBand].mode = DEMOD_FT8_WAV;
+              currentDataMode = DEMOD_FT8_WAV;
+              ShowOperatingStats();
+              syncFlag = true;
+              ft8State = 2;
+              UpdateInfoBoxItem(IB_ITEM_FT8);
+            } else {
+              // couldn't load wav file
+              syncFlag = false; 
+              ft8State = 1;
+              UpdateInfoBoxItem(IB_ITEM_FT8);
+            }
+            break;
+        }
+      } else {
+        if (calOnFlag == 0) {
+          ButtonFrequencyEntry();
+        }
       }
       break;
 

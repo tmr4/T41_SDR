@@ -7,13 +7,11 @@
 #include "SDT.h"
 #include "ButtonProc.h"
 #include "Display.h"
-#include "InfoBox.h"
-
-#ifdef FT8_SUPPORT
-
 #include "ft8.h"
 #include "ft8_constants.h"
+#include "InfoBox.h"
 #include "locator.h"
+#include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -35,7 +33,7 @@
 q15_t *ft8_dsp_buffer, *dsp_output, *window_ft8_dsp_buffer;
 float *window;
 
-uint8_t activeMsg = 0;
+int activeMsg = 0;
 
 uint32_t current_time, start_time, ft8_time;
 
@@ -107,7 +105,6 @@ Decode decoded[20];
 // forwards
 //-------------------------------------------------------------------------------------------------------------
 
-int load_wav(uint32_t num_samples);
 int unpack_text(const uint8_t *a71, char *text);
 int unpack_telemetry(const uint8_t *a71, char *telemetry);
 int unpack_nonstandard(const uint8_t *a77, char *field1, char *field2, char *field3);
@@ -894,11 +891,11 @@ void DisplayDetails(int msg, int row, int col) {
 
   // reset message detail area
   //tft.fillRect(col, row + 20, INFO_BOX_W - 20, 20, RA8875_BLACK);
-  tft.fillRect(col, row + 20, 200, 20, RA8875_BLACK);
+  tft.fillRect(col, row, 200, 20 - 1, RA8875_BLACK);
 
   sprintf(message,"%02i:%02i ", decoded[msg].hour, decoded[msg].min);
 
-  tft.setCursor(col, row + 20);
+  tft.setCursor(col, row-1);
   //sprintf(&message[6],"%1d  %4d  %3d    %3d  %4d", (uint8_t)(decoded[msg].sec / 15 + 1), decoded[msg].freq_hz, decoded[msg].snr, decoded[msg].sync_score, decoded[msg].distance);
   sprintf(&message[6],"%1d  %4d  %3d  %4d", (uint8_t)(decoded[msg].sec / 15 + 1), decoded[msg].freq_hz, decoded[msg].snr, decoded[msg].distance);
   tft.print(message);
@@ -1365,7 +1362,7 @@ FLASHMEM bool setupFT8Wav() {
   uint32_t sample_rate = 12000;
   uint32_t num_samples = slot_period * sample_rate;
 
-  result = load_wav(num_samples);
+  result = load_wav("ft8.wav", num_samples); // 191111_110645.wav from ft8_lib
 
   if(result != 0) {
     Serial.println("Invalid wave file!");
@@ -1391,120 +1388,3 @@ FLASHMEM void exitFT8() {
   ft8_flag = 0;
   ft8State = 0;
 }
-
-File f;
-unsigned long position, sizeWav;
-
-int readInt(int size) {
-  char tmp[10] = {0,0,0,0,0,0,0,0,0,0};
-
-  for(int i = 0; i < size; i++) {
-//  for(int i = size - 1; i >= 0; i--) {
-    tmp[i] = f.read();
-  }
-  return (int)*tmp;
-}
-
-// modified from: ft8_lib wave.c
-// Load signal in floating point format (-1 .. +1) as a WAVE file using 16-bit signed integers.
-int load_wav(uint32_t num_samples) {
-  char subChunk1ID[4];    // = {'f', 'm', 't', ' '};
-  uint32_t subChunk1Size; // = 16;    // 16 for PCM
-  uint16_t audioFormat;   // = 1;     // PCM = 1
-  uint16_t numChannels;   // = 1;
-  uint16_t bitsPerSample; // = 16;
-  uint32_t sampleRate;
-  uint16_t blockAlign; // = numChannels * bitsPerSample / 8;
-  uint32_t byteRate;   // = sampleRate * blockAlign;
-
-  char subChunk2ID[4];    // = {'d', 'a', 't', 'a'};
-  uint32_t subChunk2Size; // = num_samples * blockAlign;
-
-  char chunkID[4];    // = {'R', 'I', 'F', 'F'};
-  uint32_t chunkSize; // = 4 + (8 + subChunk1Size) + (8 + subChunk2Size);
-  char format[4];     // = {'W', 'A', 'V', 'E'};
-  char tmp[15];
-
-  //FILE* f = fopen(path, "rb");
-  f = SD.open("test.wav", FILE_READ);
-
-  if (!f)
-    return -1;
-
-  f.seek(0);
-  sizeWav = f.size();
-  //ltoa(sizeWav, tmp, DEC);
-  //Serial.println(tmp);
-
-  f.read(tmp, sizeof(chunkID));
-
-  f.read(tmp, sizeof(chunkSize));
-
-  f.read(tmp, sizeof(format));
-
-  f.read(tmp, sizeof(subChunk1ID));
-
-  subChunk1Size = readInt(sizeof(subChunk1Size));
-  //Serial.println(subChunk1Size);
-  if (subChunk1Size != 16) {
-    //Serial.println(subChunk1Size);
-    return -2;
-  }
-
-  audioFormat = readInt(sizeof(audioFormat));
-  numChannels = readInt(sizeof(numChannels));
-  sampleRate = readInt(sizeof(sampleRate));
-  byteRate = readInt(sizeof(byteRate));
-  blockAlign = readInt(sizeof(blockAlign));
-  bitsPerSample = readInt(sizeof(bitsPerSample));
-
-  if (audioFormat != 1 || numChannels != 1 || bitsPerSample != 16)
-    return -3;
-
-  f.read(tmp, sizeof(subChunk2ID));
-  //Serial.println(tmp);
-
-  subChunk2Size = readInt(sizeof(subChunk2Size));
-
-  if (subChunk2Size / blockAlign > num_samples)
-    return -4;
-
-  position = f.position();
-
-  //int16_t* raw_data = (int16_t*)malloc(*num_samples * blockAlign);
-
-  //fread((void*)raw_data, blockAlign, *num_samples, f);
-  //for (int i = 0; i < *num_samples; i++) {
-  //  //signal[i] = raw_data[i] / 32768.0f;
-  //  f.read(tmp, sizeof(int16_t));
-  //  signal[i] = atoi(tmp) / 32768.0f;
-  //}
-
-  //free(raw_data);
-
-  //fclose(f);
-  //f.close();
-
-  return 0;
-}
-
-bool readWave(float32_t *buf, int sizeBuf) {
-  unsigned long currentPos = f.position();
-  int16_t raw_data[sizeBuf];
-
-  // close file if we're done
-  // *** likely missing the end of file here ***
-  if(currentPos + sizeBuf >= sizeWav) {
-    //f.seek(position); // reset wave file to beginning of data if needed
-    f.close();
-    return false;
-  }
-
-  f.read((void*)raw_data, sizeBuf*2);
-  for (int i = 0; i < sizeBuf; i++) {
-    buf[i] = raw_data[i] / 32768.0f;
-  }
-  return true;
-}
-
-#endif // #ifdef FT8_SUPPORT

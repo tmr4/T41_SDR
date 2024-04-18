@@ -51,10 +51,12 @@
 #define DEMOD_LSB                   1
 #define DEMOD_AM                    2
 #define DEMOD_NFM                   3
-#define DEMOD_FT8_WAV               4
-#define DEMOD_FT8                   5
-#define DEMOD_SAM                   6
-#define DEMOD_MAX                   6
+#define DEMOD_PSK31_WAV             4
+#define DEMOD_PSK31                 5
+#define DEMOD_FT8_WAV               6
+#define DEMOD_FT8                   7
+#define DEMOD_SAM                   8
+#define DEMOD_MAX                   8
 
 #define BUFFER_SIZE                 128
 

@@ -58,8 +58,10 @@ void SetBWFilters() {
 
   switch (bands[currentBand].mode) {
     case DEMOD_USB:
-    case DEMOD_FT8: // ft8 is USB
-    case DEMOD_FT8_WAV: // ft8 is USB
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8:
+    case DEMOD_FT8_WAV:
       if (lowerAudioFilterActive) { // false - high, true - low filter
         bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
       } else {

@@ -7,8 +7,6 @@
 
 #include "SDT.h"
 
-#ifdef FT8_SUPPORT
-
 #include "ft8_constants.h"
 
 // Define FT8 symbol counts
@@ -436,5 +434,3 @@ PROGMEM const uint8_t kNrw[83] = {
     6,6,6,7,7,6,6,7,6,6,6,6,6,6,6,7,
     6,6,6
 };
-
-#endif // #ifdef FT8_SUPPORT
