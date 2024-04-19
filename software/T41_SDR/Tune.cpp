@@ -81,6 +81,27 @@ void ResetTuning() {
 }
 
 /*****
+  Purpose: Set center tuning frequency
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void SetCenterTune(long tuneChange) {
+  centerFreq += tuneChange;  // tune the master vfo
+
+  TxRxFreq = centerFreq + NCOFreq;
+
+  SetFreq();
+
+  ShowFrequency();          // update frequency display
+  ShowOperatingStats();           // update center frequency in band info
+  ShowSpectrumFreqValues(); // update spectrum frequency values
+}
+
+/*****
   Purpose: Set si5351 frequency
 
   Parameter list:

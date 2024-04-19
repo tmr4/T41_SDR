@@ -42,6 +42,7 @@
 #include "debug.h"
 #include "keyboard.h"
 #include "locator.h"
+#include "mouse.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -907,7 +908,10 @@ FLASHMEM void setup() {
   SoftReset();
 
 #ifdef KEYBOARD_SUPPORT
-  usbSetup();
+  UsbSetup();
+  //SetMouseArea(SPEC_BOX_L, SPECTRUM_BOTTOM + 10, SPEC_BOX_W, 20);
+  //SetMouseArea(SPEC_BOX_L, SPECTRUM_BOTTOM, SPEC_BOX_W, 20);
+  SetMouseArea(0, 0, XPIXELS, YPIXELS);
 #endif
 
   //memCheck = true;

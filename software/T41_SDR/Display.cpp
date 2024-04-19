@@ -14,6 +14,7 @@
 #include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
+#include "mouse.h"
 #include "Noise.h"
 #include "Process.h"
 #include "Tune.h"
@@ -247,8 +248,9 @@ FASTRUN void ShowSpectrum() {
   // poll keyboard at about 125 Hz
   int now = millis();
   if (now - last_usb_read > 8) {
-    usbLoop();
+    UsbLoop();
     last_usb_read = now;
+    MouseLoop();
   }
 #endif
 
@@ -256,7 +258,7 @@ FASTRUN void ShowSpectrum() {
     // Done here to minimize interruption to signal stream during tuning.  There
     // may seem some duplication of display updates here, but these tuning events
     // shouldn't occur on the same loop so little efficiency to be gained by changing
-    SetCenterTune();
+    EncoderCenterTune();
     if(fineTuneFlag) {
       ShowFrequency();
       DrawBandwidthBar();

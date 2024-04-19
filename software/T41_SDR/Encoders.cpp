@@ -112,7 +112,7 @@ void SetBWFilters() {
   Return value;
     void
 *****/
-void SetCenterTune() {
+void EncoderCenterTune() {
   long tuneChange = 0L;
 
   unsigned char result = tuneEncoder.process();  // Read the encoder
@@ -134,15 +134,7 @@ void SetCenterTune() {
       break;
   }
 
-  centerFreq += ((long)freqIncrement * tuneChange);  // tune the master vfo
-
-  TxRxFreq = centerFreq + NCOFreq;
-
-  SetFreq();
-
-  ShowFrequency();          // update frequency display
-  ShowOperatingStats();           // update center frequency in band info
-  ShowSpectrumFreqValues(); // update spectrum frequency values
+  SetCenterTune((long)freqIncrement * tuneChange);
 }
 
 /*****

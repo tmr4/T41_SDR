@@ -21,7 +21,7 @@ extern long last_filter_pos_BW;
 //-------------------------------------------------------------------------------------------------------------
 
 void SetBWFilters();
-void SetCenterTune();
+void EncoderCenterTune();
 void EncoderVolume();
 float GetEncoderValueLive(float minValue, float maxValue, float startValue, float increment, char prompt[]);
 int GetEncoderValue(int minValue, int maxValue, int startValue, int increment, char prompt[]);

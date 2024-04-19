@@ -10,6 +10,7 @@ extern long TxRxFreq;
 //-------------------------------------------------------------------------------------------------------------
 
 void SetFreqCal(void);
+void SetCenterTune(long tuneChange);
 void ResetTuning();
 void SetFreq();
 void DoSplitVFO();

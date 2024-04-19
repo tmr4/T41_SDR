@@ -16,7 +16,7 @@
 // *** a new devise so we don't really save that much.  Doing this manually
 // is a possibility if we need to save memory when not using a keyboard.
 USBHost usbHost;
-USBHIDParser hidParser(usbHost);
+USBHIDParser hkbParser(usbHost); // each device needs a parser
 KeyboardController kbController(usbHost);
 
 uint8_t kbIndexIn, kbIndexOut;
@@ -44,7 +44,7 @@ void OnRelease(int unicode) {
    putc(unicode & 0xff);
 }
 
-FLASHMEM void usbSetup() {
+FLASHMEM void UsbSetup() {
   usbHost.begin();
   kbController.attachRelease(OnRelease);
 
@@ -53,7 +53,7 @@ FLASHMEM void usbSetup() {
   delay(1000);
 }
 
-void usbLoop() {
+void UsbLoop() {
   usbHost.Task();
 }
 

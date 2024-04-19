@@ -45,7 +45,15 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * Wav test files now playable with the User 2 button
   * Made wav file support more generic
 
+* feature/mouse - added mouse support
 
+  * Currently the mouse can be used to adjust the VFO A frequency with the mouse wheel or to zero out the digits to the right of the cursor on a right click.
+  * The mouse cursor is on the display layer 2 and currently will overwrite things on that layer.  In my version of the software these are the main items on layer 2:
+    * Spectrum dB scale label
+    * Bandwidth values
+    * Bandwidth bar
+    * CW filter
+    * Waterfall.  The waterfall is actually on both layers so the cursor can pass over the waterfall without leaving a trace.  However, if the cursor hovers over the waterfall it will be overwritten as the waterfall scrolls.
 
 * feature/keyboard - adds optional keyboard support to the T41. It uses about 7k RAM.  Keyboard connects to the Teensy USB Host connection.
 
