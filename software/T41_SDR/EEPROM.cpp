@@ -34,7 +34,7 @@ config_t EEPROMData {
   0,                            // int xmtMode
   0,                            // int nrOptionSelect
   1,                            // int currentScale
-  1,                            // long spectrum_zoom = SPECTRUM_ZOOM_2
+  1,                            // long spectrumZoom = SPECTRUM_ZOOM_2
   20.0,                         // float spectrum_display_scale
 
   5,                            // int CWFilterIndex
@@ -233,8 +233,8 @@ FLASHMEM void EEPROMShow() {
   Serial.println(EEPROMData.nrOptionSelect);
   Serial.print("currentScale                    = ");
   Serial.println(EEPROMData.currentScale);
-  Serial.print("spectrum_zoom                   = ");
-  Serial.println(EEPROMData.spectrum_zoom);
+  Serial.print("spectrumZoom                   = ");
+  Serial.println(EEPROMData.spectrumZoom);
   Serial.print("spect_display_scale             = ");
   Serial.println(EEPROMData.spectrum_display_scale);
   Serial.println("----- CW Parameters: -----");
@@ -662,7 +662,7 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.xmtMode = 0;
   EEPROMData.nrOptionSelect = 0;  // 1 byte
   EEPROMData.currentScale = 1;
-  EEPROMData.spectrum_zoom = 1;
+  EEPROMData.spectrumZoom = 1;
   EEPROMData.spectrum_display_scale = 20.0;  // 4 bytes
 
   EEPROMData.CWFilterIndex = 5;  // Off
@@ -938,7 +938,7 @@ FLASHMEM int CopySDToEEPROM() {
         EEPROMData.currentScale = (uint16_t)atoi(temp);
         break;
       case 11:
-        EEPROMData.spectrum_zoom = (int32_t)atol(temp);
+        EEPROMData.spectrumZoom = (int32_t)atol(temp);
         break;
       case 12:
         EEPROMData.spectrum_display_scale = atof(temp);
@@ -1545,8 +1545,8 @@ FLASHMEM int CopyEEPROMToSD() {
   itoa(currentScale, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
-  strcpy(buffer, "EEPROMData.spectrum_zoom = ");  // long data type  KF5N
-  ltoa(spectrum_zoom, temp, DEC);
+  strcpy(buffer, "EEPROMData.spectrumZoom = ");  // long data type  KF5N
+  ltoa(spectrumZoom, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
   strcpy(buffer, "EEPROMData.spectrum_display_scale = ");  // float data type

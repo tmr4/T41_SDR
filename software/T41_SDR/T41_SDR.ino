@@ -600,18 +600,18 @@ FLASHMEM void InitializeDataArrays() {
   /****************************************************************************************
      Zoom FFT: Initiate decimation and interpolation FIR filters AND IIR filters
   ****************************************************************************************/
-  float32_t Fstop_Zoom = 0.5 * (float32_t)SampleRate / (1 << spectrum_zoom);
+  float32_t Fstop_Zoom = 0.5 * (float32_t)SampleRate / (1 << spectrumZoom);
 
   CalcFIRCoeffs(Fir_Zoom_FFT_Decimate_coeffs, 4, Fstop_Zoom, 60, 0, 0.0, (float32_t)SampleRate);
 
   // Attention: max decimation rate is 128 !
-  //  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_I, 4, 1 << spectrum_zoom, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_I_state, BUFFER_SIZE * N_BLOCKS)) {
+  //  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_I, 4, 1 << spectrumZoom, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_I_state, BUFFER_SIZE * N_BLOCKS)) {
   if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_I, 4, 128, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_I_state, BUFFER_SIZE * N_BLOCKS)) {
     while (1)
       ;
   }
   // same coefficients, but specific state variables
-  //  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_Q, 4, 1 << spectrum_zoom, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_Q_state, BUFFER_SIZE * N_BLOCKS)) {
+  //  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_Q, 4, 1 << spectrumZoom, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_Q_state, BUFFER_SIZE * N_BLOCKS)) {
   if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_Q, 4, 128, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_Q_state, BUFFER_SIZE * N_BLOCKS)) {
     while (1)
       ;
@@ -629,8 +629,8 @@ FLASHMEM void InitializeDataArrays() {
   // this sets the coefficients for the ZoomFFT decimation filter
   // according to the desired magnification mode
   // for 0 the mag_coeffs will a NULL  ptr, since the filter is not going to be used in this  mode!
-  IIR_biquad_Zoom_FFT_I.pCoeffs = mag_coeffs[spectrum_zoom];
-  IIR_biquad_Zoom_FFT_Q.pCoeffs = mag_coeffs[spectrum_zoom];
+  IIR_biquad_Zoom_FFT_I.pCoeffs = mag_coeffs[spectrumZoom];
+  IIR_biquad_Zoom_FFT_Q.pCoeffs = mag_coeffs[spectrumZoom];
 
   ZoomFFTPrep();
 
@@ -909,9 +909,11 @@ FLASHMEM void setup() {
 
 #ifdef KEYBOARD_SUPPORT
   UsbSetup();
-  //SetMouseArea(SPEC_BOX_L, SPECTRUM_BOTTOM + 10, SPEC_BOX_W, 20);
-  //SetMouseArea(SPEC_BOX_L, SPECTRUM_BOTTOM, SPEC_BOX_W, 20);
+
+  // draw a white rectangle to layer 1 to mask the cursor copy area
+  tft.fillRect(XPIXELS - 20, TIME_Y, 16, 32, RA8875_WHITE);
   SetMouseArea(0, 0, XPIXELS, YPIXELS);
+  HighlightIBItem(IB_ITEM_FINE, RA8875_GREEN);
 #endif
 
   //memCheck = true;

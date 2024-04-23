@@ -45,15 +45,38 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * Wav test files now playable with the User 2 button
   * Made wav file support more generic
 
-* feature/mouse - added mouse support
+* feature/mouse - added mouse support.   Currently the mouse can be used as follows:
 
-  * Currently the mouse can be used to adjust the VFO A frequency with the mouse wheel or to zero out the digits to the right of the cursor on a right click.
-  * The mouse cursor is on the display layer 2 and currently will overwrite things on that layer.  In my version of the software these are the main items on layer 2:
-    * Spectrum dB scale label
-    * Bandwidth values
-    * Bandwidth bar
-    * CW filter
-    * Waterfall.  The waterfall is actually on both layers so the cursor can pass over the waterfall without leaving a trace.  However, if the cursor hovers over the waterfall it will be overwritten as the waterfall scrolls.
+  * Within the frequency area:
+    * Adjust the frequency in deciles with the mouse wheel
+    * Zero out the lower portion of the frequency with a right click
+    * Switch VFO with a left click on non-active VFO
+
+  * Within the the operating stats area:
+    * Center the frequency with a left click on the center frequency
+    * Change the band up or down with a left or right click on the band indicator
+    * Toggle through mode and demodulation with a left click on the respective item
+
+  * Within the the audio spectrum box:
+    * Adjust the audio filter width with the mouse wheel
+    * Toggle active filter end with a left click
+
+  * Within the the spectrum/waterfall:
+    * Set the frequency with a left mouse click
+    * Adjust the frequency up or down by the active increment with the mouse wheel
+
+  * Within the the info box:
+    * Change the volume up or down with the mouse wheel
+    * Rotate up or down through frequency increments with the mouse wheel
+    * Select the active frequency increment with a left click (label of active increment is highlighted in green)
+    * Adjust the zoom level with left or right click or mouse wheel
+    * Toggle the noise floor setting with a left click on the NF Set item
+    * Adjust the noise floor with the mouse wheel when NF Set is on
+
+  * Within the the Data mode message area:
+    * Select active message with a left click
+    * Cycle through messages with mouse wheel
+
 
 * feature/keyboard - adds optional keyboard support to the T41. It uses about 7k RAM.  Keyboard connects to the Teensy USB Host connection.
 

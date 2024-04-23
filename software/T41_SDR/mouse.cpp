@@ -1,17 +1,29 @@
 // library: https://github.com/PaulStoffregen/USBHost_t36
 //
 
-#include "MyConfigurationFile.h"
+//#include "MyConfigurationFile.h"
+#include "SDT.h"
 
 #ifdef KEYBOARD_SUPPORT
 
-#include <USBHost_t36.h>
-#include <RA8875.h>                    // https://github.com/mjs513/RA8875/tree/RA8875_t4
-
+#include "ButtonProc.h"
+#include "Display.h"
+#include "Encoders.h"
+#include "ft8.h"
+#include "gwv.h"
+#include "InfoBox.h"
+#include "MenuProc.h"
+#include "mouse.h"
 #include "Tune.h"
 
+#ifdef BUFFER_SIZE // BUFFER_SIZE conflicts in USBHost_t36.h
+#undef BUFFER_SIZE
+#endif
+
+#include <USBHost_t36.h>
+
+
 extern USBHost usbHost;
-extern RA8875 tft;
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -20,37 +32,43 @@ extern RA8875 tft;
 #define MOUSE_BUTTON_DOWN_LEFT  1
 #define MOUSE_BUTTON_DOWN_RIGHT 2
 
-// active VFO y axis frequency position
-#define FREQ_T  30
-#define FREQ_B  60
+#define FREQ_W  32
+#define FREQ_H  48
+#define CURSOR_W  16
+#define CURSOR_H  32
 
-// active VFO x axis frequency digit centerline position
+// active VFO y axis frequency position translated for center of cursor
+#define FREQ_T  FREQUENCY_Y - (CURSOR_H / 2)
+#define FREQ_B  FREQ_T + FREQ_H
+
+// active VFO x axis frequency digit left position translated for center of cursor
 // 40m band and below
-#define FREQ_40_6  10
-#define FREQ_40_5  80
-#define FREQ_40_4  110
-#define FREQ_40_3  140
-#define FREQ_40_2  200
-#define FREQ_40_1  235
-#define FREQ_40_0  270
+#define FREQ_40_6  FREQUENCY_X
+#define FREQ_40_5  FREQ_40_6 + FREQ_W * 2  - (CURSOR_W / 2)
+#define FREQ_40_4  FREQ_40_5 + FREQ_W
+#define FREQ_40_3  FREQ_40_4 + FREQ_W
+#define FREQ_40_2  FREQ_40_3 + FREQ_W * 2
+#define FREQ_40_1  FREQ_40_2 + FREQ_W
+#define FREQ_40_0  FREQ_40_1 + FREQ_W
 
 // 20m and above
-#define FREQ_20_7  10
-#define FREQ_20_6  45
-#define FREQ_20_5  110
-#define FREQ_20_4  140
-#define FREQ_20_3  170
-#define FREQ_20_2  240
-#define FREQ_20_1  270
-#define FREQ_20_0  300
+#define FREQ_20_7  FREQUENCY_X
+#define FREQ_20_6  FREQ_20_7 + FREQ_W - (CURSOR_W / 2)
+#define FREQ_20_5  FREQ_20_6 + FREQ_W * 2
+#define FREQ_20_4  FREQ_20_5 + FREQ_W
+#define FREQ_20_3  FREQ_20_4 + FREQ_W
+#define FREQ_20_2  FREQ_20_3 + FREQ_W * 2
+#define FREQ_20_1  FREQ_20_2 + FREQ_W
+#define FREQ_20_0  FREQ_20_1 + FREQ_W
 
 USBHIDParser mouseParser(usbHost); // each device needs a parser
 MouseController mouseController(usbHost);
 
 int cursorL, cursorT, cursorR, cursorB;
 int cursorX, cursorY, oldCursorX, oldCursorY;
-int low = 15;
-int high = 5;
+
+bool mouseCenterTuneActive = false;
+
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
@@ -65,33 +83,36 @@ void MoveCursor(int x, int y) {
   cursorX += x * 4;
   cursorY += y * 2;
 
-  if(cursorX > cursorR) cursorX = cursorR;
+  if(cursorX > cursorR - CURSOR_W) cursorX = cursorR - CURSOR_W;
   if(cursorX < cursorL) cursorX = cursorL;
-  if(cursorY > cursorB) cursorY = cursorB;
+  if(cursorY > cursorB - CURSOR_H) cursorY = cursorB - CURSOR_H;
   if(cursorY < cursorT) cursorY = cursorT;
 
-  //Serial.print("cursorX = "); Serial.print(cursorX); Serial.print(" cursorY = "); Serial.println(cursorY);
-  tft.setFontScale((enum RA8875tsize)1);
+  // skip screen update if the cursor is within the blackout region
+  if(!((cursorY > TIME_Y - CURSOR_H) && (cursorY < TIME_Y + CURSOR_H) && (cursorX > XPIXELS - 20 - CURSOR_W) && (cursorX < XPIXELS - 20 + CURSOR_W))) {
+    //Serial.print("cursorX = "); Serial.print(cursorX); Serial.print(" cursorY = "); Serial.println(cursorY);
+    tft.setFontScale((enum RA8875tsize)1);
 
-  tft.writeTo(L2); // switch to layer 2
+    tft.writeTo(L2); // switch to layer 2
 
-  // erase old cursor
-  tft.setTextColor(RA8875_BLACK);
-  tft.setCursor(oldCursorX, oldCursorY);
-  //tft.print("o");
-  tft.print((char)7);
+    // replace what was previously under the cursor
+    //BTE_move(SourceX, SourceY, Width, Height, DestX, DestY, SourceLayer, DestLayer,bool Transparent, uint8_t ROP, bool Monochrome, bool ReverseDir)
+    tft.BTE_move(XPIXELS - 20, TIME_Y, 16, 32, oldCursorX, oldCursorY, 2, 2);
 
-  // draw new cursor
-  //tft.setTextColor(RA8875_YELLOW);
-  tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(cursorX, cursorY);
-  //tft.print("o");
-  tft.print((char)7);
+    // copy the background under the cursor for replacement next time
+    tft.BTE_move(cursorX, cursorY, 16, 32, XPIXELS - 20, TIME_Y, 2, 2);
 
-  tft.writeTo(L1); // switch to layer 1
+    // draw new cursor
+    //tft.setTextColor(RA8875_YELLOW);
+    tft.setTextColor(RA8875_WHITE);
+    tft.setCursor(cursorX, cursorY);
+    tft.print((char)7);
 
-  oldCursorX = cursorX;
-  oldCursorY = cursorY;
+    tft.writeTo(L1); // switch to layer 1
+
+    oldCursorX = cursorX;
+    oldCursorY = cursorY;
+  }
 }
 
 void SetMouseArea(int left, int top, int width, int height) {
@@ -106,10 +127,221 @@ void SetMouseArea(int left, int top, int width, int height) {
   oldCursorY = top;
 }
 
+bool CursorInFreqArea() {
+  return (cursorY > FREQ_T && cursorY < FREQ_B) && (cursorX > 0 && cursorX < TIME_X - 20);
+}
+
+bool CursorInOpStatsArea() {
+  return (cursorY > OPERATION_STATS_T - CURSOR_H / 2) && (cursorY < OPERATION_STATS_T - CURSOR_H / 2 + OPERATION_STATS_H) && (cursorX >= 0 && cursorX <= OPERATION_STATS_W);
+}
+
+bool CursorInAudioSpectrum() {
+  return (cursorY > AUDIO_SPEC_BOX_T - CURSOR_H / 2) && (cursorY < AUDIO_SPEC_BOTTOM - CURSOR_H / 2) && cursorX > AUDIO_SPEC_BOX_L;
+}
+
+bool CursorInSpectrumWaterfall() {
+  return (cursorY > SPEC_BOX_T) && (cursorX < SPEC_BOX_W);
+}
+
+bool CursorInInfoBox() {
+  return (cursorY > INFO_BOX_T) && (cursorY < INFO_BOX_T + INFO_BOX_H) && (cursorX > INFO_BOX_L && cursorX < INFO_BOX_L + INFO_BOX_W);
+}
+
+void MouseButtonFreqArea(int button) {
+  int inc = 0;
+  int vfoOffset = activeVFO == VFO_A ? 0 : VFO_B_ACTIVE_OFFSET;
+  int x = cursorX - vfoOffset; // adjust cursor position for active VFO
+
+  switch(button) {
+    case 1:
+      // we're switching to the other VFO if we click within its field
+      if((activeVFO == VFO_B && cursorX < VFO_B_ACTIVE_OFFSET - 50) || (activeVFO == VFO_A && cursorX > VFO_B_INACTIVE_OFFSET)) {
+        VFOSelect(activeVFO == VFO_A ? VFO_B : VFO_A);
+      }
+      break;
+
+    case 2:
+      // we're zeroing a portion of the frequency if we're within the active VFO
+      //Serial.print(cursorX); Serial.print(","); Serial.println(cursorY);
+
+      if(TxRxFreq < 10000000) {
+        if(x > FREQ_40_3 && x < FREQ_40_3 + FREQ_W) {
+          inc = TxRxFreq % 10000;
+        } else if(x > FREQ_40_4 && x < FREQ_40_4 + FREQ_W) {
+          inc = TxRxFreq % 100000;
+        } else if(x > FREQ_40_5 && x < FREQ_40_5 + FREQ_W) {
+          inc = TxRxFreq % 1000000;
+        } else if(x > FREQ_40_2 && x < FREQ_40_2 + FREQ_W) {
+          inc = TxRxFreq % 1000;
+        } else if(x > FREQ_40_1 && x < FREQ_40_1 + FREQ_W) {
+          inc = TxRxFreq % 100;
+        } else if(x > FREQ_40_6 && x < FREQ_40_6 + FREQ_W) {
+          inc = TxRxFreq % 10000000;
+        } else if(x > FREQ_40_0 && x < FREQ_40_0 + FREQ_W) {
+          inc = TxRxFreq % 10;
+        }
+      } else {
+        if(x > FREQ_20_3 && x < FREQ_20_3 + FREQ_W) {
+          inc = TxRxFreq % 10000;
+        } else if(x > FREQ_20_4 && x < FREQ_20_4 + FREQ_W) {
+          inc = TxRxFreq % 100000;
+        } else if(x > FREQ_20_5 && x < FREQ_20_5 + FREQ_W) {
+          inc = TxRxFreq % 1000000;
+        } else if(x > FREQ_20_2 && x < FREQ_20_2 + FREQ_W) {
+          inc = TxRxFreq % 1000;
+        } else if(x > FREQ_20_1 && x < FREQ_20_1 + FREQ_W) {
+          inc = TxRxFreq % 100;
+        } else if(x > FREQ_20_6 && x < FREQ_20_6 + FREQ_W) {
+          inc = TxRxFreq % 10000000;
+        } else if(x > FREQ_20_0 && x < FREQ_20_0 + FREQ_W) {
+          inc = TxRxFreq % 10;
+        } else if(x > FREQ_20_7 && x < FREQ_20_7 + FREQ_W) {
+          inc = TxRxFreq % 100000000;
+        }
+      }
+      if(inc < SampleRate / (1 << spectrumZoom)) {
+        SetNCOFreq(NCOFreq - inc);
+      } else {
+        SetCenterTune(-inc);
+      }
+      break;
+
+      default:
+        break;
+  }
+}
+
+void MouseWheelFreqArea(int wheel) {
+  int inc = 0;
+  int vfoOffset = activeVFO == VFO_A ? 0 : VFO_B_ACTIVE_OFFSET;
+  int x = cursorX - vfoOffset; // adjust cursor position for active VFO
+
+  //Serial.println(wheel);
+
+  if(TxRxFreq < 10000000) {
+    if(x > FREQ_40_3 && x < FREQ_40_3 + FREQ_W) {
+      inc = 1000;
+    } else if(x > FREQ_40_4 && x < FREQ_40_4 + FREQ_W) {
+      inc = 10000;
+    } else if(x > FREQ_40_5 && x < FREQ_40_5 + FREQ_W) {
+      inc = 100000;
+    } else if(x > FREQ_40_2 && x < FREQ_40_2 + FREQ_W) {
+      inc = 100;
+    } else if(x > FREQ_40_1 && x < FREQ_40_1 + FREQ_W) {
+      inc = 10;
+    } else if(x > FREQ_40_6 && x < FREQ_40_6 + FREQ_W) {
+      inc = 1000000;
+    } else if(x > FREQ_40_0 && x < FREQ_40_0 + FREQ_W) {
+      inc = 1;
+    }
+  } else {
+    if(x > FREQ_20_3 && x < FREQ_20_3 + FREQ_W) {
+      inc = 1000;
+    } else if(x > FREQ_20_4 && x < FREQ_20_4 + FREQ_W) {
+      inc = 10000;
+    } else if(x > FREQ_20_5 && x < FREQ_20_5 + FREQ_W) {
+      inc = 100000;
+    } else if(x > FREQ_20_2 && x < FREQ_20_2 + FREQ_W) {
+      inc = 100;
+    } else if(x > FREQ_20_1 && x < FREQ_20_1 + FREQ_W) {
+      inc = 10;
+    } else if(x > FREQ_20_6 && x < FREQ_20_6 + FREQ_W) {
+      inc = 1000000;
+    } else if(x > FREQ_20_0 && x < FREQ_20_0 + FREQ_W) {
+      inc = 1;
+    } else if(x > FREQ_20_7 && x < FREQ_20_7 + FREQ_W) {
+      inc = 10000000;
+    }
+  }
+  //inc *= wheel;
+  //Serial.println(inc);
+
+  if(inc < SampleRate / (1 << spectrumZoom)) {
+    SetNCOFreq(NCOFreq + inc * wheel);
+  } else {
+    SetCenterTune(inc * wheel);
+  }
+}
+
+void MouseButtonOpStatsArea(int button) {
+  if(button == 1 && cursorX < OPERATION_STATS_BD - 20) {
+    ResetTuning();
+  } else if(cursorX > OPERATION_STATS_BD - 5 && cursorX < OPERATION_STATS_MD - 20) {
+    if(button == 1) {
+      BandChange(1);
+    } else {
+      BandChange(-1);
+    }
+  } else if(button == 1 && cursorX > OPERATION_STATS_MD - 5 && cursorX < OPERATION_STATS_CWF) {
+    ButtonMode();
+  } else if(button == 1 && cursorX > OPERATION_STATS_DMD - 5 && cursorX < OPERATION_STATS_DMD + 35) {
+    ButtonDemodMode();
+  }
+}
+
+void MouseButtonSpectrumWaterfall(int button) {
+  if(button == 1) {
+    if(bands[currentBand].mode == DEMOD_FT8 && (cursorY > YPIXELS - 25 * 5 - CURSOR_H / 2 - 8)) {
+      ft8MsgSelectActive = true;
+      //int msg = wfRows - (YPIXELS - cursorY - CURSOR_H / 2) / 5;
+      int y = YPIXELS - cursorY - CURSOR_H / 2;
+      //int msg = map(YPIXELS - cursorY - CURSOR_H / 2, YPIXELS - 25 * 5, 16, 0, 4);
+      int msg = map(y, 25 * 5, 16, 0, 4);
+      if(cursorX > 256) msg += 5;
+
+      if(num_decoded_msg > 1 && msg < num_decoded_msg) {
+        activeMsg = msg;
+      }
+    } else {
+      // there was a left click is in the spectrum or waterfall area, set the NCO frequency
+
+      // replace what was previously under the cursor
+      tft.BTE_move(XPIXELS - 20, TIME_Y, 16, 32, oldCursorX, oldCursorY, 2, 2);
+
+      SetNCOFreq((cursorX + CURSOR_W / 2 - centerLine) * SampleRate / (1 << spectrumZoom) / SPECTRUM_RES);
+
+      DrawBandwidthBar();
+
+      // background under the cursor may have changed, copy it for replacement next time
+      tft.BTE_move(cursorX, cursorY, 16, 32, XPIXELS - 20, TIME_Y, 2, 2);
+    }
+  }
+}
+
+void MouseWheelSpectrumWaterfall(int wheel) {
+  if(bands[currentBand].mode == DEMOD_FT8 && (cursorY > YPIXELS - 25 * 5 - CURSOR_H / 2 - 8)) {
+    if(num_decoded_msg > 0) {
+      activeMsg += wheel;
+      if(activeMsg >= num_decoded_msg) {
+        activeMsg = 0;
+      } else {
+        if(activeMsg < 0) {
+          activeMsg = num_decoded_msg - 1;
+        }
+      }
+    }
+    return;
+  }
+  if(mouseCenterTuneActive) {
+    SetCenterTune((long)freqIncrement * wheel);
+  } else {
+    SetFineTune((long)ftIncrement * wheel);
+  }
+
+  // redraw cursor
+  //tft.setFontScale((enum RA8875tsize)1);
+  //tft.writeTo(L2); // switch to layer 2
+  //tft.setTextColor(RA8875_WHITE);
+  //tft.setCursor(cursorX, cursorY);
+  //tft.print((char)7);
+  //tft.writeTo(L1); // switch to layer 1
+  //MoveCursor(0, 0);
+}
+
 void MouseLoop() {
   int x, y, button, wheel;
 
-  if (mouseController.available()) {
+  if(mouseController.available()) {
     x = mouseController.getMouseX();
     y = mouseController.getMouseY();
     button = mouseController.getButtons();
@@ -118,84 +350,57 @@ void MouseLoop() {
     if(x || y)
       MoveCursor(x, y);
 
-    if(button == 2) {
-      //Serial.print(cursorX); Serial.print(","); Serial.println(cursorY);
-      if(cursorY > FREQ_T && cursorY < FREQ_B) {
-        x = cursorX;
-        if(cursorX > 0 && cursorX < 310) {
-          int inc = 0;
-
-          if(TxRxFreq < 10000000) {
-            if(x > FREQ_40_3 - low && x < FREQ_40_3 + high) {
-              inc = TxRxFreq % 10000;
-            } else if(x > FREQ_40_4 - low && x < FREQ_40_4 + high) {
-              inc = TxRxFreq % 100000;
-            } else if(x > FREQ_40_5 - low && x < FREQ_40_5 + high) {
-              inc = TxRxFreq % 1000000;
-            } else if(x > FREQ_40_2 - low && x < FREQ_40_2 + high) {
-              inc = TxRxFreq % 1000;
-            } else if(x > FREQ_40_1 - low && x < FREQ_40_1 + high) {
-              inc = TxRxFreq % 100;
-            } else if(x > FREQ_40_6 - low && x < FREQ_40_6 + high) {
-              inc = TxRxFreq % 10000000;
-            } else if(x > FREQ_40_0 - low && x < FREQ_40_0 + high) {
-              inc = TxRxFreq % 10;
-            } else if(x > FREQ_40_7 - low && x < FREQ_40_7 + high) {
-              inc = TxRxFreq % 100000000;
-            }
-          } else {
-            if(x > FREQ_20_3 - low && x < FREQ_20_3 + high) {
-              inc = TxRxFreq % 10000;
-            } else if(x > FREQ_20_4 - low && x < FREQ_20_4 + high) {
-              inc = TxRxFreq % 100000;
-            } else if(x > FREQ_20_5 - low && x < FREQ_20_5 + high) {
-              inc = TxRxFreq % 1000000;
-            } else if(x > FREQ_20_2 - low && x < FREQ_20_2 + high) {
-              inc = TxRxFreq % 1000;
-            } else if(x > FREQ_20_1 - low && x < FREQ_20_1 + high) {
-              inc = TxRxFreq % 100;
-            } else if(x > FREQ_20_6 - low && x < FREQ_20_6 + high) {
-              inc = TxRxFreq % 10000000;
-            } else if(x > FREQ_20_0 - low && x < FREQ_20_0 + high) {
-              inc = TxRxFreq % 10;
-            } else if(x > FREQ_20_7 - low && x < FREQ_20_7 + high) {
-              inc = TxRxFreq % 100000000;
-            }
-          }
-          SetCenterTune(-inc);
-        }
+    // *** TODO: these can be refined ***
+    if(button) {
+      // check if the cursor is in any areas with an button action
+      if(CursorInFreqArea()) {
+        // the cursor is in the frequency field
+        MouseButtonFreqArea(button);
+      } else if(CursorInOpStatsArea()) {
+        // the cursor is in the operating stats area
+        MouseButtonOpStatsArea(button);
+      } else if(CursorInAudioSpectrum()) {
+        ButtonFilter();
+      } else if(CursorInSpectrumWaterfall()) {
+        MouseButtonSpectrumWaterfall(button);
+      } else if(CursorInInfoBox()) {
+        MouseButtonInfoBox(button, cursorX + CURSOR_W / 2, cursorY + CURSOR_H / 2);
       }
     }
 
     if(wheel) {
       //Serial.print(",  wheel = "); Serial.println(wheel);
-      if(cursorY > FREQ_T && cursorY < FREQ_B) {
-        x = cursorX;
-        if(cursorX > 0 && cursorX < 310) {
-          int inc = 0;
-
-          if(TxRxFreq < 10000000) {
-
-          } else {
-            if(x > FREQ_20_3 - low && x < FREQ_20_3 + high) {
-              inc = 1000;
-            } else if(x > FREQ_20_4 - low && x < FREQ_20_4 + high) {
-              inc = 10000;
-            } else if(x > FREQ_20_5 - low && x < FREQ_20_5 + high) {
-              inc = 100000;
-            } else if(x > FREQ_20_2 - low && x < FREQ_20_2 + high) {
-              inc = 100;
-            } else if(x > FREQ_20_1 - low && x < FREQ_20_1 + high) {
-              inc = 10;
-            } else if(x > FREQ_20_6 - low && x < FREQ_20_6 + high) {
-              inc = 1000000;
-            } else if(x > FREQ_20_0 - low && x < FREQ_20_0 + high) {
-              inc = 1;
-            } else if(x > FREQ_20_7 - low && x < FREQ_20_7 + high) {
-              inc = 10000000;
+      if(CursorInFreqArea()) {
+        MouseWheelFreqArea(wheel);
+      } else if(CursorInSpectrumWaterfall()) {
+        MouseWheelSpectrumWaterfall(wheel);
+      } else if(CursorInAudioSpectrum()) {
+        // *** TODO: consider refactoring with similar code in EncoderMenuChangeFilter()
+        if (ft8MsgSelectActive) {
+          if(num_decoded_msg > 0) {
+            activeMsg += wheel;
+            if(activeMsg >= num_decoded_msg) {
+              activeMsg = 0;
+            } else {
+              if(activeMsg < 0) {
+                activeMsg = num_decoded_msg - 1;
+              }
             }
           }
-          SetCenterTune(wheel * inc);
+        } else {
+          if (bands[currentBand].mode == DEMOD_NFM && nfmBWFilterActive) {
+            // we're adjusting NFM demod bandwidth
+            filter_pos_BW = last_filter_pos_BW - 5 * wheel;
+          } else {
+            // we're adjusting audio spectrum filter
+            posFilterEncoder = lastFilterEncoder - 5 * wheel;
+          }
+        }
+      } else if(CursorInInfoBox()) {
+        if(liveNoiseFloorFlag) {
+          currentNoiseFloor[currentBand] += wheel;
+        } else {
+          MouseWheelInfoBox(wheel, cursorX + CURSOR_W / 2, cursorY + CURSOR_H / 2);
         }
       }
     }

@@ -3,6 +3,9 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
+#define MAX_AUDIO_VOLUME        100
+#define MIN_AUDIO_VOLUME         16 // adjust to where the band noise disappears
+
 #define ENCODER_DELAY             100L        // Menu options scroll too fast!
 #define ENCODER_FACTOR            0.25F       // use 0.25f with cheap encoders that have 4 detents per step, 
                                               // for other encoders or libs we use 1.0f

@@ -20,6 +20,7 @@ void EqualizerXmtOptions();
 void MicGainSet();
 void MicOptions();
 void RFOptions();
+void VFOSelect(int32_t index);
 void VFOSelect();
 void EEPROMOptions();
 int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart);

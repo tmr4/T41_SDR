@@ -20,8 +20,6 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-#define MAX_ZOOM_ENTRIES      5
-
 bool lowerAudioFilterActive = false; // false - upper, true - lower audio filter active
 int liveNoiseFloorFlag = OFF;
 
@@ -104,7 +102,7 @@ void ButtonMenuUp() {
 }
 
 /*****
-  Purpose: To process a band increase/decrease button push
+  Purpose: To process a band increase/decrease
 
   Parameter list:
     void
@@ -112,7 +110,25 @@ void ButtonMenuUp() {
   Return value:
     void
 *****/
-void ButtonBandChange() {
+void BandChange(int change) {
+  // Added if so unused GPOs will not be touched
+  if(currentBand < BAND_12M) {
+    digitalWrite(bandswitchPins[currentBand], LOW);  
+  }
+
+  if(xmtMode == DATA_MODE) {
+    // restore old demodulation mode before we change bands
+    bands[currentBand].mode = priorDemodMode;
+  }
+
+  currentBand += change;
+  if(currentBand == NUMBER_OF_BANDS) {  // Incremented too far?
+    currentBand = 0;                     // Yep. Roll to list front.
+  }
+  if(currentBand < 0) {                 // Incremented too far?
+    currentBand = NUMBER_OF_BANDS - 1;  // Yep. Roll to list front.
+  }
+
   NCOFreq = 0L;
 
   switch (activeVFO) {
@@ -175,25 +191,10 @@ void ButtonBandChange() {
   }
 
   SetBand();
-}
 
-/*****
-  Purpose: Change the horizontal scale of the frequency display
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-void ButtonZoom() {
-  spectrum_zoom++;
-
-  if (spectrum_zoom == MAX_ZOOM_ENTRIES) {
-    spectrum_zoom = 0;
+  if(currentBand < BAND_12M) {
+    digitalWrite(bandswitchPins[currentBand], HIGH);
   }
-
-  SetZoom();
 }
 
 /*****
@@ -258,7 +259,7 @@ void ButtonFilter() {
 
 /*****
   Purpose: Cycle to next demodulation mode
-
+          *** TODO: rework this if modes are expanded ***
   Parameter list:
     void
 
@@ -278,7 +279,6 @@ void ButtonDemodMode() {
           syncFlag = false; 
           ft8State = 1;
           UpdateInfoBoxItem(IB_ITEM_FT8);
-          return;
         }
         break;
 
@@ -288,15 +288,15 @@ void ButtonDemodMode() {
         bands[currentBand].mode = DEMOD_PSK31;
         currentDataMode = DEMOD_PSK31;
         ShowOperatingStats();
-        return;
         break;
 
       case DEMOD_PSK31_WAV:
       case DEMOD_FT8_WAV:
       default:
-        return;
         break;
     }
+
+    return;
   }
 
   bands[currentBand].mode++;
@@ -318,7 +318,7 @@ void ButtonDemodMode() {
 }
 
 /*****
-  Purpose: Toggle operating mode, SSB, CW or FT8 (if available)
+  Purpose: Toggle operating mode, SSB, CW or Data
 
   Parameter list:
     void

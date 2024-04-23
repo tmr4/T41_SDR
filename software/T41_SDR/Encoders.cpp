@@ -18,8 +18,6 @@
 //-------------------------------------------------------------------------------------------------------------
 
 #define MAX_WPM                  60
-#define MAX_AUDIO_VOLUME        100
-#define MIN_AUDIO_VOLUME         16 // adjust to where the band noise disappears
 
 #define MENU_F_LO_CUT            40
 
@@ -292,13 +290,13 @@ int GetEncoderValue(int minValue, int maxValue, int startValue, int increment, c
 }
 
 /*****
-  Purpose: Fine tune control.
+  Purpose: Fine tune control
 
   Parameter list:
     void
 
   Return value;
-    void               cannot return value from interrupt
+    void
 *****/
 FASTRUN void EncoderFineTune() {
   char result;
@@ -314,36 +312,10 @@ FASTRUN void EncoderFineTune() {
       fineTuneEncoderMove = -1L;
     }
   }
-  NCOFreq += ftIncrement * fineTuneEncoderMove;
-  fineTuneFlag = true;
-  if (activeVFO == VFO_A) {
-    currentFreqA = centerFreq + NCOFreq;
-  } else {
-    currentFreqB = centerFreq + NCOFreq;
-  }
-  // ===============  Recentering at band edges ==========
-  if (spectrum_zoom != 0) {
-    if((NCOFreq + bands[currentBand].FHiCut) >= (96000 / (1 << spectrum_zoom))) {
-      NCOFreq += bands[currentBand].FHiCut;
-      fineTuneFlag = false;
-      resetTuningFlag = true;
-      return;
-    }
-    if((NCOFreq + bands[currentBand].FLoCut) <= (-96000 / (1 << spectrum_zoom))) {
-      NCOFreq += bands[currentBand].FLoCut;
-      fineTuneFlag = false;
-      resetTuningFlag = true;
-      return;
-    }
-  } else {
-    if (NCOFreq > 142000 || NCOFreq < -43000) {  // Offset tuning window in zoom 1x
-      fineTuneFlag = false;
-      resetTuningFlag = true;
-      return;
-    }
-  }
+
+  SetFineTune(ftIncrement * fineTuneEncoderMove);
+
   fineTuneEncoderMove = 0L;
-  TxRxFreq = centerFreq + NCOFreq;
 }
 
 /*****

@@ -17,7 +17,7 @@ extern float32_t transmitPowerLevel;
 extern int xmtMode;
 extern int nrOptionSelect;
 extern int currentScale;
-extern long spectrum_zoom;
+extern long spectrumZoom;
 extern float spectrum_display_scale;
 
 extern int CWFilterIndex;

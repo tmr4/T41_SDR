@@ -181,7 +181,7 @@ void ProcessIQData() {
           Only go there from here, if magnification == 1
       ***********************************************************************************************/
 
-      if (spectrum_zoom == 0) { // && display_S_meter_or_spectrum_state == 1)
+      if (spectrumZoom == 0) { // && display_S_meter_or_spectrum_state == 1)
         CalcZoom1Magn();  // Moved to display function
       }
 
@@ -208,7 +208,7 @@ void ProcessIQData() {
           Spectrum Zoom uses the shifted spectrum, so the center "hump" around DC is shifted by fs/4
       **********************************************************************************/
       // Run display FFT routine only once for each Audio process FFT
-      if(spectrum_zoom != 0 && updateDisplayFlag == 1) {
+      if(spectrumZoom != 0 && updateDisplayFlag == 1) {
         ZoomFFTExe(BUFFER_SIZE * N_BLOCKS); // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
         // does not work for magnifications > 8
       }

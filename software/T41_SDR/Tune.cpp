@@ -1,6 +1,7 @@
 #include "SDT.h"
 #include "Button.h"
 #include "Display.h"
+#include "Encoders.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "Tune.h"
@@ -58,8 +59,28 @@ void SetFreqCal(void) {
 }
 
 /*****
-  Purpose:  Reset tuning to center
-            Update the radio frequencies and displays
+  Purpose: Set center tuning frequency
+           NCOFreq is unchanged
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void SetTxRxFreq(long freq) {
+  TxRxFreq = freq;
+
+  SetFreq();
+
+  ShowFrequency();          // update frequency display
+  ShowOperatingStats();     // update center frequency in band info
+  ShowSpectrumFreqValues(); // update spectrum frequency values
+}
+
+/*****
+  Purpose: Reset tuning to center
+           NCOFreq is set to zero
 
   Parameter list:
   void
@@ -68,23 +89,20 @@ void SetFreqCal(void) {
   void
 *****/
 void ResetTuning() {
-  TxRxFreq = centerFreq + NCOFreq;
+  centerFreq += NCOFreq;
   NCOFreq = 0L;
-  centerFreq = TxRxFreq;
 
-  SetFreq();                // set new frequency
+  SetTxRxFreq(centerFreq);
 
-  ShowFrequency();          // center frequency may have changed
-  ShowOperatingStats();
   DrawBandwidthBar();
-  ShowSpectrumFreqValues(); // update spectrum frequency values
 }
 
 /*****
-  Purpose: Set center tuning frequency
+  Purpose: Adjust center tuning frequency
+           NCOFreq is unchanged
 
   Parameter list:
-    void
+    long tuneChange - amound to change center freq
 
   Return value;
     void
@@ -92,13 +110,62 @@ void ResetTuning() {
 void SetCenterTune(long tuneChange) {
   centerFreq += tuneChange;  // tune the master vfo
 
+  SetTxRxFreq(centerFreq + NCOFreq);
+}
+
+/*****
+  Purpose: Set NCO frequency
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void SetNCOFreq(long newNCOFreq) {
+  NCOFreq = newNCOFreq;
+  fineTuneFlag = true;
+  if (activeVFO == VFO_A) {
+    currentFreqA = centerFreq + NCOFreq;
+  } else {
+    currentFreqB = centerFreq + NCOFreq;
+  }
+  // ===============  Recentering at band edges ==========
+  if (spectrumZoom != 0) {
+    if((NCOFreq + bands[currentBand].FHiCut) >= (96000 / (1 << spectrumZoom))) {
+      NCOFreq += bands[currentBand].FHiCut;
+      fineTuneFlag = false;
+      resetTuningFlag = true;
+      return;
+    }
+    if((NCOFreq + bands[currentBand].FLoCut) <= (-96000 / (1 << spectrumZoom))) {
+      NCOFreq += bands[currentBand].FLoCut;
+      fineTuneFlag = false;
+      resetTuningFlag = true;
+      return;
+    }
+  } else {
+    if (NCOFreq > 142000 || NCOFreq < -43000) {  // Offset tuning window in zoom 1x
+      fineTuneFlag = false;
+      resetTuningFlag = true;
+      return;
+    }
+  }
+
   TxRxFreq = centerFreq + NCOFreq;
+}
 
-  SetFreq();
+/*****
+  Purpose: Set fine tuning frequency
 
-  ShowFrequency();          // update frequency display
-  ShowOperatingStats();           // update center frequency in band info
-  ShowSpectrumFreqValues(); // update spectrum frequency values
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void SetFineTune(long tuneChange) {
+  SetNCOFreq(NCOFreq + tuneChange);
 }
 
 /*****
@@ -125,10 +192,10 @@ void SetFreq() {
   } else {
     if (radioState == CW_TRANSMIT_STRAIGHT_STATE || radioState == CW_TRANSMIT_KEYER_STATE) {
       if (bands[currentBand].mode == DEMOD_LSB) {
-        Clk1SetFreq = (((TxRxFreq + CWFreqShift + calFreqShift) * SI5351_FREQ_MULT)) * MASTER_CLK_MULT;  // AFP 09-27-22;  KF5N flip CWFreqShift, sign originally minus
+        Clk1SetFreq = (((TxRxFreq + CWFreqShift + calFreqShift) * SI5351_FREQ_MULT)) * MASTER_CLK_MULT;  // flip CWFreqShift, sign originally minus
       } else {
         if (bands[currentBand].mode == DEMOD_USB) {
-          Clk1SetFreq = (((TxRxFreq - CWFreqShift - calFreqShift) * SI5351_FREQ_MULT)) * MASTER_CLK_MULT;  // AFP 10-01-22; KF5N flip CWFreqShift, sign originally plus
+          Clk1SetFreq = (((TxRxFreq - CWFreqShift - calFreqShift) * SI5351_FREQ_MULT)) * MASTER_CLK_MULT;  //  flip CWFreqShift, sign originally plus
         }
       }
     }
@@ -207,13 +274,14 @@ void DoSplitVFO() {
   }
 
   currentFreqB = currentFreqA + splitOffset;
+  // *** note that the change in FREQUENCY_Y from 45 to 28 was not reflected here ***
   //FormatFrequency(currentFreqB, freqBuffer);
   //tft.fillRect(FREQUENCY_X_SPLIT, FREQUENCY_Y - 12, VFOB_PIXEL_LENGTH, FREQUENCY_PIXEL_HI, RA8875_BLACK);
   ////tft.setCursor(FREQUENCY_X_SPLIT, FREQUENCY_Y);
   ////tft.setFont(&FreeMonoBold24pt7b);
   //tft.setTextColor(RA8875_GREEN);
   //tft.setFontScale(3, 2);
-  //tft.setCursor(0, FREQUENCY_Y - 17);
+  //tft.setCursor(0, FREQUENCY_Y);
   //tft.print(freqBuffer);                                          // Show VFO_A
   //
   ////tft.setFont(&FreeMonoBold18pt7b);

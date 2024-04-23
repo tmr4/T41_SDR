@@ -1,13 +1,16 @@
 #include <malloc.h>
 
 #include "SDT.h"
+#include "Button.h"
 #include "ButtonProc.h"
 #include "CWProcessing.h"
 #include "Display.h"
 #include "EEPROM.h"
+#include "Encoders.h"
 #include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
+#include "mouse.h"
 #include "Process.h"
 #include "Utility.h"
 
@@ -22,6 +25,10 @@ void IBVolFollowup(int row, int col);
 void IBEQFollowup(int row, int col);
 void IBTempFollowup(int row, int col);
 void IBLoadFollowup(int row, int col);
+void IBFT8Followup(int row, int col);
+void IBStackFollowup(int row, int col);
+void IBHeapFollowup(int row, int col);
+
 void DrawInfoBoxFrame();
 
 //-------------------------------------------------------------------------------------------------------------
@@ -68,9 +75,6 @@ const char *onOff[2] = { "Off", "On" };
 const char *optionsWPM[2] = { "Straight Key", "Paddles " };
 const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
 
-void IBFT8Followup(int row, int col);
-void IBStackFollowup(int row, int col);
-void IBHeapFollowup(int row, int col);
 const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
 
 #define IB_NUM_ITEMS 12
@@ -82,7 +86,7 @@ PROGMEM const infoBoxItem infoBox[] =
   { "AGC",         agcOpts,     &AGCMode,                 1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
   { "Increment:",  tuneValues,  &tuneIndex,               0,        7,      0,   IB_COL_1_X,    IB_ROW_3_Y,    NULL                   }, // Tune Inc
   { "FT Inc:",     ftValues,    &ftIndex,                 0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    NULL                   }, // FT Inc
-  { "Zoom:",       zoomOptions, (int*)&spectrum_zoom,     0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
+  { "Zoom:",       zoomOptions, (int*)&spectrumZoom,     0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
   { "Decoder:",    onOff,       &decoderFlag,             0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Decoder
   { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_7_Y,    &IBTempFollowup        }, // Teensy Temp
@@ -102,7 +106,7 @@ PROGMEM const infoBoxItem infoBox[] =
   //{ "FT Inc:",    ftValues,    &ftIndex,                  0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    NULL                   }, // FT Inc
   //{ "AutoNotch:", onOff,       (int*)&ANR_notchOn,        0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Auto Notch
   //{ "Noise:",     filter,      &nrOptionSelect,           0,        8,      1,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Noise Filter
-  //{ "Zoom:",      zoomOptions, (int*)&spectrum_zoom,      0,        3,      0,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
+  //{ "Zoom:",      zoomOptions, (int*)&spectrumZoom,      0,        3,      0,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
   //{ "Compress:",  onOff,       &compressorFlag,           0,        6,      1,   IB_COL_1_X,    IB_ROW_6_Y,    &IBCompressionFollowup }, // Compress
   //{ "Keyer:",     optionsWPM,  &EEPROMData.keyType,       0,       12,      0,   IB_COL_1_X,    IB_ROW_8_Y,    &IBWPMFollowup         }, // Keyer
   //{ "Decoder:",   onOff,       &decoderFlag,              0,        3,      1,   IB_COL_1_X,    IB_ROW_9_Y,    NULL                   }, // Decoder
@@ -520,4 +524,177 @@ void IBHeapFollowup(int row, int col) {
   tft.setCursor(col, row);
   tft.print(heap);
   tft.print("k");
+}
+
+// mouse actions
+void MouseButtonInfoBox(int button, int x, int y) {
+  // *** TODO: this is weak ***
+  int item, itemX, itemY, itemSize, itemChars, itemW, itemH;
+
+  //Serial.println(x);
+  //Serial.println(y);
+  //Serial.println(itemX);
+  //Serial.println(itemY);
+  //Serial.println(itemSize);
+  //Serial.println(itemChars);
+  //Serial.println(itemW);
+  //Serial.println(itemH);
+  
+
+  // *** TODO: rework this after we add full capability
+  for(int i = 0; i < 4; i++) {
+    switch(i) {
+      case 0:
+        item = IB_ITEM_TUNE;
+        break;
+      case 1:
+        item = IB_ITEM_FINE;
+        break;
+      case 2:
+        item = IB_ITEM_ZOOM;
+        break;
+      case 3:
+        item = IB_ITEM_FLOOR;
+        break;
+    }
+
+    itemX = infoBox[item].col;
+    itemY = infoBox[item].row;
+    itemSize = infoBox[item].fontSize;
+    itemChars = infoBox[item].clearWidth;
+    itemW = (itemSize == 1 ? 16 : 8) * itemChars;
+    itemH = itemSize == 1 ? 32 : 16;
+
+    // allow action within a portion of label as well
+    if(x > itemX - 50 && x < itemX + itemW && y > itemY && y < itemY + itemH) {
+      switch(item) {
+        case IB_ITEM_TUNE:
+          if(button == 1) {
+            mouseCenterTuneActive = true;
+            HighlightIBItem(IB_ITEM_TUNE, RA8875_GREEN);
+            HighlightIBItem(IB_ITEM_FINE, RA8875_WHITE);
+          }
+          break;
+
+        case IB_ITEM_FINE:
+          if(button == 1) {
+            mouseCenterTuneActive = false;
+            HighlightIBItem(IB_ITEM_FINE, RA8875_GREEN);
+            HighlightIBItem(IB_ITEM_TUNE, RA8875_WHITE);
+          }
+          break;
+
+        case IB_ITEM_ZOOM:
+          if(button == 1) {
+            SetZoom(++spectrumZoom);
+          } else {
+            SetZoom(--spectrumZoom);
+          }
+          break;
+
+        case IB_ITEM_FLOOR:
+          ToggleLiveNoiseFloorFlag();
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+}
+
+void MouseWheelInfoBox(int wheel, int x, int y) {
+  // *** TODO: this is weak ***
+  int item, itemX, itemY, itemSize, itemChars, itemW, itemH;
+
+  //Serial.println(x);
+  //Serial.println(y);
+  //Serial.println(itemX);
+  //Serial.println(itemY);
+  //Serial.println(itemSize);
+  //Serial.println(itemChars);
+  //Serial.println(itemW);
+  //Serial.println(itemH);
+
+  for(int i = 0; i < 4; i++) {
+    switch(i) {
+      case 0:
+        item = IB_ITEM_VOL;
+        break;
+      case 1:
+        item = IB_ITEM_TUNE;
+        break;
+      case 2:
+        item = IB_ITEM_FINE;
+        break;
+      case 3:
+        item = IB_ITEM_ZOOM;
+        break;
+    }
+
+    itemX = infoBox[item].col;
+    itemY = infoBox[item].row;
+    itemSize = infoBox[item].fontSize;
+    itemChars = infoBox[item].clearWidth;
+    itemW = (itemSize == 1 ? 16 : 8) * itemChars;
+    itemH = itemSize == 1 ? 32 : 16;
+
+    // allow action within a portion of label as well
+    if(x > itemX - 50 && x < itemX + itemW && y > itemY && y < itemY + itemH) {
+      switch(item) {
+        case IB_ITEM_VOL:
+          audioVolume += wheel;
+
+          if (audioVolume > MAX_AUDIO_VOLUME) {
+            audioVolume = MAX_AUDIO_VOLUME;
+          } else {
+            if (audioVolume < MIN_AUDIO_VOLUME)
+              audioVolume = MIN_AUDIO_VOLUME;
+          }
+
+          volumeChangeFlag = true;  // Need this because of unknown timing in display updating.
+          break;
+
+          case IB_ITEM_TUNE:
+          ChangeFreqIncrement(wheel);
+          if(mouseCenterTuneActive) {
+            HighlightIBItem(IB_ITEM_TUNE, RA8875_GREEN);
+          }
+          break;
+
+        case IB_ITEM_FINE:
+          ChangeFTIncrement(wheel);
+          if(!mouseCenterTuneActive) {
+            HighlightIBItem(IB_ITEM_FINE, RA8875_GREEN);
+          }
+          break;
+
+      case IB_ITEM_ZOOM:
+          if(wheel == 1) {
+            SetZoom(++spectrumZoom);
+          } else {
+            SetZoom(--spectrumZoom);
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+}
+
+void HighlightIBItem(uint8_t item, int color) {
+  int label_x;
+  int xOffset = infoBox[item].col;
+  int yOffset = infoBox[item].row;
+
+  if(item >= IB_NUM_ITEMS) return;
+
+  tft.setFontScale((enum RA8875tsize)infoBox[item].fontSize);
+  //tft.fillRect(xOffset, yOffset, tft.getFontWidth() * infoBox[item].clearWidth, tft.getFontHeight(), RA8875_BLACK);
+  tft.setTextColor(color);
+  label_x = xOffset - 5 - strlen(infoBox[item].label) * tft.getFontWidth();
+  tft.setCursor(label_x, yOffset);
+  tft.print(infoBox[item].label);
 }

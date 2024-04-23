@@ -3,6 +3,8 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
+#define MAX_ZOOM_ENTRIES      5
+
 extern bool lowerAudioFilterActive;
 extern int liveNoiseFloorFlag;
 
@@ -18,8 +20,7 @@ extern int currentDataMode;
 
 void ButtonMenuDown();
 void ButtonMenuUp();
-void ButtonBandChange();
-void ButtonZoom();
+void BandChange(int change);
 void ButtonFilter();
 void ButtonDemodMode();
 void ButtonMode();

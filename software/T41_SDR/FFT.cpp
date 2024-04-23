@@ -31,17 +31,17 @@ float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
     void
 *****/
 void ZoomFFTPrep() {
-  // take value of spectrum_zoom and initialize IIR lowpass and FIR decimation filters for the right values
+  // take value of spectrumZoom and initialize IIR lowpass and FIR decimation filters for the right values
 
-  float32_t Fstop_Zoom = 0.5 * (float32_t) SampleRate / (1 << spectrum_zoom);
+  float32_t Fstop_Zoom = 0.5 * (float32_t) SampleRate / (1 << spectrumZoom);
   CalcFIRCoeffs(Fir_Zoom_FFT_Decimate_coeffs, 4, Fstop_Zoom, 60, 0, 0.0, (float32_t)SampleRate);
 
-  if (spectrum_zoom < 7)
+  if (spectrumZoom < 7)
   {
-    Fir_Zoom_FFT_Decimate_I.M = (1 << spectrum_zoom);
-    Fir_Zoom_FFT_Decimate_Q.M = (1 << spectrum_zoom);
-    IIR_biquad_Zoom_FFT_I.pCoeffs = mag_coeffs[spectrum_zoom];
-    IIR_biquad_Zoom_FFT_Q.pCoeffs = mag_coeffs[spectrum_zoom];
+    Fir_Zoom_FFT_Decimate_I.M = (1 << spectrumZoom);
+    Fir_Zoom_FFT_Decimate_Q.M = (1 << spectrumZoom);
+    IIR_biquad_Zoom_FFT_I.pCoeffs = mag_coeffs[spectrumZoom];
+    IIR_biquad_Zoom_FFT_Q.pCoeffs = mag_coeffs[spectrumZoom];
   } else { // we have to decimate by 128 for all higher magnifications, arm routine does not allow for higher decimations
     Fir_Zoom_FFT_Decimate_I.M = 128;
     Fir_Zoom_FFT_Decimate_Q.M = 128;
@@ -54,7 +54,7 @@ void ZoomFFTPrep() {
 
 /*****
   Purpose: Display FFT routine
-           Should only be called when spectrum_zoom > 1 and updateDisplayFlag == 1
+           Should only be called when spectrumZoom > 1 and updateDisplayFlag == 1
   
   Parameter list:
     void
@@ -73,7 +73,7 @@ void ZoomFFTExe(uint32_t blockSize) {
   float32_t multiplier;
 
 
-  sample_no = BUFFER_SIZE * N_BLOCKS / (1 << spectrum_zoom);
+  sample_no = BUFFER_SIZE * N_BLOCKS / (1 << spectrumZoom);
   if (sample_no > SPECTRUM_RES) {
     sample_no = SPECTRUM_RES;
   }
@@ -100,9 +100,9 @@ void ZoomFFTExe(uint32_t blockSize) {
       zoom_sample_ptr = 0;
   }
   
-  multiplier = (float32_t)spectrum_zoom;
-  if (spectrum_zoom > 3) { // SPECTRUM_ZOOM_8
-    multiplier = (float32_t)(1 << spectrum_zoom);
+  multiplier = (float32_t)spectrumZoom;
+  if (spectrumZoom > 3) { // SPECTRUM_ZOOM_8
+    multiplier = (float32_t)(1 << spectrumZoom);
   }
   for (int idx = 0; idx < SPECTRUM_RES; idx++) {
     buffer_spec_FFT[idx * 2 + 0] =  multiplier * FFT_ring_buffer_x[zoom_sample_ptr] * (0.5 - 0.5 * cos(6.28 * idx / SPECTRUM_RES)); //Hanning Window AFP 03-12-21

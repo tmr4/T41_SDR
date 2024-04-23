@@ -61,9 +61,8 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   modeSelectOutExL.gain(0, powerOutCW[currentBand]);
   modeSelectOutExR.gain(0, powerOutCW[currentBand]);
   userXmtMode = xmtMode;          // Store the user's mode setting
-  userZoomIndex = spectrum_zoom;  // Save the zoom index so it can be reset at the conclusion
-  spectrum_zoom = setZoom;
-  SetZoom();
+  userZoomIndex = spectrumZoom;  // Save the zoom index so it can be reset at the conclusion
+  SetZoom(setZoom);
   tft.writeTo(L2);  // Erase the bandwidth bar
   tft.clearMemory();
   tft.writeTo(L1);
@@ -135,8 +134,8 @@ FLASHMEM void CalibratePrologue() {
   xmtMode = userXmtMode;   // Restore the user's floor setting.  KF5N July 27, 2023
   transmitPowerLevel = transmitPowerLevelTemp;  // Restore the user's transmit power level setting.  KF5N August 15, 2023
   EEPROMWrite();                                // Save calibration numbers and configuration.  KF5N August 12, 2023
-  spectrum_zoom = userZoomIndex; // Restore the user's zoom setting
-  SetZoom(); // ... and zoom display
+  // Restore the user's zoom setting
+  SetZoom(userZoomIndex); // ... and zoom display
   EEPROMWrite();                                // Save calibration numbers and configuration.  KF5N August 12, 2023
   tft.writeTo(L2);  // Clear layer 2.  KF5N July 31, 2023
   tft.clearMemory();
@@ -383,11 +382,11 @@ FLASHMEM void ProcessIQData2() {
     }
     FreqShift1();  // Why done here? KF5N
 
-    if (spectrum_zoom == 0) {  // && display_S_meter_or_spectrum_state == 1)
+    if (spectrumZoom == 0) {  // && display_S_meter_or_spectrum_state == 1)
       CalcZoom1Magn();  //AFP Moved to display function
     }
 
-    if(spectrum_zoom != 0 && updateDisplayFlag == 1) {
+    if(spectrumZoom != 0 && updateDisplayFlag == 1) {
       //AFP  Used to process Zoom>1 for display
       ZoomFFTExe(BUFFER_SIZE * N_BLOCKS);  // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
       // does not work for magnifications > 8

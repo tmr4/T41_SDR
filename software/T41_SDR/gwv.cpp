@@ -22,7 +22,7 @@ float32_t transmitPowerLevel = DEFAULT_POWER_LEVEL;
 int xmtMode = SSB_MODE;  // 0 = SSB, 1 = CW, 2 = FT8
 int nrOptionSelect = 0;
 int currentScale = 1;  // 20 dB/division
-long spectrum_zoom = 1; // SPECTRUM_ZOOM_2
+long spectrumZoom = 1; // SPECTRUM_ZOOM_2
 float spectrum_display_scale = 20.0;     // 30.0
 
 int CWFilterIndex = 5;
@@ -117,7 +117,7 @@ void LoadOpVars() {
   xmtMode = EEPROMData.xmtMode;
   nrOptionSelect = EEPROMData.nrOptionSelect;
   currentScale = EEPROMData.currentScale;
-  spectrum_zoom = EEPROMData.spectrum_zoom;
+  spectrumZoom = EEPROMData.spectrumZoom;
   spectrum_display_scale = EEPROMData.spectrum_display_scale;
 
   CWFilterIndex = EEPROMData.CWFilterIndex;

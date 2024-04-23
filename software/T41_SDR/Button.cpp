@@ -94,9 +94,6 @@ static volatile int buttonADCOut;
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
 
-void ButtonFreqIncrement();
-void ButtonFTIncrement();
-
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -425,30 +422,11 @@ void ExecuteButtonPress(int val) {
       break;
 
     case BAND_UP:  // 2
-      // Added if so unused GPOs will not be touched
-      if(currentBand < BAND_12M) {
-        digitalWrite(bandswitchPins[currentBand], LOW);  
-      }
-
-      if(xmtMode == DATA_MODE) {
-        // restore old demodulation mode before we change bands
-        bands[currentBand].mode = priorDemodMode;
-      }
-
-      currentBand++;
-      if(currentBand == NUMBER_OF_BANDS) {  // Incremented too far?
-        currentBand = 0;                     // Yep. Roll to list front.
-      }
-
-      ButtonBandChange();
-
-      if(currentBand < BAND_12M) {
-        digitalWrite(bandswitchPins[currentBand], HIGH);
-      }
+      BandChange(1);
       break;
 
     case ZOOM:  // 3
-      ButtonZoom();
+      SetZoom(spectrumZoom+1);
       break;
 
     case MAIN_MENU_DN:  // 4
@@ -489,25 +467,7 @@ void ExecuteButtonPress(int val) {
       break;
 
     case BAND_DN:  // 5
-      if(currentBand < BAND_12M) {
-        digitalWrite(bandswitchPins[currentBand], LOW);
-      }
-
-      if(xmtMode == DATA_MODE) {
-        // restore old demodulation mode before we change bands
-        bands[currentBand].mode = priorDemodMode;
-      }
-
-      currentBand--;
-      if(currentBand < 0) {                 // Incremented too far?
-        currentBand = NUMBER_OF_BANDS - 1;  // Yep. Roll to list front.
-      }
-
-      ButtonBandChange();
-
-      if(currentBand < BAND_12M) {
-        digitalWrite(bandswitchPins[currentBand], HIGH);
-      }
+      BandChange(-1);
       break;
 
     case FILTER:  // 6
@@ -536,7 +496,7 @@ void ExecuteButtonPress(int val) {
       break;
 
     case FINE_TUNE_INCREMENT:  // 12
-      ButtonFTIncrement();
+      ChangeFTIncrement(1);
       break;
 
     case DECODER_TOGGLE:  // 13
@@ -560,7 +520,7 @@ void ExecuteButtonPress(int val) {
       break;
 
     case MAIN_TUNE_INCREMENT:  // 14
-      ButtonFreqIncrement();
+      ChangeFreqIncrement(-1);
       break;
 
     case RESET_TUNING:  // 15
@@ -663,12 +623,17 @@ void ExecuteButtonPress(int val) {
   Return value:
     void
 *****/
-void ButtonFreqIncrement() {
+void ChangeFreqIncrement(int change) {
   long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
 
-  tuneIndex--;
-  if (tuneIndex < 0)
+  tuneIndex += change;
+  if (tuneIndex < 0) {
     tuneIndex = MAX_FREQ_INDEX - 1;
+  }
+  if (tuneIndex >= MAX_FREQ_INDEX) {
+    tuneIndex = 0;
+  }
+
   freqIncrement = incrementValues[tuneIndex];
 
   UpdateInfoBoxItem(IB_ITEM_TUNE);
@@ -683,13 +648,17 @@ void ButtonFreqIncrement() {
   Return value;
     void
 *****/
-void ButtonFTIncrement() {
+void ChangeFTIncrement(int change) {
   long selectFT[] = { 10, 50, 250, 500 };
 
-  ftIndex++;
+  ftIndex += change;
   if (ftIndex > 3) {
     ftIndex = 0;
   }
+  if (ftIndex < 0) {
+    ftIndex = 3;
+  }
+
   ftIncrement = selectFT[ftIndex];
 
   UpdateInfoBoxItem(IB_ITEM_FINE);

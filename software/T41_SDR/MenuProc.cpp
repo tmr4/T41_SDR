@@ -660,7 +660,7 @@ void DoPaddleFlip() {
   Return value
     void
 *****/
-void VFOSelect() {
+void VFOSelect(int32_t index) {
   if(xmtMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
     bands[currentBand].mode = priorDemodMode;
@@ -668,7 +668,7 @@ void VFOSelect() {
 
   //delay(10);
   NCOFreq = 0L;
-  switch (secondaryMenuIndex) {
+  switch (index) {
     case VFO_A:
       centerFreq = TxRxFreq = currentFreqA;
       activeVFO = VFO_A;
@@ -721,6 +721,10 @@ void VFOSelect() {
   if (xmtMode == CW_MODE) {
     UpdateCWFilter();
   }
+}
+
+void VFOSelect() {
+  VFOSelect(secondaryMenuIndex);
 }
 
 /*****

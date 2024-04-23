@@ -75,16 +75,19 @@ unsigned long last_usb_read = 0;
 
 //------------------------- Global Variables ----------
 
-int filterWidth;
-int centerLine = (SPECTRUM_RES + SPECTRUM_LEFT_X) / 2;
+int centerLine = SPECTRUM_RES / 2 + SPECTRUM_LEFT_X;
 
 int16_t pixelCurrent[SPECTRUM_RES];
 int16_t pixelnew[SPECTRUM_RES];
 int16_t pixelold[SPECTRUM_RES];
 int16_t pixelnew2[SPECTRUM_RES + 1];
 int16_t pixelold2[SPECTRUM_RES];
-int newCursorPosition = 0;
-int oldCursorPosition = 256;
+
+int newFilterX = 0;
+int oldFilterX = 0;
+int newFilterWidth = 0;
+int oldFilterWidth = 0;
+
 int updateDisplayFlag = 1;
 int wfRows = WATERFALL_H;
 
@@ -448,7 +451,6 @@ FASTRUN void ShowSpectrum() {
 *****/
 void ShowBandwidthBarValues() {
   char buff[10];
-  int centerLine = (SPECTRUM_RES + SPECTRUM_LEFT_X) / 2;
   int posLeft, posRight;
   //int hi_offset = 80;
   int loColor = RA8875_LIGHT_GREY;
@@ -458,7 +460,7 @@ void ShowBandwidthBarValues() {
   float hiValue = (float)(bands[currentBand].FHiCut / 1000.0f);
 
   //pixel_per_khz = 0.0055652173913043;  // Al: I factored this constant: 512/92000;
-  //pixel_per_khz = ((1 << spectrum_zoom) * SPECTRUM_RES * 1000.0 / SampleRate) ;
+  //pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES * 1000.0 / SampleRate) ;
   //pos_left = centerLine + ((int)(bands[currentBand].FLoCut / 1000.0 * pixel_per_khz));
   //if (pos_left < spectrum_x) {
   //  pos_left = spectrum_x;
@@ -466,7 +468,7 @@ void ShowBandwidthBarValues() {
 
   // Need to add in code for zoom factor here
 
-  //filterWidthX = pos_left + newCursorPosition - centerLine;
+  //filterWidthX = pos_left + newFilterX - centerLine;
 
   tft.writeTo(L2); // switch to layer 2
 
@@ -573,14 +575,13 @@ void ShowSpectrumFreqValues() {
 
   float freq_calc;
   float grat;
-  int centerLine = SPECTRUM_RES / 2 + SPECTRUM_LEFT_X;
-  // positions for graticules: first for spectrum_zoom < 3, then for spectrum_zoom > 2
+  // positions for graticules: first for spectrumZoom < 3, then for spectrumZoom > 2
   const static int idx2pos[2][9] = {
     { -43, 21, 50, 250, 140, 250, 232, 250, 315 },
     { -43, 21, 50, 85, 200, 200, 232, 218, 315 }
   };
 
-  grat = (float)(SampleRate / 8000.0) / (float)(1 << spectrum_zoom);  // 1, 2, 4, 8, 16, 32, 64 . . . 4096
+  grat = (float)(SampleRate / 8000.0) / (float)(1 << spectrumZoom);  // 1, 2, 4, 8, 16, 32, 64 . . . 4096
 
   tft.setTextColor(RA8875_WHITE);
   tft.setFontScale((enum RA8875tsize)0);
@@ -590,23 +591,25 @@ void ShowSpectrumFreqValues() {
 
   freq_calc = (float)(centerFreq / NEW_SI5351_FREQ_MULT);  // get current frequency in Hz
 
-  if (activeVFO == VFO_A) {
-    currentFreqA = TxRxFreq;
-  } else {
-    currentFreqB = TxRxFreq;
-  }
+  // TODO: *** this is misplaced *** shows problem with original code transitioning between VFOs
+  //if (activeVFO == VFO_A) {
+  //  currentFreqA = TxRxFreq;
+  //} else {
+  //  currentFreqB = TxRxFreq;
+  //}
 
-  if (spectrum_zoom == 0) {
+  if (spectrumZoom == 0) {
     freq_calc += (float32_t)SampleRate / 4.0;
   }
 
-  if (spectrum_zoom < 5) {
+  // TODO: *** these are the same ***
+  if (spectrumZoom < 5) {
     freq_calc = roundf(freq_calc / 1000);  // round graticule frequency to the nearest kHz
-  } else if (spectrum_zoom < 5) {
-    freq_calc = roundf(freq_calc / 100) / 10;  // round graticule frequency to the nearest 100Hz
+  //} else if (spectrumZoom < 5) {
+  //  freq_calc = roundf(freq_calc / 100) / 10;  // round graticule frequency to the nearest 100Hz
   }
 
-  if (spectrum_zoom != 0)
+  if (spectrumZoom != 0)
     centerIdx = 0;
   else
     centerIdx = -2;
@@ -621,7 +624,7 @@ void ShowSpectrumFreqValues() {
 
   tft.setTextColor(RA8875_GREEN);
 
-  if (spectrum_zoom == 0) {
+  if (spectrumZoom == 0) {
     tft.setCursor(centerLine - 140, SPEC_BOX_LABELS);
   } else {
     tft.setCursor(centerLine - 20, SPEC_BOX_LABELS);
@@ -633,9 +636,9 @@ void ShowSpectrumFreqValues() {
   /**************************************************************************************************
      PRINT ALL OTHER FREQUENCIES (NON-CENTER)
    **************************************************************************************************/
-  // snprint() extremely memory inefficient. replaced with simple str?? functions JJP
+  // snprint() extremely memory inefficient. replaced with simple str?? functions
   for (int idx = -4; idx < 5; idx++) {
-    pos_help = idx2pos[spectrum_zoom < 3 ? 0 : 1][idx + 4];
+    pos_help = idx2pos[spectrumZoom < 3 ? 0 : 1][idx + 4];
     if (idx != centerIdx) {
       ultoa((freq_calc + (idx * grat)), txt, DEC);
 
@@ -653,8 +656,8 @@ void ShowSpectrumFreqValues() {
       }
     }
 
-    // *** ??? display is messed up for frequencies under 1000 ***
-    if (spectrum_zoom > 2 || freq_calc > 1000) {
+    // TODO: *** ??? display is messed up for frequencies under 1000 ***
+    if (spectrumZoom > 2 || freq_calc > 1000) {
       idx++;
     }
   }
@@ -722,7 +725,7 @@ void ShowOperatingStats() {
   tft.print("Center Freq");
   tft.setCursor(OPERATION_STATS_CF, OPERATION_STATS_T);
   tft.setTextColor(RA8875_LIGHT_ORANGE);
-  if (spectrum_zoom == 0) {
+  if (spectrumZoom == 0) {
     tft.print(centerFreq + 48000);
   } else {
     tft.print(centerFreq);
@@ -874,8 +877,8 @@ FASTRUN void ShowFrequency() {
 
   FormatFrequency(TxRxFreq, freqBuffer);
   tft.setFontScale(3, 2);
-//  tft.fillRect(0, FREQUENCY_Y - 17, SPEC_BOX_W, tft.getFontHeight(), RA8875_BLACK);
-  tft.fillRect(0, FREQUENCY_Y - 17, TIME_X - 20, tft.getFontHeight(), RA8875_BLACK);
+//  tft.fillRect(0, FREQUENCY_Y, SPEC_BOX_W, tft.getFontHeight(), RA8875_BLACK);
+  tft.fillRect(FREQUENCY_X, FREQUENCY_Y, TIME_X - 20, tft.getFontHeight(), RA8875_BLACK);
 
   if (activeVFO == VFO_A) {
     if (TxRxFreq < bands[currentBandA].fBandLow || TxRxFreq > bands[currentBandA].fBandHigh) {
@@ -883,12 +886,12 @@ FASTRUN void ShowFrequency() {
     } else {
       tft.setTextColor(RA8875_GREEN); // In US band
     }
-    tft.setCursor(0, FREQUENCY_Y - 17);
+    tft.setCursor(FREQUENCY_X, FREQUENCY_Y);
     tft.print(freqBuffer); // Show VFO_A
 
     tft.setFontScale(1, 2);
     tft.setTextColor(RA8875_LIGHT_GREY);
-    tft.setCursor(FREQUENCY_X_SPLIT + 60, FREQUENCY_Y - 17);
+    tft.setCursor(VFO_B_INACTIVE_OFFSET, FREQUENCY_Y);
     FormatFrequency(currentFreqB, freqBuffer);
   } else { // VFO_B
     if (TxRxFreq < bands[currentBandB].fBandLow || TxRxFreq > bands[currentBandB].fBandHigh) {
@@ -896,12 +899,12 @@ FASTRUN void ShowFrequency() {
     } else {
       tft.setTextColor(RA8875_GREEN);
     }
-    tft.setCursor(FREQUENCY_X_SPLIT - 60, FREQUENCY_Y - 17);
+    tft.setCursor(VFO_B_ACTIVE_OFFSET, FREQUENCY_Y);
     tft.print(freqBuffer); // Show VFO_B
 
     tft.setFontScale(1, 2);
     tft.setTextColor(RA8875_LIGHT_GREY);
-    tft.setCursor(20, FREQUENCY_Y - 17);
+    tft.setCursor(FREQUENCY_X + 20, FREQUENCY_Y);
     FormatFrequency(currentFreqA, freqBuffer);
   }
 
@@ -1013,7 +1016,7 @@ void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, int width) 
 
 /*****
   Purpose: This function redraws the entire display screen where the equalizers appeared
-  *** this function does much more than redraw the display and some of it is repetitive ***
+
   Parameter list:
     void
 
@@ -1024,9 +1027,6 @@ void RedrawDisplayScreen() {
   // clear display
   tft.fillWindow();
   
-  //AGCPrep();
-  //SetBand();
-
   DrawStaticDisplayItems();
 
   // update display left to right, top to bottom
@@ -1042,8 +1042,6 @@ void RedrawDisplayScreen() {
   ShowSpectrumFreqValues();
 
   ShowTransmitReceiveStatus();
-
-  //SpectralNoiseReductionInit();
 
   UpdateInfoBox();
 }
@@ -1061,9 +1059,9 @@ FASTRUN void DrawBandwidthBar() {
   float zoomMultFactor = 0.0;
   float Zoom1Offset = 0.0;
   float32_t pixel_per_khz;
-  int filterWidth;
+  int NCOFreqX;
 
-  switch (spectrum_zoom) {
+  switch (spectrumZoom) {
     case 0:
       zoomMultFactor = 0.5;
       Zoom1Offset = 24000 * 0.0053333;
@@ -1071,28 +1069,24 @@ FASTRUN void DrawBandwidthBar() {
 
     case 1:
       zoomMultFactor = 1.0;
-      Zoom1Offset = 0;
       break;
 
     case 2:
       zoomMultFactor = 2.0;
-      Zoom1Offset = 0;
       break;
 
     case 3:
       zoomMultFactor = 4.0;
-      Zoom1Offset = 0;
       break;
 
     case 4:
       zoomMultFactor = 8.0;
-      Zoom1Offset = 0;
       break;
   }
-  newCursorPosition = (int)(NCOFreq * 0.0053333) * zoomMultFactor - Zoom1Offset;
+  NCOFreqX = (int)(NCOFreq * 0.0053333) * zoomMultFactor - Zoom1Offset;
 
-  pixel_per_khz = ((1 << spectrum_zoom) * SPECTRUM_RES * 1000.0 / SampleRate);
-  filterWidth = (int)(((bands[currentBand].FHiCut - bands[currentBand].FLoCut) / 1000.0) * pixel_per_khz * 1.06);
+  pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES * 1000.0 / SampleRate);
+  newFilterWidth = (int)(((bands[currentBand].FHiCut - bands[currentBand].FLoCut) / 1000.0) * pixel_per_khz * 1.06);
 
   // make sure bandwidth is within zoom range
   switch (bands[currentBand].mode) {
@@ -1101,23 +1095,23 @@ FASTRUN void DrawBandwidthBar() {
     case DEMOD_PSK31:
     case DEMOD_FT8:
     case DEMOD_FT8_WAV:
-      if(centerLine + newCursorPosition + filterWidth > SPECTRUM_RES) {
+      if(centerLine + NCOFreqX + newFilterWidth > SPECTRUM_RES) {
         resetTuningFlag = true;
       }
       break;
 
     case DEMOD_LSB:
-      if(centerLine + newCursorPosition - filterWidth < 0) {
+      if(centerLine + NCOFreqX - newFilterWidth < 0) {
         resetTuningFlag = true;
       }
       break;
 
     case DEMOD_NFM:
-      filterWidth = (int)((nfmFilterBW / 1000.0) * pixel_per_khz * 1.06);
+      newFilterWidth = (int)((nfmFilterBW / 1000.0) * pixel_per_khz * 1.06);
 
     case DEMOD_AM:
     case DEMOD_SAM:
-      if((centerLine - (filterWidth / 2) * 0.93 + newCursorPosition < 0) || (centerLine + (filterWidth / 2) * 0.93 + newCursorPosition > SPECTRUM_RES)) {
+      if((centerLine - (newFilterWidth / 2) * 0.93 + NCOFreqX < 0) || (centerLine + (newFilterWidth / 2) * 0.93 + NCOFreqX > SPECTRUM_RES)) {
         resetTuningFlag = true;
       }
       break;
@@ -1125,7 +1119,8 @@ FASTRUN void DrawBandwidthBar() {
 
   // erase old bar
   tft.writeTo(L2);
-  tft.fillRect(SPECTRUM_LEFT_X, SPECTRUM_TOP_Y + 20, SPECTRUM_RES, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
+  //tft.fillRect(SPECTRUM_LEFT_X, SPECTRUM_TOP_Y + 20, SPECTRUM_RES, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
+  tft.fillRect(oldFilterX, SPECTRUM_TOP_Y + 20, oldFilterWidth + 1, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
 
   // update bar if we haven't reset tuning, otherwise this gets recalled by that routine
   if(!resetTuningFlag) {
@@ -1135,27 +1130,32 @@ FASTRUN void DrawBandwidthBar() {
       case DEMOD_PSK31:
       case DEMOD_FT8:
       case DEMOD_FT8_WAV:
-        tft.fillRect(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        newFilterX = centerLine + NCOFreqX;
         break;
 
       case DEMOD_LSB:
-        tft.fillRect(centerLine - filterWidth + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        newFilterX = centerLine - newFilterWidth + NCOFreqX;
         break;
 
       case DEMOD_NFM:
-        filterWidth = (int)((nfmFilterBW / 1000.0) * pixel_per_khz * 1.06);
-        tft.fillRect(centerLine - (filterWidth / 2) * 0.93 + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth * 0.95, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        newFilterWidth = (int)((nfmFilterBW / 1000.0) * pixel_per_khz * 1.06);
+        newFilterX = centerLine - (newFilterWidth / 2) * 0.93 + NCOFreqX;
+        newFilterWidth *= 0.95;
         break;
 
       case DEMOD_AM:
       case DEMOD_SAM:
-        tft.fillRect(centerLine - (filterWidth / 2) * 0.93 + newCursorPosition, SPECTRUM_TOP_Y + 20, filterWidth * 0.95, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+        newFilterX = centerLine - (newFilterWidth / 2) * 0.93 + NCOFreqX;
+        newFilterWidth *= 0.95;
         break;
     }
 
-    tft.drawFastVLine(centerLine + newCursorPosition, SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 20, RA8875_CYAN);
+    // draw bandwidth bar
+    tft.fillRect(newFilterX, SPECTRUM_TOP_Y + 20, newFilterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
+    tft.drawFastVLine(centerLine + NCOFreqX, SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 20, RA8875_CYAN);
 
-    oldCursorPosition = newCursorPosition;
+    oldFilterX = newFilterX;
+    oldFilterWidth = newFilterWidth;
   }
 
   tft.writeTo(L1);
@@ -1350,8 +1350,8 @@ void ShowTransmitReceiveStatus() {
 }
 
 /*****
-  Purpose: Set frequency display to next spectrum_zoom level
-
+  Purpose: Set frequency display to specified level
+    *** TODO: needs reset tuning if bandwidth
   Parameter list:
     void
 
@@ -1359,7 +1359,16 @@ void ShowTransmitReceiveStatus() {
     void
 
 *****/
-void SetZoom() {
+void SetZoom(int zoom) {
+  spectrumZoom = zoom;
+
+  if(spectrumZoom == MAX_ZOOM_ENTRIES) {
+    spectrumZoom = 0;
+  }
+  if(spectrumZoom < 0) {
+    spectrumZoom = MAX_ZOOM_ENTRIES - 1;
+  }
+
   ZoomFFTPrep();
   UpdateInfoBoxItem(IB_ITEM_ZOOM);
   DrawBandwidthBar();

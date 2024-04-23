@@ -23,9 +23,11 @@
 
 #define SPEC_BOX_LABELS       (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT + 5)
 
-#define FREQUENCY_X           5
-#define FREQUENCY_Y           45
+#define FREQUENCY_X           0
+#define FREQUENCY_Y           28
 #define FREQUENCY_X_SPLIT     280
+#define VFO_B_ACTIVE_OFFSET   FREQUENCY_X_SPLIT - 60
+#define VFO_B_INACTIVE_OFFSET FREQUENCY_X_SPLIT + 60
 
 #define WATERFALL_L           SPECTRUM_LEFT_X
 #define WATERFALL_T           (SPECTRUM_TOP_Y + SPECTRUM_HEIGHT + 25)
@@ -47,9 +49,9 @@
 #define CLIP_AUDIO_PEAK       115           // The pixel value where audio peak overwrites S-meter
 
 #define OPERATION_STATS_L     5
-#define OPERATION_STATS_T     FREQUENCY_Y + 30
+#define OPERATION_STATS_T     FREQUENCY_Y + 47
 #define OPERATION_STATS_W     SPEC_BOX_W - OPERATION_STATS_L
-#define OPERATION_STATS_H     
+#define OPERATION_STATS_H     25
 
 #define OPERATION_STATS_CF    100 // center frequency
 #define OPERATION_STATS_BD    180 // band
@@ -118,8 +120,8 @@ extern int16_t pixelnew[SPECTRUM_RES];
 extern int16_t pixelold[SPECTRUM_RES];
 extern int16_t pixelnew2[];
 extern int16_t pixelold2[];
-extern int newCursorPosition;
-extern int oldCursorPosition;
+extern int newFilterX;
+extern int oldFilterX;
 extern int updateDisplayFlag;
 extern int wfRows;
 
@@ -161,7 +163,7 @@ void ShowBandwidthBarValues();
 void ShowSpectrumdBScale();
 void ShowAnalogGain();
 void ShowTransmitReceiveStatus();
-void SetZoom();
+void SetZoom(int zoom);
 void ShowCurrentPowerSetting();
 
 void ShowSpectrum();

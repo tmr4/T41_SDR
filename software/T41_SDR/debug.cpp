@@ -29,7 +29,7 @@ void EnterLoop() {
   oldEEPROMData.xmtMode = xmtMode;
   oldEEPROMData.nrOptionSelect = nrOptionSelect;
   oldEEPROMData.currentScale = currentScale;
-  oldEEPROMData.spectrum_zoom = spectrum_zoom;
+  oldEEPROMData.spectrumZoom = spectrumZoom;
   oldEEPROMData.spectrum_display_scale = spectrum_display_scale;
 
   oldEEPROMData.CWFilterIndex = CWFilterIndex;
@@ -141,7 +141,7 @@ void ExitLoop() {
   if(oldEEPROMData.xmtMode != xmtMode) { Serial.println("  xmtMode changed"); }
   if(oldEEPROMData.nrOptionSelect != nrOptionSelect) { Serial.println("  nrOptionSelect changed"); }
   if(oldEEPROMData.currentScale != currentScale) { Serial.println("  currentScale changed"); }
-  if(oldEEPROMData.spectrum_zoom != spectrum_zoom) { Serial.println("  spectrum_zoom changed"); }
+  if(oldEEPROMData.spectrumZoom != spectrumZoom) { Serial.println("  spectrumZoom changed"); }
   if(oldEEPROMData.spectrum_display_scale != spectrum_display_scale) { Serial.println("  spectrum_display_scale changed"); }
 
   if(oldEEPROMData.CWFilterIndex != CWFilterIndex) { Serial.println("  CWFilterIndex changed"); }
@@ -240,7 +240,7 @@ void EnterLoop() {
   oldEEPROMData.xmtMode = EEPROMData.xmtMode;
   oldEEPROMData.nrOptionSelect = EEPROMData.nrOptionSelect;
   oldEEPROMData.currentScale = EEPROMData.currentScale;
-  oldEEPROMData.spectrum_zoom = EEPROMData.spectrum_zoom;
+  oldEEPROMData.spectrumZoom = EEPROMData.spectrumZoom;
   oldEEPROMData.spectrum_display_scale = EEPROMData.spectrum_display_scale;
 
   oldEEPROMData.CWFilterIndex = EEPROMData.CWFilterIndex;
@@ -339,7 +339,7 @@ void ExitLoop() {
   if(oldEEPROMData.xmtMode != EEPROMData.xmtMode) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("xmtMode changed"); }
   if(oldEEPROMData.nrOptionSelect != EEPROMData.nrOptionSelect) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("nrOptionSelect changed"); }
   if(oldEEPROMData.currentScale != EEPROMData.currentScale) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("currentScale changed"); }
-  if(oldEEPROMData.spectrum_zoom != EEPROMData.spectrum_zoom) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("spectrum_zoom changed"); }
+  if(oldEEPROMData.spectrumZoom != EEPROMData.spectrumZoom) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("spectrumZoom changed"); }
   if(oldEEPROMData.spectrum_display_scale != EEPROMData.spectrum_display_scale) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("spectrum_display_scale changed"); }
 
   if(oldEEPROMData.CWFilterIndex != EEPROMData.CWFilterIndex) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("CWFilterIndex changed"); }

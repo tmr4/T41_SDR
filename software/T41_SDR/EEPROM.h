@@ -29,7 +29,7 @@ typedef struct {
   int xmtMode;
   int nrOptionSelect;
   int currentScale;
-  long spectrum_zoom;
+  long spectrumZoom;
   float spectrum_display_scale;
 
   int CWFilterIndex;
