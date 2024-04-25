@@ -6,6 +6,7 @@
 #include "EEPROM.h"
 #include "Menu.h"
 #include "MenuProc.h"
+#include "mouse.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -94,6 +95,101 @@ void ShowMenu(const char *menu[], int where) {
 }
 
 /*****
+  Purpose: To process a menu up or down
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+void MenuBarChange(int change) {
+  switch (menuStatus) {
+    case PRIMARY_MENU_ACTIVE:
+      mainMenuIndex += change;
+
+      // limit index
+      if (mainMenuIndex < 0) {
+        mainMenuIndex = TOP_MENU_COUNT - 1;
+      } else if (mainMenuIndex == TOP_MENU_COUNT) {
+        mainMenuIndex = 0;
+      }
+      ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+      break;
+
+    case SECONDARY_MENU_ACTIVE:
+      secondaryMenuIndex += change;
+
+      // limit index
+      if (secondaryMenuIndex < 0) {
+        secondaryMenuIndex = subMenuMaxOptions - 1;
+      } else if (secondaryMenuIndex == subMenuMaxOptions) {
+        secondaryMenuIndex = 0;
+      }
+      ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
+      break;
+
+    default:
+      break;
+  }
+}
+
+void ShowMenuBar(int menu = 0, int change = 0) {
+  if (menuStatus == NO_MENUS_ACTIVE) {
+    menuStatus = PRIMARY_MENU_ACTIVE;
+    mainMenuIndex = menu;
+    ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+  } else {
+    if(change != 0) MenuBarChange(change);
+  }
+}
+
+void MenuBarSelect() {
+  switch (menuStatus) {
+    case NO_MENUS_ACTIVE:
+      #ifdef DEBUG_SW
+        //NoActiveMenu();
+        Serial.print("NAM #0: val = ");
+        Serial.println(val);
+      #endif
+      break;
+
+    case PRIMARY_MENU_ACTIVE:
+      if(mainMenuIndex == TOP_MENU_COUNT - 1) {
+        menuStatus = NO_MENUS_ACTIVE;
+        mainMenuIndex = 0;
+        EraseMenus();
+      } else {
+        menuStatus = SECONDARY_MENU_ACTIVE;
+        secondaryMenuIndex = 0;
+        subMenuMaxOptions = secondaryMenuCount[mainMenuIndex];
+        //secondaryMenuIndex = SubmenuSelect(secondaryChoices[mainMenuIndex], secondaryMenuCount[mainMenuIndex], 0);
+        ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
+      }
+      break;
+
+    case SECONDARY_MENU_ACTIVE:
+      if(secondaryMenuIndex == secondaryMenuCount[mainMenuIndex] - 1) {
+        // cancel selected
+        menuStatus = PRIMARY_MENU_ACTIVE;
+        EraseSecondaryMenu();
+      } else {
+        functionPtr[mainMenuIndex]();
+
+        // wrap up menu unless we're still getting a value
+        if(!getMenuValueActive) {
+          EraseMenus();
+          menuStatus = NO_MENUS_ACTIVE;
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+/*****
   Purpose: To present the encoder-driven menu display
 
   Argument List;
@@ -153,7 +249,7 @@ int DrawMenuDisplay() {
 }
 
 /*****
-  Purpose: To select the primary menu
+  Purpose: To select the primary menu on full menu
 
   Argument List;
     void
@@ -214,7 +310,7 @@ int SetPrimaryMenuIndex() {
 }
 
 /*****
-  Purpose: To select the secondary menu
+  Purpose: To select the secondary menu on full menu
 
   Argument List;
     void
@@ -281,4 +377,74 @@ int SetSecondaryMenuIndex() {
   }  // End while True
 
   return secondaryMenuIndex;
+}
+
+/*****
+  Purpose: To select an option from a fixed bar submenu using the Menu Up and Down buttons
+
+  Parameter list:
+    char *options[]           bar submenu options
+    int numberOfChoices       choices available
+    int defaultState          the starting option
+
+  Return value
+    int           an index into the band array
+*****/
+int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart) {
+  int refreshFlag = 0;
+  int val;
+  int encoderReturnValue;
+
+  tft.setTextColor(RA8875_BLACK);
+  encoderReturnValue = defaultStart;  // Start the options using this option
+
+  tft.setFontScale((enum RA8875tsize)1);
+  if (refreshFlag == 0) {
+    tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Show the option in the second field
+    tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
+    tft.print(options[encoderReturnValue]);  // Secondary Menu
+    refreshFlag = 1;
+  }
+  delay(150L);
+
+  while (true) {
+    val = ReadSelectedPushButton();  // Read the ladder value
+    delay(150L);
+    if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
+      val = ProcessButtonPress(val);  // Use ladder value to get menu choice
+      if (val > -1) {                 // Valid choice?
+        switch (val) {
+          case MENU_OPTION_SELECT:  // They made a choice
+            tft.setTextColor(RA8875_WHITE);
+            EraseMenus();
+            return encoderReturnValue;
+            break;
+
+          case MAIN_MENU_UP:
+            encoderReturnValue++;
+            if (encoderReturnValue >= numberOfChoices)
+              encoderReturnValue = 0;
+            break;
+
+          case MAIN_MENU_DN:
+            encoderReturnValue--;
+            if (encoderReturnValue < 0)
+              encoderReturnValue = numberOfChoices - 1;
+            break;
+
+          default:
+            encoderReturnValue = -1;  // An error selection
+            break;
+        }
+        if (encoderReturnValue != -1) {
+          tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Show the option in the second field
+          tft.setTextColor(RA8875_BLACK);
+          tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
+          tft.print(options[encoderReturnValue]);
+          delay(50L);
+          refreshFlag = 0;
+        }
+      }
+    }
+  }
 }

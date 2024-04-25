@@ -12,6 +12,7 @@
 #include "ft8.h"
 #include "gwv.h"
 #include "InfoBox.h"
+#include "Menu.h"
 #include "MenuProc.h"
 #include "mouse.h"
 #include "Tune.h"
@@ -39,7 +40,7 @@ extern USBHost usbHost;
 
 // active VFO y axis frequency position translated for center of cursor
 #define FREQ_T  FREQUENCY_Y - (CURSOR_H / 2)
-#define FREQ_B  FREQ_T + FREQ_H
+#define FREQ_B  FREQ_T + FREQ_H - 10
 
 // active VFO x axis frequency digit left position translated for center of cursor
 // 40m band and below
@@ -68,6 +69,8 @@ int cursorL, cursorT, cursorR, cursorB;
 int cursorX, cursorY, oldCursorX, oldCursorY;
 
 bool mouseCenterTuneActive = false;
+int mouseWheelValue = 0;
+int menuBarSelected = false;
 
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
@@ -88,31 +91,43 @@ void MoveCursor(int x, int y) {
   if(cursorY > cursorB - CURSOR_H) cursorY = cursorB - CURSOR_H;
   if(cursorY < cursorT) cursorY = cursorT;
 
-  // skip screen update if the cursor is within the blackout region
-  if(!((cursorY > TIME_Y - CURSOR_H) && (cursorY < TIME_Y + CURSOR_H) && (cursorX > XPIXELS - 20 - CURSOR_W) && (cursorX < XPIXELS - 20 + CURSOR_W))) {
-    //Serial.print("cursorX = "); Serial.print(cursorX); Serial.print(" cursorY = "); Serial.println(cursorY);
-    tft.setFontScale((enum RA8875tsize)1);
+  //Serial.print("cursorX = "); Serial.print(cursorX); Serial.print(" cursorY = "); Serial.println(cursorY);
+  tft.setFontScale((enum RA8875tsize)1);
 
-    tft.writeTo(L2); // switch to layer 2
+  // the cursor is drawn on layer 2, switch to it
+  tft.writeTo(L2);
 
-    // replace what was previously under the cursor
+  // other items occupy layer 2
+  // we need to prevent the cursor from overwriting them we do this by copying what
+  // will be under the cursor for restoration elsewhere.  The RA8875 has limited
+  // functionality to do this.  I've used a cursor sized block at 0,0 to handle this.
+  // A white block on layer 1 hides the layer 2 copy under it.  All's not wasted as
+  // this block has some functionality.  A problem occurs when the cursor is within
+  // this block so we'll handle that separately.
+  if(cursorY < FREQ_T) {
+    // there's no layer 2 items in this area
+    // erase old cursor by simply drawing it again in black
+    tft.setTextColor(RA8875_BLACK);
+    tft.setCursor(oldCursorX, oldCursorY);
+    tft.print((char)7);
+  } else {
+    // replace what was previously on layer 2 under the cursor
     //BTE_move(SourceX, SourceY, Width, Height, DestX, DestY, SourceLayer, DestLayer,bool Transparent, uint8_t ROP, bool Monochrome, bool ReverseDir)
-    tft.BTE_move(XPIXELS - 20, TIME_Y, 16, 32, oldCursorX, oldCursorY, 2, 2);
+    tft.BTE_move(0, 0, 16, 32, oldCursorX, oldCursorY, 2, 2);
 
     // copy the background under the cursor for replacement next time
-    tft.BTE_move(cursorX, cursorY, 16, 32, XPIXELS - 20, TIME_Y, 2, 2);
-
-    // draw new cursor
-    //tft.setTextColor(RA8875_YELLOW);
-    tft.setTextColor(RA8875_WHITE);
-    tft.setCursor(cursorX, cursorY);
-    tft.print((char)7);
-
-    tft.writeTo(L1); // switch to layer 1
-
-    oldCursorX = cursorX;
-    oldCursorY = cursorY;
+    tft.BTE_move(cursorX, cursorY, 16, 32, 0, 0, 2, 2);
   }
+
+  // draw new cursor
+  tft.setTextColor(RA8875_WHITE);
+  tft.setCursor(cursorX, cursorY);
+  tft.print((char)7);
+
+  tft.writeTo(L1); // switch to layer 1
+
+  oldCursorX = cursorX;
+  oldCursorY = cursorY;
 }
 
 void SetMouseArea(int left, int top, int width, int height) {
@@ -125,6 +140,10 @@ void SetMouseArea(int left, int top, int width, int height) {
   cursorY = top;
   oldCursorX = left;
   oldCursorY = top;
+}
+
+bool CursorInMenuArea() {
+  return (cursorY < FREQ_T) && (cursorX < TIME_X - 20);
 }
 
 bool CursorInFreqArea() {
@@ -145,6 +164,26 @@ bool CursorInSpectrumWaterfall() {
 
 bool CursorInInfoBox() {
   return (cursorY > INFO_BOX_T) && (cursorY < INFO_BOX_T + INFO_BOX_H) && (cursorX > INFO_BOX_L && cursorX < INFO_BOX_L + INFO_BOX_W);
+}
+
+void MouseButtonMenuArea(int button) {
+  if(button == 1) {
+    if(getMenuValueActive) {
+      menuBarSelected = true;
+    } else {
+      MenuBarSelect();
+    }
+  } else if(button == 2) {
+    ShowMenuBar();
+  }
+}
+
+void MouseWheelMenuArea(int wheel) {
+  if(getMenuValueActive) {
+    mouseWheelValue = wheel;
+  } else {
+    MenuBarChange(wheel);
+  }
 }
 
 void MouseButtonFreqArea(int button) {
@@ -296,14 +335,14 @@ void MouseButtonSpectrumWaterfall(int button) {
       // there was a left click is in the spectrum or waterfall area, set the NCO frequency
 
       // replace what was previously under the cursor
-      tft.BTE_move(XPIXELS - 20, TIME_Y, 16, 32, oldCursorX, oldCursorY, 2, 2);
+      tft.BTE_move(0, 0, 16, 32, oldCursorX, oldCursorY, 2, 2);
 
       SetNCOFreq((cursorX + CURSOR_W / 2 - centerLine) * SampleRate / (1 << spectrumZoom) / SPECTRUM_RES);
 
       DrawBandwidthBar();
 
       // background under the cursor may have changed, copy it for replacement next time
-      tft.BTE_move(cursorX, cursorY, 16, 32, XPIXELS - 20, TIME_Y, 2, 2);
+      tft.BTE_move(cursorX, cursorY, 16, 32, 0, 0, 2, 2);
     }
   }
 }
@@ -353,7 +392,10 @@ void MouseLoop() {
     // *** TODO: these can be refined ***
     if(button) {
       // check if the cursor is in any areas with an button action
-      if(CursorInFreqArea()) {
+      if(CursorInMenuArea()) {
+        // the cursor is in the menu bar area
+        MouseButtonMenuArea(button);
+      } else if(CursorInFreqArea()) {
         // the cursor is in the frequency field
         MouseButtonFreqArea(button);
       } else if(CursorInOpStatsArea()) {
@@ -370,7 +412,10 @@ void MouseLoop() {
 
     if(wheel) {
       //Serial.print(",  wheel = "); Serial.println(wheel);
-      if(CursorInFreqArea()) {
+      if(CursorInMenuArea()) {
+        // the cursor is in the menu bar area
+        MouseWheelMenuArea(wheel);
+      } else if(CursorInFreqArea()) {
         MouseWheelFreqArea(wheel);
       } else if(CursorInSpectrumWaterfall()) {
         MouseWheelSpectrumWaterfall(wheel);

@@ -17,8 +17,6 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-#define MAX_WPM                  60
-
 #define MENU_F_LO_CUT            40
 
 //------------------------- Global Variables ----------
@@ -215,7 +213,7 @@ float GetEncoderValueLive(float minValue, float maxValue, float startValue, floa
   } else {
     tft.print(startValue, 3);
   }
-  //while (true) {
+
   if (menuEncoderMove != 0) {
     currentValue += menuEncoderMove * increment;  // Bump up or down...
     if (currentValue < minValue)
@@ -379,106 +377,4 @@ FASTRUN void EncoderMenuChangeFilter() {
       }
     }
   }
-}
-
-/*****
-  Purpose: Allows quick setting of WPM without going through a menu
-
-  Parameter list:
-    void
-
-  Return value;
-    int           the current WPM
-*****/
-int SetWPM() {
-  int val;
-  long lastWPM = currentWPM;
-
-  tft.setFontScale((enum RA8875tsize)1);
-
-  tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
-  tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
-  tft.print("current WPM:");
-  tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
-  tft.print(currentWPM);
-
-  while (true) {
-    if (menuEncoderMove != 0) {       // Changed encoder?
-      currentWPM += menuEncoderMove;  // Yep
-      lastWPM = currentWPM;
-      if (lastWPM < 5)  // Set minimum keyer speed to 5 wpm.  KF5N August 20, 2023
-        lastWPM = 5;
-      else if (lastWPM > MAX_WPM)
-        lastWPM = MAX_WPM;
-
-      tft.fillRect(SECONDARY_MENU_X + 200, MENUS_Y, 50, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
-      tft.print(lastWPM);
-      menuEncoderMove = 0;
-    }
-
-    val = ReadSelectedPushButton();  // Read pin that controls all switches
-    val = ProcessButtonPress(val);
-    if (val == MENU_OPTION_SELECT) {  // Make a choice??
-      currentWPM = lastWPM;
-      EEPROMData.currentWPM = currentWPM;
-      EEPROMWrite();
-      UpdateInfoBoxItem(IB_ITEM_KEY);
-      break;
-    }
-  }
-
-  tft.setTextColor(RA8875_WHITE);
-  return currentWPM;
-}
-
-/*****
-  Purpose: Determines how long the transmit relay remains on after last CW atom is sent.
-
-  Parameter list:
-    void
-
-  Return value;
-    long            the delay length in milliseconds
-*****/
-long SetTransmitDelay() {
-  int val;
-  long lastDelay = cwTransmitDelay;
-  long increment = 250;  // Means a quarter second change per detent
-
-  tft.setFontScale((enum RA8875tsize)1);
-
-  tft.fillRect(SECONDARY_MENU_X - 150, MENUS_Y, EACH_MENU_WIDTH + 150, CHAR_HEIGHT, RA8875_MAGENTA);  // scoot left cuz prompt is long
-  tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X - 149, MENUS_Y);
-  tft.print("current delay:");
-  tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y);
-  tft.print(cwTransmitDelay);
-
-  while (true) {
-    if (menuEncoderMove != 0) {                  // Changed encoder?
-      lastDelay += menuEncoderMove * increment;  // Yep
-      if (lastDelay < 0L)
-        lastDelay = 250L;
-
-      tft.fillRect(SECONDARY_MENU_X + 80, MENUS_Y, 200, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y);
-      tft.print(lastDelay);
-      menuEncoderMove = 0;
-    }
-
-    val = ReadSelectedPushButton();  // Read pin that controls all switches
-    val = ProcessButtonPress(val);
-    //delay(150L);  //ALF 09-22-22
-    if (val == MENU_OPTION_SELECT) {  // Make a choice??
-      cwTransmitDelay = lastDelay;
-      EEPROMData.cwTransmitDelay = cwTransmitDelay;
-      EEPROMWrite();
-      break;
-    }
-  }
-  tft.setTextColor(RA8875_WHITE);
-  EraseMenus();
-  return cwTransmitDelay;
 }

@@ -119,6 +119,138 @@ void Dit();
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
+//-------------------------------------------------------------------------------------------------------------
+// CW menu options
+//-------------------------------------------------------------------------------------------------------------
+
+/*****
+  Purpose: Set CW WPM
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void SetWPMValue() {
+  int val = -1;
+  int change = menuEncoderMove + mouseWheelValue;
+  long lastWPM = currentWPM;
+
+  //Serial.println("In SetWPMValue ...");
+  if (change != 0) {
+    currentWPM += change;
+    lastWPM = currentWPM;
+    if (lastWPM < 5)  // Set minimum keyer speed to 5 wpm.  KF5N August 20, 2023
+      lastWPM = 5;
+    else if (lastWPM > MAX_WPM)
+      lastWPM = MAX_WPM;
+
+    tft.setFontScale((enum RA8875tsize)1);
+    tft.setTextColor(RA8875_WHITE);
+    tft.fillRect(SECONDARY_MENU_X + 200, MENUS_Y, 50, CHAR_HEIGHT, RA8875_MAGENTA);
+    tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
+    tft.print(lastWPM);
+  }
+
+  // check if we're done
+  if(menuBarSelected) {
+    val = MENU_OPTION_SELECT;
+  } else {
+    val = ReadSelectedPushButton();  // Read pin that controls all switches
+    val = ProcessButtonPress(val);
+  }
+  //Serial.println(val);
+
+  if (val == MENU_OPTION_SELECT) {  // Make a choice??
+    currentWPM = lastWPM;
+    EEPROMData.currentWPM = currentWPM;
+    EEPROMWrite();
+    UpdateInfoBoxItem(IB_ITEM_KEY);
+    getMenuValueSelected = true;
+  }
+  menuEncoderMove = 0;
+  mouseWheelValue = 0;
+}
+
+// handle an encoder change
+void SetWPMFollowup() {
+  SetTransmitDitLength(currentWPM);
+  getMenuValueSelected = false;
+  getMenuValueActive = false;
+  getMenuValue = NULL;
+  getMenuValueFollowup = NULL;
+}
+
+void SetWPM() {
+  //Serial.println("In SetWPM ...");
+
+  tft.setFontScale((enum RA8875tsize)1);
+
+  tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
+  tft.setTextColor(RA8875_WHITE);
+  tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
+  tft.print("current WPM:");
+  tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y);
+  tft.print(currentWPM);
+
+  getMenuValueActive = true;
+  getMenuValue = &SetWPMValue;
+  getMenuValueFollowup = &SetWPMFollowup;
+  menuBarSelected = false;
+  getMenuValueSelected = false;
+}
+
+/*****
+  Purpose: Select straight key or keyer
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+FLASHMEM void SetKeyType() {
+  const char *keyChoice[] = { "Straight Key", "Keyer", "Cancel" };
+
+  if(USE_FULL_MENU) {
+    keyType = SetSecondaryMenuIndex();
+  } else {
+    keyType = SubmenuSelect(keyChoice, 3, keyType);
+  }
+
+  // Make sure the paddleDit and paddleDah variables are set correctly for straight key.
+  // Paddle flip can reverse these, making the straight key inoperative.  KF5N August 9, 2023
+  if (keyType == 0) {
+    paddleDit = KEYER_DIT_INPUT_TIP;
+    paddleDah = KEYER_DAH_INPUT_RING;
+  }
+}
+
+/*****
+  Purpose: Set up key at power-up.
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+FLASHMEM void SetKeyPowerUp() {
+  if (keyType == 0) {
+    paddleDit = KEYER_DIT_INPUT_TIP;
+    paddleDah = KEYER_DAH_INPUT_RING;
+    return;
+  }
+  if (paddleFlip) {  // Means right-paddle dit
+    paddleDit = KEYER_DAH_INPUT_RING;
+    paddleDah = KEYER_DIT_INPUT_TIP;
+  } else {
+    paddleDit = KEYER_DIT_INPUT_TIP;
+    paddleDah = KEYER_DAH_INPUT_RING;
+  }
+}
+
 /*****
   Purpose: Select CW Filter. CWFilterIndex has these values:
            0 = 840Hz
@@ -145,6 +277,178 @@ FLASHMEM void SelectCWFilter() {
       UpdateCWFilter();
     }
   }
+}
+
+/*****
+  Purpose: This option reverses the dit and dah paddles on the keyer
+
+  Parameter list:
+    void
+
+  Return value
+    void
+*****/
+void DoPaddleFlip() {
+  const char *paddleState[] = { "Right paddle = dah", "Right paddle = dit" };
+  int choice, lastChoice;
+  int pushButtonSwitchIndex;
+  int valPin;
+
+  paddleDah = KEYER_DAH_INPUT_RING;  // Defaults
+  paddleDit = KEYER_DIT_INPUT_TIP;
+  choice = lastChoice = 0;
+
+  tft.setTextColor(RA8875_BLACK);
+  tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_GREEN);
+  tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y);
+  tft.print(paddleState[choice]);  // Show the default (right paddle = dah
+
+  while (true) {
+    delay(150L);
+    valPin = ReadSelectedPushButton();                     // Poll buttons
+    if (valPin != -1) {                                    // button was pushed
+      pushButtonSwitchIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
+      if (pushButtonSwitchIndex == MAIN_MENU_UP || pushButtonSwitchIndex == MAIN_MENU_DN) {
+        choice = !choice;  // Reverse the last choice
+        tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_GREEN);
+        tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y);
+        tft.print(paddleState[choice]);
+      }
+      if (pushButtonSwitchIndex == MENU_OPTION_SELECT)
+      {  // Made a choice??
+        if (choice)
+        {  // Means right-paddle dit
+          paddleDit = KEYER_DAH_INPUT_RING;
+          paddleDah = KEYER_DIT_INPUT_TIP;
+          paddleFlip = 1; // KD0RC
+        }
+        else
+        {
+          paddleDit = KEYER_DIT_INPUT_TIP;
+          paddleDah = KEYER_DAH_INPUT_RING;
+          paddleFlip = 0;  // KD0RC
+        }
+        EEPROMData.paddleDit = paddleDit;
+        EEPROMData.paddleDah = paddleDah;
+        EraseMenus();
+        UpdateInfoBoxItem(IB_ITEM_KEY);
+        return;
+      }
+    }
+  }
+}
+
+/*****
+  Purpose: Allow user to set the sidetone volume
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+FLASHMEM void SetSideToneVolume() {
+  int val, sidetoneDisplay;
+  Q_in_L.clear();  // Clear other buffers too?
+  Q_in_R.clear();
+  tft.setFontScale((enum RA8875tsize)1);
+//  tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 60, CHAR_HEIGHT, RA8875_MAGENTA);
+  tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
+  tft.setTextColor(RA8875_WHITE);
+  tft.setCursor(SECONDARY_MENU_X - 48, MENUS_Y);
+  tft.print("Sidetone Volume:");
+  tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y);
+  sidetoneDisplay = (int)(sidetoneVolume);
+  tft.print(sidetoneDisplay);  // Display in range of 0 to 100.
+  modeSelectInR.gain(0, 0);
+  modeSelectInL.gain(0, 0);
+  modeSelectInExR.gain(0, 0);
+  modeSelectOutL.gain(0, 0);
+  modeSelectOutR.gain(0, 0);
+  modeSelectOutExL.gain(0, 0);
+  modeSelectOutExR.gain(0, 0);
+  digitalWrite(MUTE, LOW);      // unmutes audio
+  modeSelectOutL.gain(1, 0.0);  // Sidetone
+  modeSelectOutR.gain(1, 0.0);  // Sidetone
+
+  while (true) {
+    if (digitalRead(paddleDit) == LOW || digitalRead(paddleDah) == LOW) CW_ExciterIQData();
+
+    if (menuEncoderMove != 0) {
+      //      sidetoneVolume = sidetoneVolume + (float)menuEncoderMove * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
+      sidetoneDisplay = sidetoneDisplay + menuEncoderMove;  // * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
+      if (sidetoneDisplay < 0)
+        sidetoneDisplay = 0;
+      else if (sidetoneDisplay > 100)  // 100% max
+        sidetoneDisplay = 100;
+      tft.fillRect(SECONDARY_MENU_X + 200, MENUS_Y, 70, CHAR_HEIGHT, RA8875_MAGENTA);
+      tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y);
+      sidetoneVolume = (float32_t)sidetoneDisplay;
+      tft.setTextColor(RA8875_WHITE);
+      tft.print(sidetoneDisplay);
+      menuEncoderMove = 0;
+    }
+    modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone  AFP 10-01-22
+    val = ReadSelectedPushButton();                          // Read pin that controls all switches
+    val = ProcessButtonPress(val);
+    if (val == MENU_OPTION_SELECT) {  // Make a choice??
+      EEPROMData.sidetoneVolume = sidetoneVolume;
+      EEPROMWrite();
+      break;
+    }
+  }
+  EraseMenus();
+  lastState = 1111;  // This is required due to the function deactivating the receiver.  This forces a pass through the receiver set-up code.  KF5N October 7, 2023
+}
+
+/*****
+  Purpose: Determines how long the transmit relay remains on after last CW atom is sent.
+
+  Parameter list:
+    void
+
+  Return value;
+    long            the delay length in milliseconds
+*****/
+long SetTransmitDelay() {
+  int val;
+  long lastDelay = cwTransmitDelay;
+  long increment = 250;  // Means a quarter second change per detent
+
+  tft.setFontScale((enum RA8875tsize)1);
+
+  tft.fillRect(SECONDARY_MENU_X - 150, MENUS_Y, EACH_MENU_WIDTH + 150, CHAR_HEIGHT, RA8875_MAGENTA);  // scoot left cuz prompt is long
+  tft.setTextColor(RA8875_WHITE);
+  tft.setCursor(SECONDARY_MENU_X - 149, MENUS_Y);
+  tft.print("current delay:");
+  tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y);
+  tft.print(cwTransmitDelay);
+
+  while (true) {
+    if (menuEncoderMove != 0) {                  // Changed encoder?
+      lastDelay += menuEncoderMove * increment;  // Yep
+      if (lastDelay < 0L)
+        lastDelay = 250L;
+
+      tft.fillRect(SECONDARY_MENU_X + 80, MENUS_Y, 200, CHAR_HEIGHT, RA8875_MAGENTA);
+      tft.setCursor(SECONDARY_MENU_X + 79, MENUS_Y);
+      tft.print(lastDelay);
+      menuEncoderMove = 0;
+    }
+
+    val = ReadSelectedPushButton();  // Read pin that controls all switches
+    val = ProcessButtonPress(val);
+    //delay(150L);  //ALF 09-22-22
+    if (val == MENU_OPTION_SELECT) {  // Make a choice??
+      cwTransmitDelay = lastDelay;
+      EEPROMData.cwTransmitDelay = cwTransmitDelay;
+      EEPROMWrite();
+      break;
+    }
+  }
+  tft.setTextColor(RA8875_WHITE);
+  EraseMenus();
+  return cwTransmitDelay;
 }
 
 /*****
@@ -292,115 +596,6 @@ FLASHMEM void SetDitLength(int wpm) {
 *****/
 FLASHMEM void SetTransmitDitLength(int wpm) {
   transmitDitLength = 1200 / wpm;  // JJP 8/19/23
-}
-
-/*****
-  Purpose: Select straight key or keyer
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FLASHMEM void SetKeyType() {
-  //const char *keyChoice[] = { "Straight Key", "Keyer", "Cancel" };
-
-  //keyType = EEPROMData.keyType = SubmenuSelect(keyChoice, 3, 0);
-  keyType = SetSecondaryMenuIndex();
-  // Make sure the paddleDit and paddleDah variables are set correctly for straight key.
-  // Paddle flip can reverse these, making the straight key inoperative.  KF5N August 9, 2023
-  if (keyType == 0) {
-    paddleDit = KEYER_DIT_INPUT_TIP;
-    paddleDah = KEYER_DAH_INPUT_RING;
-  }
-}
-
-/*****
-  Purpose: Set up key at power-up.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FLASHMEM void SetKeyPowerUp() {
-  if (keyType == 0) {
-    paddleDit = KEYER_DIT_INPUT_TIP;
-    paddleDah = KEYER_DAH_INPUT_RING;
-    return;
-  }
-  if (paddleFlip) {  // Means right-paddle dit
-    paddleDit = KEYER_DAH_INPUT_RING;
-    paddleDah = KEYER_DIT_INPUT_TIP;
-  } else {
-    paddleDit = KEYER_DIT_INPUT_TIP;
-    paddleDah = KEYER_DAH_INPUT_RING;
-  }
-}
-
-/*****
-  Purpose: Allow user to set the sidetone volume
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-FLASHMEM void SetSideToneVolume() {
-  int val, sidetoneDisplay;
-  Q_in_L.clear();  // Clear other buffers too?
-  Q_in_R.clear();
-  tft.setFontScale((enum RA8875tsize)1);
-//  tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 60, CHAR_HEIGHT, RA8875_MAGENTA);
-  tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
-  tft.setTextColor(RA8875_WHITE);
-  tft.setCursor(SECONDARY_MENU_X - 48, MENUS_Y);
-  tft.print("Sidetone Volume:");
-  tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y);
-  sidetoneDisplay = (int)(sidetoneVolume);
-  tft.print(sidetoneDisplay);  // Display in range of 0 to 100.
-  modeSelectInR.gain(0, 0);
-  modeSelectInL.gain(0, 0);
-  modeSelectInExR.gain(0, 0);
-  modeSelectOutL.gain(0, 0);
-  modeSelectOutR.gain(0, 0);
-  modeSelectOutExL.gain(0, 0);
-  modeSelectOutExR.gain(0, 0);
-  digitalWrite(MUTE, LOW);      // unmutes audio
-  modeSelectOutL.gain(1, 0.0);  // Sidetone
-  modeSelectOutR.gain(1, 0.0);  // Sidetone
-
-  while (true) {
-    if (digitalRead(paddleDit) == LOW || digitalRead(paddleDah) == LOW) CW_ExciterIQData();
-
-    if (menuEncoderMove != 0) {
-      //      sidetoneVolume = sidetoneVolume + (float)menuEncoderMove * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
-      sidetoneDisplay = sidetoneDisplay + menuEncoderMove;  // * 0.001;  // sidetoneVolume range is 0.0 to 1.0 in 0.001 steps.  KF5N August 29, 2023
-      if (sidetoneDisplay < 0)
-        sidetoneDisplay = 0;
-      else if (sidetoneDisplay > 100)  // 100% max
-        sidetoneDisplay = 100;
-      tft.fillRect(SECONDARY_MENU_X + 200, MENUS_Y, 70, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(SECONDARY_MENU_X + 220, MENUS_Y);
-      sidetoneVolume = (float32_t)sidetoneDisplay;
-      tft.setTextColor(RA8875_WHITE);
-      tft.print(sidetoneDisplay);
-      menuEncoderMove = 0;
-    }
-    modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone  AFP 10-01-22
-    val = ReadSelectedPushButton();                          // Read pin that controls all switches
-    val = ProcessButtonPress(val);
-    if (val == MENU_OPTION_SELECT) {  // Make a choice??
-      EEPROMData.sidetoneVolume = sidetoneVolume;
-      EEPROMWrite();
-      break;
-    }
-  }
-  EraseMenus();
-  lastState = 1111;  // This is required due to the function deactivating the receiver.  This forces a pass through the receiver set-up code.  KF5N October 7, 2023
 }
 
 //==================================== Decoder =================

@@ -18,8 +18,6 @@ extern int currentDataMode;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void ButtonMenuDown();
-void ButtonMenuUp();
 void BandChange(int change);
 void ButtonFilter();
 void ButtonDemodMode();

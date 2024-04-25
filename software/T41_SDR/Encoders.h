@@ -28,7 +28,5 @@ void EncoderCenterTune();
 void EncoderVolume();
 float GetEncoderValueLive(float minValue, float maxValue, float startValue, float increment, char prompt[]);
 int GetEncoderValue(int minValue, int maxValue, int startValue, int increment, char prompt[]);
-int SetWPM();
-long SetTransmitDelay();
 void EncoderFineTune();
 void EncoderMenuChangeFilter();

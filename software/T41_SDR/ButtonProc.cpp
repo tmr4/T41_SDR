@@ -42,66 +42,6 @@ int currentDataMode = DEMOD_PSK31; // preserves data mode between mode and band 
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: To process a menu down button push
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-void ButtonMenuDown() {
-  switch (menuStatus) {
-    case PRIMARY_MENU_ACTIVE:
-      mainMenuIndex++;
-      if (mainMenuIndex == TOP_MENU_COUNT) {  // At last menu option, so...
-        mainMenuIndex = 0;                    // ...wrap around to first menu option
-      }
-      break;
-
-    case SECONDARY_MENU_ACTIVE:
-      secondaryMenuIndex++;
-      if (secondaryMenuIndex == subMenuMaxOptions) {  // Same here...
-        secondaryMenuIndex = 0;
-      }
-      break;
-
-    default:
-      break;
-  }
-}
-
-/*****
-  Purpose: To process a menu up button push
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-void ButtonMenuUp() {
-  switch (menuStatus) {
-    case PRIMARY_MENU_ACTIVE:
-      mainMenuIndex--;
-      if (mainMenuIndex < 0) {               // At last menu option, so...
-        mainMenuIndex = TOP_MENU_COUNT - 1;  // ...wrap around to first menu option
-      }
-      break;
-
-    case SECONDARY_MENU_ACTIVE:
-      secondaryMenuIndex--;
-      if (secondaryMenuIndex < 0) {  // Same here...
-        secondaryMenuIndex = subMenuMaxOptions - 1;
-      }
-      break;
-
-    default:
-      break;
-  }
-}
-
-/*****
   Purpose: To process a band increase/decrease
 
   Parameter list:

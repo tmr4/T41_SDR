@@ -6,21 +6,26 @@
 extern int calibrateFlag;
 extern int IQChoice;
 
+extern bool getMenuValueActive;
+extern bool getMenuValueSelected;
+extern void (*getMenuValue)();
+extern void (*getMenuValueFollowup)();
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-int CalibrateOptions(int IQChoice);
 void CWOptions();
-void SpectrumOptions();
-void AGCOptions();
-void IQOptions();
-void EqualizerRecOptions();
-void EqualizerXmtOptions();
-void MicGainSet();
-void MicOptions();
 void RFOptions();
 void VFOSelect(int32_t index);
 void VFOSelect();
 void EEPROMOptions();
-int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart);
+void SpectrumOptions();
+void AGCOptions();
+void EqualizerRecOptions();
+void EqualizerXmtOptions();
+void MicGainSet();
+void MicOptions();
+void IQOptions();
+int CalibrateOptions(int IQChoice);
+

@@ -218,13 +218,13 @@ void SetFreq() {
 }
 
 /*****
-  Purpose: Purpose is to sety VFOa to receive frequency and VFOb to the transmit frequency
+  Purpose: Set VFO A to receive frequency and VFO B to the transmit frequency
 
   Parameter list:
     void
 
   Return value;
-    int           the offset as an int
+    void
 
   CAUTION: SI5351_FREQ_MULT is set in the si5253.h header file and is 100UL
 *****/

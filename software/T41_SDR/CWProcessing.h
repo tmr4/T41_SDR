@@ -57,13 +57,18 @@ extern float CWLevelTimerOld;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
+void SetWPM();
+void SetKeyType();
+void SetKeyPowerUp();
 void SelectCWFilter();
+void DoPaddleFlip();
+void SetSideToneVolume();
+long SetTransmitDelay();
+
 void DoCWReceiveProcessing();
 void SetDitLength(int wpm);
 void SetTransmitDitLength(int wpm);
-void SetKeyType();
-void SetKeyPowerUp();
-void SetSideToneVolume();
+
 void ResetHistograms();
 void DoGapHistogram(long gapLen);
 

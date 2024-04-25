@@ -344,44 +344,7 @@ void ExecuteButtonPress(int val) {
 
         EraseMenus();
       } else {
-        switch (menuStatus) {
-          case NO_MENUS_ACTIVE:
-#ifdef DEBUG_SW
-  //NoActiveMenu();
-  Serial.print("NAM #0: val = ");
-  Serial.println(val);
-#endif
-            break;
-
-          case PRIMARY_MENU_ACTIVE:
-            if(mainMenuIndex == TOP_MENU_COUNT - 1) {
-              menuStatus = NO_MENUS_ACTIVE;
-              mainMenuIndex = 0;
-              EraseMenus();
-            } else {
-              menuStatus = SECONDARY_MENU_ACTIVE;
-              secondaryMenuIndex = 0;
-              subMenuMaxOptions = secondaryMenuCount[mainMenuIndex];
-              //secondaryMenuIndex = SubmenuSelect(secondaryChoices[mainMenuIndex], secondaryMenuCount[mainMenuIndex], 0);
-              ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
-            }
-            break;
-
-          case SECONDARY_MENU_ACTIVE:
-            if(secondaryMenuIndex == secondaryMenuCount[mainMenuIndex] - 1) {
-              // cancel selected
-              menuStatus = PRIMARY_MENU_ACTIVE;
-              EraseSecondaryMenu();
-            } else {
-              functionPtr[mainMenuIndex]();
-              EraseMenus();
-              menuStatus = NO_MENUS_ACTIVE;
-            }
-            break;
-
-          default:
-            break;
-        }
+        MenuBarSelect();
       }
       break;
 
@@ -398,26 +361,7 @@ void ExecuteButtonPress(int val) {
         DrawSpectrumFrame();
         EraseMenus();
       } else {
-        if (menuStatus == NO_MENUS_ACTIVE) {
-          menuStatus = PRIMARY_MENU_ACTIVE;
-          mainMenuIndex = 0;
-          ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
-        } else {
-          ButtonMenuUp();
-
-          switch (menuStatus) {
-            case PRIMARY_MENU_ACTIVE:
-              ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
-              break;
-
-            case SECONDARY_MENU_ACTIVE:
-              ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
-              break;
-
-            default:
-              break;
-          }
-        }
+        ShowMenuBar(0, 1);
       }
       break;
 
@@ -442,27 +386,7 @@ void ExecuteButtonPress(int val) {
         DrawSpectrumFrame();
         EraseMenus();
       } else {
-        if (menuStatus == NO_MENUS_ACTIVE) {
-          menuStatus = PRIMARY_MENU_ACTIVE;
-          mainMenuIndex = TOP_MENU_COUNT - 2;
-          ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
-        } else {
-          ButtonMenuDown();
-
-          switch (menuStatus) {
-            case PRIMARY_MENU_ACTIVE:
-              //EraseMenus();
-              ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
-              break;
-
-            case SECONDARY_MENU_ACTIVE:
-              ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
-              break;
-
-            default:
-              break;
-          }
-        }
+        ShowMenuBar(TOP_MENU_COUNT - 2, -1);
       }
       break;
 

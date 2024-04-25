@@ -14,6 +14,7 @@
 #include "ft8.h"
 #include "InfoBox.h"
 #include "Menu.h"
+#include "MenuProc.h"
 #include "mouse.h"
 #include "Noise.h"
 #include "Process.h"
@@ -270,6 +271,19 @@ FASTRUN void ShowSpectrum() {
     if(resetTuningFlag) {
       resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
       ResetTuning();
+    }
+
+    // handle any live menu items
+    if(getMenuValueActive) {
+      if(getMenuValueSelected) {
+        getMenuValueFollowup();
+
+        // wrap up menu
+        EraseMenus();
+        menuStatus = NO_MENUS_ACTIVE;
+      } else {
+        getMenuValue();
+      }
     }
 
     if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
