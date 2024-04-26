@@ -1,10 +1,10 @@
-
 #include "SDT.h"
 
 bool save_last_frequency = false;
 int directFreqFlag = 0;
-int32_t subMenuMaxOptions;    // Holds the number of submenu options.
+int32_t subMenuMaxOptions;  // Holds the number of submenu options.
 long TxRxFreqOld;
+
 
 /*****
   Purpose: To process a menu increase button push
@@ -16,12 +16,18 @@ long TxRxFreqOld;
     void
 *****/
 void ButtonMenuIncrease() {
-  if (menuStatus == PRIMARY_MENU_ACTIVE) {
+//  if (menuStatus == PRIMARY_MENU_ACTIVE) {
+//  Serial.printf("ButtonMenuIncrease\n");
     mainMenuIndex++;
+//    Serial.printf("ButtonMenuDecrease, mainMenuIndex = %d\n", mainMenuIndex);
     if (mainMenuIndex == TOP_MENU_COUNT) {  // At last menu option, so...
       mainMenuIndex = 0;                    // ...wrap around to first menu option
     }
-  } else {
+//  } 
+  
+  /*
+  else {
+    Serial.printf("ALERT menuStatus = 2!\n");
     if (menuStatus == SECONDARY_MENU_ACTIVE) {
       secondaryMenuIndex++;
       if (secondaryMenuIndex == subMenuMaxOptions) {  // Same here...
@@ -29,7 +35,9 @@ void ButtonMenuIncrease() {
       }
     }
   }
+  */
 }
+
 
 /*****
   Purpose: To process a menu decrease button push
@@ -41,21 +49,13 @@ void ButtonMenuIncrease() {
     void
 *****/
 void ButtonMenuDecrease() {
-  if (menuStatus == PRIMARY_MENU_ACTIVE) {
-    mainMenuIndex--;
+
+   mainMenuIndex--;
     if (mainMenuIndex < 0) {               // At last menu option, so...
       mainMenuIndex = TOP_MENU_COUNT - 1;  // ...wrap around to first menu option
     }
-  } else {
-    if (menuStatus == SECONDARY_MENU_ACTIVE) {
-      secondaryMenuIndex--;
-      if (secondaryMenuIndex < 0) {  // Same here...
-        secondaryMenuIndex = subMenuMaxOptions - 1;
-      }
-    }
-  }
 }
-//==================  AFP 09-27-22
+
 
 /*****
   Purpose: To process a band increase button push
@@ -133,7 +133,7 @@ void ButtonBandIncrease() {
   SetFreq();
   ShowFrequency();
   ShowSpectrumdBScale();
-  MyDelay(1L);
+  //delay(1L);
   AudioInterrupts();
   EEPROMWrite();
   // Draw or not draw CW filter graphics to audio spectrum area.  KF5N July 30, 2023
@@ -145,6 +145,7 @@ void ButtonBandIncrease() {
   DrawFrequencyBarValue();
   UpdateDecoderField();
 }
+
 
 /*****
   Purpose: To process a band decrease button push
@@ -229,7 +230,7 @@ void ButtonBandDecrease() {
   SetBand();
   SetFreq();
   ShowFrequency();
-  MyDelay(1L);
+  //delay(1L);
   ShowSpectrumdBScale();
   AudioInterrupts();
   EEPROMWrite();
@@ -277,6 +278,7 @@ void ButtonZoom() {
   ResetTuning();  // AFP 10-11-22
 }
 
+
 /*****
   Purpose: To process a filter button push
 
@@ -293,6 +295,7 @@ void ButtonFilter() {
   //SetFreq();
   ShowFrequency();
 }
+
 
 /*****
   Purpose: Process demodulation mode
@@ -369,6 +372,7 @@ void ButtonMode()  //====== Changed AFP 10-05-22  =================
   DrawBandWidthIndicatorBar();
 }
 
+
 /*****
   Purpose: To process select noise reduction
 
@@ -384,9 +388,11 @@ void ButtonNR()  //AFP 09-19-22 update
   if (EEPROMData.nrOptionSelect > 3) {
     EEPROMData.nrOptionSelect = 0;
   }
-  NROptions();  //AFP 09-19-22
+  if (EEPROMData.nrOptionSelect == 3) ANR_notch = false;  // Turn off AutoNotch if LMS NR is selected.
+  NROptions();                                        //AFP 09-19-22
   UpdateNoiseField();
 }
+
 
 /*****
   Purpose: To set the notch filter
@@ -398,8 +404,12 @@ void ButtonNR()  //AFP 09-19-22 update
     void
 *****/
 void ButtonNotchFilter() {
-  ANR_notchOn = !ANR_notchOn;
-  MyDelay(100L);
+  ANR_notch = !ANR_notch;
+  //  If the notch is activated and LMS NR is also active, turn off NR and update display.
+  if (ANR_notch && EEPROMData.nrOptionSelect == 3) {
+    EEPROMData.nrOptionSelect = 0;  // Turn off noise reduction.  Other NR selections will be valid.
+    UpdateNoiseField();
+  }
 }
 
 
@@ -412,7 +422,7 @@ void ButtonNotchFilter() {
   Return value;
     int           the current noise floor value
 *****/
-int ButtonSetNoiseFloor() {
+void ButtonSetNoiseFloor() {
   int floor = EEPROMData.currentNoiseFloor[EEPROMData.currentBand];  // KF5N
   int val;
 
@@ -424,7 +434,7 @@ int ButtonSetNoiseFloor() {
   tft.print("Pixels above axis:");
   tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y + 1);
   tft.print(EEPROMData.currentNoiseFloor[EEPROMData.currentBand]);
-  MyDelay(150L);
+  delay(150L);
 
   while (true) {
     if (filterEncoderMove != 0) {
@@ -438,7 +448,7 @@ int ButtonSetNoiseFloor() {
     }
 
     val = ReadSelectedPushButton();  // Get ADC value
-    MyDelay(100L);
+    delay(100L);
     val = ProcessButtonPress(val);
     if (val == MENU_OPTION_SELECT)  // If they made a choice...
     {
@@ -457,7 +467,7 @@ int ButtonSetNoiseFloor() {
   tft.writeTo(L2);
   DrawFrequencyBarValue();
   tft.writeTo(L1);
-  return EEPROMData.spectrumNoiseFloor;
+  //  return EEPROMData.spectrumNoiseFloor;
 }
 
 /*****
@@ -734,7 +744,7 @@ void ButtonFrequencyEntry() {
       tft.fillRect(SECONDARY_MENU_X + 195, MENUS_Y + 1, 85, CHAR_HEIGHT, RA8875_MAGENTA);
       tft.setCursor(SECONDARY_MENU_X + 200, MENUS_Y + 1);
       tft.print(strF);
-      MyDelay(250);  // only for analogue switch matrix
+      delay(250);  // only for analogue switch matrix
     }
   }
   if (key != 0x58) {
@@ -762,7 +772,7 @@ void ButtonFrequencyEntry() {
   SetBand();
   SetFreq();
   ShowFrequency();
-  MyDelay(1L);
+  //delay(1L);
   ShowSpectrumdBScale();
   AudioInterrupts();
   EEPROMWrite();

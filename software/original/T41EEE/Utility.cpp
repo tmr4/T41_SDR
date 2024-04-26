@@ -9,6 +9,7 @@ float32_t dbmhz = -145.0;
 float32_t m_AttackAlpha = 0.03;
 float32_t m_DecayAlpha = 0.01;
 
+
 /*****
   Purpose: Generate Array with variable sinewave frequency tone AFP 05-17-22
   Parameter list:
@@ -17,19 +18,17 @@ float32_t m_DecayAlpha = 0.01;
     void
 *****/
 FLASHMEM void sineTone(int numCycles) {
-  float theta;
-  float freqSideTone2;
-  // freqSideTone3, 3000 Hz, is used during TX calibration.
-  //  float freqSideTone3 = 3000;         // Refactored 32 * 24000 / 256; //AFP 2-7-23
-  //  float freqSideTone4 = 375;  Not used.
-  freqSideTone2 = numCycles * 24000 / 256;  // 750.0
-  for (int kf = 0; kf < 256; kf++) {        //Calc: numCycles=8, 750 hz sine wave.
-    theta = kf * 2 * PI * freqSideTone2 / 24000;
+  int kf;
+  float theta, increment;
+  float freqSideTone;
+  freqSideTone = numCycles * 24000.0 / 256.0;
+  for (kf = 0, increment = 0.0; kf < 256; increment += 1.0, kf++) {        // Calc: numCycles = 8, 750 hz sine wave.
+    theta = increment * 2.0 * PI * freqSideTone / 24000.0;
     sinBuffer[kf] = sin(theta);  // Used in CW decoder. 
-//    sinBuffer[kf] = sin(theta);  // Used in CW_Excite.cpp
     cosBuffer[kf] = cos(theta);  // Used in CW_Excite.cpp
   }
 }
+
 
 /*****
   Purpose: Generate ~5ms raised cosine wave-shaping arrays
@@ -446,7 +445,6 @@ float ApproxAtan(float z) {
 }
 
 
-
 /*****
   Purpose: function reads the analog value for each matrix switch and stores that value in EEPROM.
            Only called if STORE_SWITCH_VALUES is uncommented.
@@ -506,7 +504,7 @@ void SaveAnalogSwitchValues() {
       while (true) {
         value = ReadSelectedPushButton();
         if (value < NOTHING_TO_SEE_HERE && value > 0) {
-          MyDelay(100L);
+          delay(100L);
           if (value < minVal) {
             minVal = value;
           } else {
@@ -681,6 +679,45 @@ int SDPresentCheck() {
   }
 }
 
+
+/*****
+  Purpose: Initialize power coefficients based on transmit power level and calibration factor.
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+FLASHMEM void initPowerCoefficients() {
+      for(int i = 0; i < NUMBER_OF_BANDS; i = i + 1) {        
+         EEPROMData.powerOutCW[i] = sqrt(EEPROMData.transmitPowerLevel/20.0) * EEPROMData.CWPowerCalibrationFactor[i];
+         EEPROMData.powerOutSSB[i] =  sqrt(EEPROMData.transmitPowerLevel/20.0) * EEPROMData.SSBPowerCalibrationFactor[i];
+      }
+}
+
+
+FLASHMEM void initUserDefinedStuff() {
+  NR_Index = EEPROMData.nrOptionSelect;
+  TxRxFreq = EEPROMData.centerFreq = EEPROMData.lastFrequencies[EEPROMData.currentBand][EEPROMData.activeVFO];
+  SetKeyPowerUp();  // Use EEPROMData.keyType and EEPROMData.paddleFlip to configure key GPIs.  KF5N August 27, 2023
+  SetDitLength(EEPROMData.currentWPM);
+  SetTransmitDitLength(EEPROMData.currentWPM);
+  // Initialize buffers used by the CW transmitter and CW decoder.
+  sineTone(EEPROMData.CWOffset + 6);  // This function takes "number of cycles" which is the offset + 6.
+  si5351.set_correction(EEPROMData.freqCorrectionFactor, SI5351_PLL_INPUT_XO);
+  initCWShaping();
+  initPowerCoefficients();
+  ResetHistograms();  // KF5N February 20, 2024
+}
+
+
+/*****
+  Purpose: Arm function which is not included in the older library included with TeensyDuino.
+  
+  https://www.keil.com/pack/doc/cmsis/dsp/html/arm__clip__f32_8c.html
+
+*****/
 void arm_clip_f32(const float32_t * pSrc, 
   float32_t * pDst, 
   float32_t low, 

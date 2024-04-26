@@ -1,5 +1,5 @@
 /*
-### Version T41EEE.3 T41 Software Defined Transceiver Arduino Sketch
+### Version T41EEE.5 T41 Software Defined Transceiver Arduino Sketch
 
 This is the "T41 Extreme Experimenter's Edition" software for the 
 T41 Software Defined Transceiver.  The T41EEE was "forked" from the V049.2 version
@@ -21,7 +21,7 @@ This software is licensed according to:
 GNU GENERAL PUBLIC LICENSE  
 Version 3, 29 June 2007  
 Please refer to the included LICENSE file.  
-Greg Raven, December 13 2023  
+Greg Raven, March 12 2024
 
 T41EEE will be hosted at this public Github repository:
 
@@ -32,7 +32,7 @@ and feature enhancements become available.  You will be able to update and FLASH
 with the revised software quickly.
 
 Please note that the configuration structure is different than the predecessor V049.2
-It is recommended to perform a full FLASH erase before loading T41EEE.1.
+It is recommended to perform a full FLASH erase before loading T41EEE.5.
 
 You will need to install the ArduinoJSON library by Benoit Blanchon.  Using the IDE:
 Tools -> Manage Libraries ...
@@ -41,16 +41,18 @@ with the name Arduino_JSON, which is not the correct library.  Install the libra
 and if you have the other dependencies for the V049.2 version, compilation will be
 successful.
 
-## Highlight of Features included in T41EEE.3
+## Highlight of Changes included in T41EEE.5
 
-No new features are introduced in T41EEE.3.  This is a "clean-up" version.
-
-1.  Removal of extraneous #define statements.
-2.  Removal of unused variables.
-3.  Global variables which do not require global access are moved to their individual
-    files and are no longer extern (removed from SDT.h).
-4.  Some larger arrays are now DMAMEM.  This moves them to RAM2, thereby increasing the
-    stack size.
+1.  Fixed keyer problem introduced by last version changes.
+2.  Corrected TX cal on USB to show correct sign.
+3.  Added default values for CW and SSB power arrays in EEPROMData struct.
+4.  Fixed type conversion problem in sinusoidal tone array function.
+5.  Keyer selection is remembered in CW Option menu.
+6.  Re-do of button operations to make select button "repeat last command".
+7.  Removed redundant microphone audio path from Teensy audio system.
+8.  Removd redundant speaker audio path from Teensy audio system.
+9.  SetAudioOperatingState() function updated to match new audio paths.
+10. Removed MyDelay() function and replaced with delay() function.
 
 *********************************************************************************************
 
@@ -120,10 +122,10 @@ const char *topMenus[] = { "CW Options", "RF Set", "VFO Select",
                            "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing" };
 
 // Pointers to functions which execute the menu options.  Do these functions used the returned integer???
-int (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
-                           &EEPROMOptions, &AGCOptions, &SpectrumOptions,
-                           &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
-                           &EqualizerRecOptions, &EqualizerXmtOptions, &CalibrateOptions, &BearingMaps };
+void (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
+                            &EEPROMOptions, &AGCOptions, &SpectrumOptions,
+                            &ButtonSetNoiseFloor, &MicGainSet, &MicOptions,
+                            &EqualizerRecOptions, &EqualizerXmtOptions, &CalibrateOptions, &BearingMaps };
 const char *labels[] = { "Select", "Menu Up", "Band Up",
                          "Zoom", "Menu Dn", "Band Dn",
                          "Filter", "DeMod", "Mode",
@@ -133,75 +135,61 @@ const char *labels[] = { "Select", "Menu Up", "Band Up",
 
 uint32_t FFT_length = FFT_LENGTH;
 
-extern "C" uint32_t set_arm_clock(uint32_t frequency);
+//extern "C" uint32_t set_arm_clock(uint32_t frequency);
 
 //======================================== Global object definitions ==================================================
 // ===========================  AFP 08-22-22
 bool agc_action = false;
 // Teensy and OpenAudio dataflow code.
-AudioControlSGTL5000_Extended sgtl5000_1;      //controller for the Teensy Audio Board
-AudioConvert_I16toF32 int2Float1, int2Float2;  //Converts Int16 to Float.  See class in AudioStream_F32.h
-AudioEffectGain_F32 gain1, gain2;              //Applies digital gain to audio data.  Expected Float data.
-AudioEffectCompressor_F32 comp1, comp2;
-AudioConvert_F32toI16 float2Int1, float2Int2;  //Converts Float to Int16.  See class in AudioStream_F32.h
 
+// Common to Transmitter and Receiver
 AudioInputI2SQuad i2s_quadIn;
 AudioOutputI2SQuad i2s_quadOut;
 
-AudioMixer4 modeSelectInR;    // AFP 09-01-22
-AudioMixer4 modeSelectInL;    // AFP 09-01-22
-AudioMixer4 modeSelectInExR;  // AFP 09-01-22
-AudioMixer4 modeSelectInExL;  // AFP 09-01-22
+// Transmitter
+AudioControlSGTL5000_Extended sgtl5000_1;                    // Controller for the Teensy Audio Board, transmitter only.
+AudioConvert_I16toF32 int2Float1;                            // Converts Int16 to Float.  See class in AudioStream_F32.h
+AudioEffectCompressor_F32 comp1;                             // Compressor from OpenAudio library.  Used in microphone dataflow path.
+AudioConvert_F32toI16 float2Int1;                            // Converts Float to Int16.  See class in AudioStream_F32.h
+AudioRecordQueue Q_in_L_Ex;                                  // AudioRecordQueue for input Microphone channel.
+AudioPlayQueue Q_out_L_Ex;                                   // AudioPlayQueue for driving the I channel (CW/SSB) to the QSE.
+AudioPlayQueue Q_out_R_Ex;                                   // AudioPlayQueue for driving the Q channel (CW/SSB) to the QSE.
+AudioConnection patchCord1(i2s_quadIn, 0, int2Float1, 0);    // Microphone channel.
+AudioConnection_F32 patchCord3(int2Float1, 0, comp1, 0);     // Microphone to compressor.
+AudioConnection_F32 patchCord5(comp1, 0, float2Int1, 0);     // Compressor output.
+AudioConnection patchCord7(float2Int1, 0, Q_in_L_Ex, 0);     // Microphone to AudioRecordQueue.
+AudioConnection patchCord15(Q_out_L_Ex, 0, i2s_quadOut, 0);  // I channel to line out
+AudioConnection patchCord16(Q_out_R_Ex, 0, i2s_quadOut, 1);  // Q channel to line out
 
-AudioMixer4 modeSelectOutL;    // AFP 09-01-22
-AudioMixer4 modeSelectOutR;    // AFP 09-01-22
-AudioMixer4 modeSelectOutExL;  // AFP 09-01-22
-AudioMixer4 modeSelectOutExR;  // AFP 09-01-22
+// Receiver
+//AudioMixer4 modeSelectInR;    // AFP 09-01-22
+//AudioMixer4 modeSelectInL;    // AFP 09-01-22
+
+//AudioMixer4 modeSelectOutL;    // AFP 09-01-22
+//AudioMixer4 modeSelectOutR;    // AFP 09-01-22
 
 AudioRecordQueue Q_in_L;
 AudioRecordQueue Q_in_R;
-AudioRecordQueue Q_in_L_Ex;
-AudioRecordQueue Q_in_R_Ex;
 
 AudioPlayQueue Q_out_L;
-AudioPlayQueue Q_out_R;
-AudioPlayQueue Q_out_L_Ex;
-AudioPlayQueue Q_out_R_Ex;
+//AudioPlayQueue Q_out_R;  2nd audio channel not used.  KF5N March 11, 2024
 
-AudioConnection patchCord1(i2s_quadIn, 0, int2Float1, 0);  //connect the Left input to the Left Int->Float converter
-AudioConnection patchCord2(i2s_quadIn, 1, int2Float2, 0);  //connect the Right input to the Right Int->Float converter
+AudioConnection patchCord9(i2s_quadIn, 2, Q_in_L, 0);  //Input Rec
+AudioConnection patchCord10(i2s_quadIn, 3, Q_in_R, 0);
 
-AudioConnection_F32 patchCord3(int2Float1, 0, comp1, 0);  //Left.  makes Float connections between objects
-AudioConnection_F32 patchCord4(int2Float2, 0, comp2, 0);  //Right.  makes Float connections between objects
-AudioConnection_F32 patchCord5(comp1, 0, float2Int1, 0);  //Left.  makes Float connections between objects
-AudioConnection_F32 patchCord6(comp2, 0, float2Int2, 0);  //Right.  makes Float connections between objects
+//AudioConnection patchCord13(modeSelectInR, 0, Q_in_R, 0);  // Rec in Queue
+//AudioConnection patchCord14(modeSelectInL, 0, Q_in_L, 0);
 
-AudioConnection patchCord7(float2Int1, 0, modeSelectInExL, 0);  //Input Ex
-AudioConnection patchCord8(float2Int2, 0, modeSelectInExR, 0);
+//AudioConnection patchCord17(Q_out_L, 0, i2s_quadOut, 2);  // Rec out Queue
+//AudioConnection patchCord18(Q_out_R, 0, i2s_quadOut, 3);  2nd audio channel not used.  KF5N March 11, 2024
 
-AudioConnection patchCord9(i2s_quadIn, 2, modeSelectInL, 0);  //Input Rec
-AudioConnection patchCord10(i2s_quadIn, 3, modeSelectInR, 0);
+//AudioConnection patchCord21(modeSelectOutL, 0, i2s_quadOut, 2);  //Rec out
+//AudioConnection patchCord22(modeSelectOutR, 0, i2s_quadOut, 3);
+AudioAmplifier volumeAdjust;
+AudioConnection patchCord17(Q_out_L, 0, volumeAdjust, 0);
+AudioConnection patchCord18(volumeAdjust, 0, i2s_quadOut, 2);
 
-AudioConnection patchCord11(modeSelectInExR, 0, Q_in_R_Ex, 0);  //Ex in Queue
-AudioConnection patchCord12(modeSelectInExL, 0, Q_in_L_Ex, 0);
-
-AudioConnection patchCord13(modeSelectInR, 0, Q_in_R, 0);  //Rec in Queue
-AudioConnection patchCord14(modeSelectInL, 0, Q_in_L, 0);
-
-AudioConnection patchCord15(Q_out_L_Ex, 0, modeSelectOutExL, 0);  //Ex out Queue
-AudioConnection patchCord16(Q_out_R_Ex, 0, modeSelectOutExR, 0);
-
-AudioConnection patchCord17(Q_out_L, 0, modeSelectOutL, 0);  //Rec out Queue
-AudioConnection patchCord18(Q_out_R, 0, modeSelectOutR, 0);
-
-AudioConnection patchCord19(modeSelectOutExL, 0, i2s_quadOut, 0);  //Ex out
-AudioConnection patchCord20(modeSelectOutExR, 0, i2s_quadOut, 1);
-AudioConnection patchCord21(modeSelectOutL, 0, i2s_quadOut, 2);  //Rec out
-AudioConnection patchCord22(modeSelectOutR, 0, i2s_quadOut, 3);
-
-AudioConnection patchCord23(Q_out_L_Ex, 0, modeSelectOutL, 1);  //Rec out Queue for sidetone
-AudioConnection patchCord24(Q_out_R_Ex, 0, modeSelectOutR, 1);
-AudioControlSGTL5000 sgtl5000_2;
+AudioControlSGTL5000 sgtl5000_2;  // This is not a 2nd Audio Adapter.  It is I2S to the PCM1808 (ADC I and Q receiver in) and PCM5102 (DAC audio out).
 // End dataflow code
 
 Rotary volumeEncoder = Rotary(VOLUME_ENCODER_A, VOLUME_ENCODER_B);        //( 2,  3)
@@ -278,24 +266,24 @@ struct config_t EEPROMData;
 
 const struct SR_Descriptor SR[18] = {
   //   SR_n,        rate,  text
-  { SAMPLE_RATE_8K, 8000, "  8k"},       // not OK
-  { SAMPLE_RATE_11K, 11025, " 11k"},     // not OK
-  { SAMPLE_RATE_16K, 16000, " 16k"},      // OK
-  { SAMPLE_RATE_22K, 22050, " 22k"},      // OK
-  { SAMPLE_RATE_32K, 32000, " 32k"},     // OK, one more indicator?
-  { SAMPLE_RATE_44K, 44100, " 44k"},      // OK
-  { SAMPLE_RATE_48K, 48000, " 48k"},     // OK
-  { SAMPLE_RATE_50K, 50223, " 50k"},     // NOT OK
-  { SAMPLE_RATE_88K, 88200, " 88k"},      // OK
-  { SAMPLE_RATE_96K, 96000, " 96k"},     // OK
-  { SAMPLE_RATE_100K, 100000, "100k"},   // NOT OK
-  { SAMPLE_RATE_101K, 100466, "101k"},   // NOT OK
-  { SAMPLE_RATE_176K, 176400, "176k"},   // OK
-  { SAMPLE_RATE_192K, 192000, "192k"},  // OK    THIS IS USED IN THE T41
-  { SAMPLE_RATE_234K, 234375, "234k"},  // NOT OK
-  { SAMPLE_RATE_256K, 256000, "256k"},  // NOT OK
-  { SAMPLE_RATE_281K, 281000, "281k"},  // NOT OK
-  { SAMPLE_RATE_353K, 352800, "353k"}   // NOT OK
+  { SAMPLE_RATE_8K, 8000, "  8k" },      // not OK
+  { SAMPLE_RATE_11K, 11025, " 11k" },    // not OK
+  { SAMPLE_RATE_16K, 16000, " 16k" },    // OK
+  { SAMPLE_RATE_22K, 22050, " 22k" },    // OK
+  { SAMPLE_RATE_32K, 32000, " 32k" },    // OK, one more indicator?
+  { SAMPLE_RATE_44K, 44100, " 44k" },    // OK
+  { SAMPLE_RATE_48K, 48000, " 48k" },    // OK
+  { SAMPLE_RATE_50K, 50223, " 50k" },    // NOT OK
+  { SAMPLE_RATE_88K, 88200, " 88k" },    // OK
+  { SAMPLE_RATE_96K, 96000, " 96k" },    // OK
+  { SAMPLE_RATE_100K, 100000, "100k" },  // NOT OK
+  { SAMPLE_RATE_101K, 100466, "101k" },  // NOT OK
+  { SAMPLE_RATE_176K, 176400, "176k" },  // OK
+  { SAMPLE_RATE_192K, 192000, "192k" },  // OK    THIS IS USED IN THE T41
+  { SAMPLE_RATE_234K, 234375, "234k" },  // NOT OK
+  { SAMPLE_RATE_256K, 256000, "256k" },  // NOT OK
+  { SAMPLE_RATE_281K, 281000, "281k" },  // NOT OK
+  { SAMPLE_RATE_353K, 352800, "353k" }   // NOT OK
 };
 
 const arm_cfft_instance_f32 *S;
@@ -338,8 +326,8 @@ long NCOFreq;
 
 //======================================== Global variables declarations ===============================================
 //================== Global CW Correlation and FFT Variables =================
-float32_t* cosBuffer = new float32_t[256];  // Was cosBuffer2; Greg KF5N February 7, 2024
-float32_t* sinBuffer = new float32_t[256];  // This can't be DMAMEM.  It will cause problems with the CW decoder.
+float32_t *cosBuffer = new float32_t[256];  // Was cosBuffer2; Greg KF5N February 7, 2024
+float32_t *sinBuffer = new float32_t[256];  // This can't be DMAMEM.  It will cause problems with the CW decoder.
 //float32_t DMAMEM sinBuffer2[256];
 float32_t DMAMEM cwRiseBuffer[256];
 float32_t DMAMEM cwFallBuffer[256];
@@ -366,9 +354,7 @@ int fLoCutOld;
 int fHiCutOld;
 int filterWidth = (int)((bands[EEPROMData.currentBand].FHiCut - bands[EEPROMData.currentBand].FLoCut) / 1000.0 * pixel_per_khz);
 int h = SPECTRUM_HEIGHT + 3;
-int8_t menuStatus = NO_MENUS_ACTIVE;
-uint8_t ANR_notch = 0;
-uint8_t ANR_notchOn = 0;
+bool ANR_notch = false;
 uint8_t auto_codec_gain = 1;
 uint8_t display_S_meter_or_spectrum_state = 0;
 uint8_t keyPressedOn = 0;
@@ -385,11 +371,6 @@ const uint8_t NR_N_frames = 15;
 int16_t pixelCurrent[SPECTRUM_RES];
 int16_t pixelnew[SPECTRUM_RES];
 int16_t pixelold[SPECTRUM_RES];
-
-q15_t* sp_L1 = new q15_t[2048];  // Arrays moved to RAM2.
-q15_t* sp_R1 = new q15_t[2048];;
-q15_t *sp_L2 = new q15_t[2048];;
-q15_t *sp_R2 = new q15_t[2048];;
 
 //===== New histogram stuff ===
 volatile int filterEncoderMove = 0;
@@ -409,10 +390,10 @@ unsigned long transmitDahUnshapedBlocks;
 
 int16_t y_old, y_new, y1_new, y1_old, y_old2;  //A
 
-const float32_t DF1 = 4.0;             // decimation factor
-const float32_t DF2 = 2.0;             // decimation factor
-const float32_t DF = DF1 * DF2;        // decimation factor
-const float32_t n_samplerate = 176.0;  // sample rate before decimation
+const float32_t DF1 = 4.0;                                         // decimation factor
+const float32_t DF2 = 2.0;                                         // decimation factor
+const float32_t DF = DF1 * DF2;                                    // decimation factor
+const float32_t n_samplerate = 176.0;                              // sample rate before decimation
 const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;  // 512/2/128 * 8 = 16
 const uint32_t N_DEC_B = N_B / (uint32_t)DF;
 const uint32_t NR_add_counter = 128;
@@ -430,7 +411,8 @@ const uint16_t n_dec2_taps = (1 + (uint16_t)(n_att / (22.0 * (n_fstop2 - n_fpass
 int mute = 0;
 int attenuator = 0;
 
-int DMAMEM audioYPixel[1024];  // Will int16_t save memory here???
+int audioYPixel[256]{ 0 };  // Will int16_t save memory here???  DMAMEM not working here.  Causes audio spectrum glitch.  KF5N February 26, 2024.
+//int* audioYPixel = new int[256]{0};
 
 int bandswitchPins[] = {
   30,  // 80M
@@ -467,7 +449,7 @@ const int INT2_STATE_SIZE = 8 + BUFFER_SIZE * N_B / (uint32_t)DF1 - 1;
 unsigned ring_buffsize = RB_SIZE;
 
 int32_t mainMenuIndex = START_MENU;  // Done so we show menu[0] at startup
-int32_t secondaryMenuIndex = -1;     // -1 means haven't determined secondary menu
+//int32_t secondaryMenuIndex = -1;     // -1 means haven't determined secondary menu
 
 uint32_t N_BLOCKS = N_B;
 
@@ -793,23 +775,6 @@ int SetI2SFreq(int freq) {
 
 
 /*****
-  Purpose: to cause a delay in program execution
-
-  Parameter list:
-    unsigned long millisWait    // the number of millseconds to wait
-
-  Return value:
-    void
-*****/
-void MyDelay(unsigned long millisWait) {
-  unsigned long now = millis();
-
-  while (millis() - now < millisWait)
-    ;  // Twiddle thumbs until delay ends...
-}
-
-
-/*****
   Purpose: to collect array inits in one place
 
   Parameter list:
@@ -1012,43 +977,37 @@ void SetAudioOperatingState(int operatingState) {
   switch (operatingState) {
     case SSB_RECEIVE_STATE:
     case CW_RECEIVE_STATE:
-      // QSD connected and enabled
-      Q_in_L.begin();
-      Q_in_R.begin();
-      patchCord9.connect();
-      patchCord10.connect();
-
-      // Microphone input disabled and disconnected
+      // Disconnect and deactivate microphone audio.
       patchCord1.disconnect();
-      patchCord2.disconnect();
-      Q_in_L_Ex.end();
+      Q_in_L_Ex.end();  // Microphone audio path.
       Q_in_L_Ex.clear();
-      Q_in_R_Ex.end();
-      Q_in_R_Ex.clear();
-
-      // CW sidetone output disconnected
-      patchCord23.disconnect();
-      patchCord24.disconnect();
-
+      // Deactivate TX audio output path.
+      patchCord15.disconnect();  // Disconnect transmitter I and Q channel outputs.
+      patchCord16.disconnect();
+      // QSD connected and enabled
+      Q_in_L.begin();                                        // Receiver I channel
+      Q_in_R.begin();                                        // Receiver Q channel
+      patchCord9.connect();                                  // Receiver I channel
+      patchCord10.connect();                                 // Receiver Q channel
+      patchCord17.connect();                                 // Receiver audio channel
+      volumeAdjust.gain(volumeLog[EEPROMData.audioVolume]);  // Set volume because sidetone may have changed it.
       break;
     case SSB_TRANSMIT_STATE:
       // QSD disabled and disconnected
-      patchCord9.disconnect();
-      patchCord10.disconnect();
+      patchCord9.disconnect();   // Receiver I channel
+      patchCord10.disconnect();  // Receiver Q channel
+      patchCord17.disconnect();  // CW sidetone
       Q_in_L.end();
       Q_in_L.clear();
       Q_in_R.end();
       Q_in_R.clear();
 
       // Microphone input enabled and connected
-      Q_in_L_Ex.begin();
-      Q_in_R_Ex.begin();
-      patchCord1.connect();
-      patchCord2.connect();
+      patchCord1.connect();  // Microphone audio
+      Q_in_L_Ex.begin();     // Microphone audio
 
-      // CW sidetone output disconnected
-      patchCord23.disconnect();
-      patchCord24.disconnect();
+      patchCord15.connect();  // Transmitter I channel
+      patchCord16.connect();  // Transmitter Q channel
 
       break;
     case CW_TRANSMIT_STRAIGHT_STATE:
@@ -1063,15 +1022,13 @@ void SetAudioOperatingState(int operatingState) {
 
       // Microphone input disabled and disconnected
       patchCord1.disconnect();
-      patchCord2.disconnect();
-      Q_in_L_Ex.end();
+      Q_in_L_Ex.end();  // Clear microphone queue.
       Q_in_L_Ex.clear();
-      Q_in_R_Ex.end();
-      Q_in_R_Ex.clear();
 
-      // CW sidetone output connected
-      patchCord23.connect();
-      patchCord24.connect();
+      patchCord15.connect();  // Connect I and Q transmitter output channels.
+      patchCord16.connect();
+      patchCord17.connect();                                    // Sidetone goes into receiver audio path.
+      volumeAdjust.gain(volumeLog[EEPROMData.sidetoneVolume]);  // Adjust sidetone volume.
 
       break;
   }
@@ -1121,7 +1078,7 @@ FLASHMEM void Splash() {
   centerCall = (XPIXELS - strlen(MY_CALL) * tft.getFontWidth()) / 2;
   tft.setCursor(centerCall, YPIXELS / 2 + 160);
   tft.print(MY_CALL);
-  MyDelay(SPLASH_DELAY);
+  delay(SPLASH_DELAY);
   tft.fillWindow(RA8875_BLACK);
 }
 
@@ -1143,19 +1100,25 @@ FLASHMEM void setup() {
   Teensy3Clock.set(now());  // set the RTC
   T4_rtc_set(Teensy3Clock.get());
 
-  sgtl5000_1.setAddress(LOW);
+  sgtl5000_1.setAddress(LOW);  // This is not documented.  See QuadChannelOutput example.
   sgtl5000_1.enable();
   AudioMemory(500);  //  Increased to 450 from 400.  Memory was hitting max.  KF5N August 31, 2023
   AudioMemory_F32(10);
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
+  sgtl5000_1.muteHeadphone();  // KF5N March 11, 2024
   sgtl5000_1.micGain(20);
   sgtl5000_1.lineInLevel(0);
-  sgtl5000_1.lineOutLevel(20);
+#ifdef QSE2
+  sgtl5000_1.lineOutLevel(13);  // Setting of 13 limits line-out level to 3.15 volts p-p (maximum).
+#else
+  sgtl5000_1.lineOutLevel(20);  // Setting of 20 limits line-out level to 2.14 volts p-p.
+#endif
   sgtl5000_1.adcHighPassFilterDisable();  //reduces noise.  https://forum.pjrc.com/threads/27215-24-bit-audio-boards?p=78831&viewfull=1#post78831
-  sgtl5000_2.setAddress(HIGH);
+  sgtl5000_2.setAddress(HIGH);            // T41 has only a single Audio Adaptor.  This is being used essentially as a 2nd I2S port.
   sgtl5000_2.enable();
-  sgtl5000_2.inputSelect(AUDIO_INPUT_LINEIN);
-  sgtl5000_2.volume(0.5);
+  sgtl5000_2.inputSelect(AUDIO_INPUT_LINEIN);  // Why is a second sgtl5000 device used???  This is the receiver ADCs, PCM1808?
+  sgtl5000_2.muteHeadphone();                  // KF5N March 11, 2024
+                                               //  sgtl5000_2.volume(0.5);   //  Headphone volume???  Not required as headphone is muted.
 
   pinMode(FILTERPIN15M, OUTPUT);
   pinMode(FILTERPIN20M, OUTPUT);
@@ -1238,7 +1201,7 @@ FLASHMEM void setup() {
     tft.setTextColor(RA8875_GREEN);
     tft.setCursor(10, 10);
     tft.print("Release button to start calibration.");
-    MyDelay(2000);
+    delay(2000);
     EnableButtonInterrupts();
     SaveAnalogSwitchValues();
     delay(3000);
@@ -1249,8 +1212,6 @@ FLASHMEM void setup() {
   h = 135;
   Q_in_L.begin();  //Initialize receive input buffers
   Q_in_R.begin();
-  MyDelay(100L);
-  NR_Index = EEPROMData.nrOptionSelect;
 
   // ========================  End set up of Parameters from EEPROM data ===============
   NCOFreq = 0;
@@ -1267,20 +1228,11 @@ FLASHMEM void setup() {
   si5351.output_enable(SI5351_CLK2, 0);
   si5351.output_enable(SI5351_CLK1, 0);
 
-  // Initialize the frequency setting based on the last used frequency stored to EEPROM.
-  TxRxFreq = EEPROMData.centerFreq = EEPROMData.lastFrequencies[EEPROMData.currentBand][EEPROMData.activeVFO];
-
   InitializeDataArrays();
-
-  SetupMode(bands[EEPROMData.currentBand].mode);
-
-  SetKeyPowerUp();  // Use EEPROMData.keyType and EEPROMData.paddleFlip to configure key GPIs.  KF5N August 27, 2023
-  SetDitLength(EEPROMData.currentWPM);
-  SetTransmitDitLength(EEPROMData.currentWPM);
-
-  // Initialize buffers used by the CW transmitter and CW decoder.
-  sineTone(EEPROMData.CWOffset + 6);  // This function takes "number of cycles" which is the offset + 6.
-  initCWShaping();
+  // Initialize user defined stuff
+  initUserDefinedStuff();
+  volumeAdjust.gain(0.0);   // Set volume to zero at power-up.
+  volumeChangeFlag = true;  // Adjust volume so saved value.
   filterEncoderMove = 0;
   fineTuneEncoderMove = 0L;
   xrState = RECEIVE_STATE;  // Enter loop() in receive state.  KF5N July 22, 2023
@@ -1288,8 +1240,7 @@ FLASHMEM void setup() {
   DrawSpectrumDisplayContainer();
   RedrawDisplayScreen();
 
-  mainMenuIndex = 0;             // Changed from middle to first. Do Menu Down to get to Calibrate quickly
-  menuStatus = NO_MENUS_ACTIVE;  // Blank menu field
+  mainMenuIndex = 0;  // Changed from middle to first. Do Menu Down to get to Calibrate quickly
   ShowName();
 
   ShowBandwidth();
@@ -1301,8 +1252,7 @@ FLASHMEM void setup() {
   comp_ratio = 5.0;
   attack_sec = .1;
   release_sec = 2.0;
-  comp1.setPreGain_dB(-10);  //set the gain of the Left-channel gain processor
-  comp2.setPreGain_dB(-10);  //set the gain of the Right-channel gain processor
+  comp1.setPreGain_dB(-10);  // Set the gain of the microphone audio gain processor.
 
   EEPROMData.sdCardPresent = SDPresentCheck();  // JJP 7/18/23
   lastState = 1111;                             // To make sure the receiver will be configured on the first pass through.  KF5N September 3, 2023
@@ -1324,7 +1274,7 @@ elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necess
   Return value:
     void
 *****/
-FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
+void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
 {
   int pushButtonSwitchIndex = -1;
   int valPin;
@@ -1357,21 +1307,9 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
     case (SSB_RECEIVE_STATE):
       if (lastState != radioState) {  // G0ORX 01092023
         digitalWrite(MUTE, LOW);      // Audio Mute off
-        modeSelectInR.gain(0, 1);
-        modeSelectInL.gain(0, 1);
-        digitalWrite(RXTX, LOW);  //xmit off
+        digitalWrite(RXTX, LOW);      //xmit off
         T41State = SSB_RECEIVE;
         xrState = RECEIVE_STATE;
-        modeSelectInR.gain(0, 1);
-        modeSelectInL.gain(0, 1);
-        modeSelectInExR.gain(0, 0);
-        modeSelectInExL.gain(0, 0);
-        modeSelectOutL.gain(0, 1);
-        modeSelectOutR.gain(0, 1);
-        modeSelectOutL.gain(1, 0);
-        modeSelectOutR.gain(1, 0);
-        modeSelectOutExL.gain(0, 0);
-        modeSelectOutExR.gain(0, 0);
         if (keyPressedOn == 1) {
           return;
         }
@@ -1381,7 +1319,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
       break;
     case SSB_TRANSMIT_STATE:
       comp1.setPreGain_dB(EEPROMData.currentMicGain);
-      comp2.setPreGain_dB(EEPROMData.currentMicGain);
+      //      comp2.setPreGain_dB(EEPROMData.currentMicGain);
       if (EEPROMData.compressorFlag == 1) {
         SetupMyCompressors(use_HP_filter, (float)EEPROMData.currentMicThreshold, comp_ratio, attack_sec, release_sec);  // Cast EEPROMData.currentMicThreshold to float.  KF5N, October 31, 2023
       } else {
@@ -1393,14 +1331,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
       digitalWrite(MUTE, HIGH);  //  Mute Audio  (HIGH=Mute)
       digitalWrite(RXTX, HIGH);  //xmit on
       xrState = TRANSMIT_STATE;
-      modeSelectInR.gain(0, 0);
-      modeSelectInL.gain(0, 0);
-      modeSelectInExR.gain(0, 1);
-      modeSelectInExL.gain(0, 1);
-      modeSelectOutL.gain(0, 0);
-      modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, EEPROMData.powerOutSSB[EEPROMData.currentBand]);  //AFP 10-21-22
-      modeSelectOutExR.gain(0, EEPROMData.powerOutSSB[EEPROMData.currentBand]);  //AFP 10-21-22
+
       ShowTransmitReceiveStatus();
 
       while (digitalRead(PTT) == LOW) {
@@ -1422,16 +1353,6 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
         T41State = CW_RECEIVE;
         ShowTransmitReceiveStatus();
         xrState = RECEIVE_STATE;
-        modeSelectInR.gain(0, 1);
-        modeSelectInL.gain(0, 1);
-        modeSelectInExR.gain(0, 0);
-        modeSelectInExL.gain(0, 0);
-        modeSelectOutL.gain(0, 1);
-        modeSelectOutR.gain(0, 1);
-        modeSelectOutL.gain(1, 0);
-        modeSelectOutR.gain(1, 0);
-        modeSelectOutExL.gain(0, 0);
-        modeSelectOutExR.gain(0, 0);
         keyPressedOn = 0;
       }
       ShowSpectrum();  // if removed CW signal on is 2 mS
@@ -1439,15 +1360,8 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
     case CW_TRANSMIT_STRAIGHT_STATE:
       xrState = TRANSMIT_STATE;
       ShowTransmitReceiveStatus();
-      modeSelectInR.gain(0, 0);
-      modeSelectInL.gain(0, 0);
-      modeSelectInExR.gain(0, 0);
-      modeSelectOutL.gain(0, 0);
-      modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, 0);
-      modeSelectOutExR.gain(0, 0);
       digitalWrite(MUTE, LOW);  // unmutes audio
-      cwKeyDown = false;
+      cwKeyDown = false;        // false initiates CW_SHAPING_RISE.
       cwTimer = millis();
       while (millis() - cwTimer <= EEPROMData.cwTransmitDelay) {  //Start CW transmit timer on
         digitalWrite(RXTX, HIGH);
@@ -1455,10 +1369,6 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           cwTimer = millis();                                                       //Reset timer
 
           if (!cwKeyDown) {
-            modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-            modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-            modeSelectOutL.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);        // Sidetone  AFP 10-01-22
-
             CW_ExciterIQData(CW_SHAPING_RISE);
             cwKeyDown = true;
           } else {
@@ -1467,31 +1377,19 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
         } else {
           if (digitalRead(EEPROMData.paddleDit) == HIGH && EEPROMData.keyType == 0) {  //Turn off CW signal
             keyPressedOn = 0;
-
-            if (cwKeyDown) {
+            if (cwKeyDown) {  // Initiate falling CW signal.
               CW_ExciterIQData(CW_SHAPING_FALL);
               cwKeyDown = false;
-            }
+            } else CW_ExciterIQData(CW_SHAPING_ZERO);  //  No waveforms; but DC offset is still present.
           }
         }
       }
-      digitalWrite(MUTE, HIGH);   // mutes audio
-      modeSelectOutL.gain(1, 0);  // Sidetone off
-      modeSelectOutR.gain(1, 0);
-      modeSelectOutExL.gain(0, 0);  //Power = 0 //AFP 10-11-22
-      modeSelectOutExR.gain(0, 0);  //AFP 10-11-22
-      digitalWrite(RXTX, LOW);      // End Straight Key Mode
+      digitalWrite(MUTE, HIGH);  // mutes audio
+      digitalWrite(RXTX, LOW);   // End Straight Key Mode
       break;
     case CW_TRANSMIT_KEYER_STATE:
       xrState = TRANSMIT_STATE;
       ShowTransmitReceiveStatus();
-      modeSelectInR.gain(0, 0);
-      modeSelectInL.gain(0, 0);
-      modeSelectInExR.gain(0, 0);
-      modeSelectOutL.gain(0, 0);
-      modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, 0);
-      modeSelectOutExR.gain(0, 0);
       digitalWrite(MUTE, LOW);  // unmutes audio
       cwTimer = millis();
       while (millis() - cwTimer <= EEPROMData.cwTransmitDelay) {
@@ -1499,10 +1397,6 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
 
         if (digitalRead(EEPROMData.paddleDit) == LOW) {  // Keyer Dit
           ditTimerOn = millis();
-          modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-          modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);  //AFP 10-21-22
-          modeSelectOutL.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);        // Sidetone
-
           // Queue audio blocks--execution time of this loop will be between 0-20ms shorter
           // than the desired dit time, due to audio buffering
           CW_ExciterIQData(CW_SHAPING_RISE);
@@ -1519,58 +1413,40 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
           // Pause for one dit length of silence
           ditTimerOff = millis();
           while (millis() - ditTimerOff <= transmitDitLength) {
+            CW_ExciterIQData(CW_SHAPING_ZERO);
+          }
+          cwTimer = millis();
+        } else if (digitalRead(EEPROMData.paddleDah) == LOW) {  //Keyer DAH
+          dahTimerOn = millis();
+          // Queue audio blocks--execution time of this loop will be between 0-20ms shorter
+          // than the desired dah time, due to audio buffering
+          CW_ExciterIQData(CW_SHAPING_RISE);
+          for (cwBlockIndex = 0; cwBlockIndex < transmitDahUnshapedBlocks; cwBlockIndex++) {
+            CW_ExciterIQData(CW_SHAPING_NONE);
+          }
+          CW_ExciterIQData(CW_SHAPING_FALL);
+
+          // Wait for calculated dah time, allowing audio blocks to be played
+          while (millis() - dahTimerOn <= 3UL * transmitDitLength) {
             ;
           }
 
-          modeSelectOutExL.gain(0, 0);  //Power =0
-          modeSelectOutExR.gain(0, 0);
-          modeSelectOutL.gain(1, 0);  // Sidetone off
-          modeSelectOutR.gain(1, 0);
-
+          // Pause for one dit length of silence
+          ditTimerOff = millis();
+          while (millis() - ditTimerOff <= transmitDitLength) {
+            CW_ExciterIQData(CW_SHAPING_ZERO);
+          }
           cwTimer = millis();
         } else {
-          if (digitalRead(EEPROMData.paddleDah) == LOW) {  //Keyer DAH
-            dahTimerOn = millis();
-            modeSelectOutExL.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);
-            modeSelectOutExR.gain(0, EEPROMData.powerOutCW[EEPROMData.currentBand]);
-            modeSelectOutL.gain(1, volumeLog[(int)EEPROMData.sidetoneVolume]);
-
-            // Queue audio blocks--execution time of this loop will be between 0-20ms shorter
-            // than the desired dah time, due to audio buffering
-            CW_ExciterIQData(CW_SHAPING_RISE);
-            for (cwBlockIndex = 0; cwBlockIndex < transmitDahUnshapedBlocks; cwBlockIndex++) {
-              CW_ExciterIQData(CW_SHAPING_NONE);
-            }
-            CW_ExciterIQData(CW_SHAPING_FALL);
-
-            // Wait for calculated dah time, allowing audio blocks to be played
-            while (millis() - dahTimerOn <= 3UL * transmitDitLength) {
-              ;
-            }
-
-            // Pause for one dit length of silence
-            ditTimerOff = millis();
-            while (millis() - ditTimerOff <= transmitDitLength) {
-              ;
-            }
-
-            modeSelectOutExL.gain(0, 0);  //Power =0
-            modeSelectOutExR.gain(0, 0);
-            modeSelectOutL.gain(1, 0);  // Sidetone off
-            modeSelectOutR.gain(1, 0);
-
-            cwTimer = millis();
-          }
+          CW_ExciterIQData(CW_SHAPING_ZERO);
         }
         keyPressedOn = 0;  // Fix for keyer click-clack.  KF5N August 16, 2023
       }                    //End Relay timer
 
-      digitalWrite(MUTE, HIGH);   // mutes audio
-      modeSelectOutL.gain(1, 0);  // Sidetone off
-      modeSelectOutR.gain(1, 0);
-      modeSelectOutExL.gain(0, 0);  //Power = 0 //AFP 10-11-22
-      modeSelectOutExR.gain(0, 0);  //AFP 10-11-22
-      digitalWrite(RXTX, LOW);      // End Straight Key Mode
+      digitalWrite(MUTE, HIGH);  // mutes audio
+                                 //      patchCord15.disconnect();  // Disconnect the I and Q transmitter outputs.
+                                 //      patchCord16.disconnect();
+      digitalWrite(RXTX, LOW);   // End Straight Key Mode
       break;
     default:
       break;
@@ -1581,7 +1457,6 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
     lastState = radioState;
     ShowTransmitReceiveStatus();
   }
-  //  ShowTransmitReceiveStatus();
 
 #ifdef DEBUG1
   if (elapsed_micros_idx_t > (SR[SampleRate].rate / 960)) {
@@ -1591,6 +1466,7 @@ FASTRUN void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
 #endif
 
   if (volumeChangeFlag == true) {
+    volumeAdjust.gain(volumeLog[EEPROMData.audioVolume]);
     volumeChangeFlag = false;
     UpdateVolumeField();
   }

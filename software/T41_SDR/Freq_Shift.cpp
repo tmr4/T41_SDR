@@ -1,8 +1,27 @@
 #include "SDT.h"
+#include "Display.h"
+#include "FIR.h"
+#include "Tune.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+float32_t NCO_INC;
+double OSC_COS;
+double OSC_SIN;
+double Osc_Vect_Q = 1.0;
+double Osc_Vect_I = 0.0;
+double Osc_Gain = 0.0;
+double Osc_Q = 0.0;
+double Osc_I = 0.0;
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: void FreqShift1()
-          AFP 12-31-20
         Frequency translation by Fs/4 without multiplication from Lyons (2011): chapter 13.1.2 page 646
         together with the savings of not having to shift/rotate the FFT_buffer, this saves
         about 1% of processor use
@@ -19,8 +38,10 @@
   Return value:
     void
 *****/
-void FreqShift1()
-{
+void FreqShift1() {
+  float32_t hh1;
+  float32_t hh2;
+
   for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS; i += 4) {
     hh1 = - float_buffer_R[i + 1];  // xnew(1) =  - ximag(1) + jxreal(1)
     hh2 =   float_buffer_L[i + 1];
@@ -36,8 +57,8 @@ void FreqShift1()
     float_buffer_R[i + 3] = hh2;
   }
   for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS; i ++) {
-    float_buffer_L_3[i] = float_buffer_L[i];
-    float_buffer_R_3[i] = float_buffer_R[i];
+    float_buffer_L_EX[i] = float_buffer_L[i];
+    float_buffer_R_EX[i] = float_buffer_R[i];
   }
   // this is for -Fs/4 [moves receive frequency to the right in the spectrumdisplay]
 }
@@ -69,37 +90,21 @@ void FreqShift1()
     Requires 4 complex multiplies and two adds per data point within the time domain buffer.  Applied after the data
     stream is sent to the Zoom FFT , but befor decimation.
 *****/
-void FreqShift2()
-{
+void FreqShift2() {
   uint i;
-  //long currentFreqAOld;  Not used.  KF5N July 22, 2023
   int sideToneShift = 0;
 
   if (fineTuneEncoderMove != 0L) {
-   // SetFreq();           //AFP 10-04-22
-   // ShowFrequency();
-   // DrawBandWidthIndicatorBar();
-
-    // ); //AFP 10-04-22
-    // EncoderFineTune();      //AFP 10-04-22
-
     if (NCOFreq > 40000L) {
       NCOFreq = 40000L;
     }
-    // centerFreq += freqIncrement;
+
     currentFreqA = centerFreq + NCOFreq;
-    //SetFreq(); //AFP 10-04-22
-    //ShowFrequency();
   }
 
-  encoderStepOld = fineTuneEncoderMove;
-  //currentFreqAOld = TxRxFreq;
   TxRxFreq = centerFreq + NCOFreq;
-  //if (abs(currentFreqAOld - TxRxFreq) < 9 * stepFineTune && currentFreqAOld != TxRxFreq) {  // AFP 10-30-22
-  //  ShowFrequency();
-  //  DrawBandWidthIndicatorBar();
-  //}
-  if (xmtMode == SSB_MODE ) {
+
+  if (xmtMode == SSB_MODE || xmtMode == DATA_MODE) {
     sideToneShift = 0;
   } else {
     if (xmtMode == CW_MODE ) {
@@ -129,7 +134,7 @@ void FreqShift2()
     //
     // do actual frequency conversion
     float freqAdjFactor = 1.1;
-    float_buffer_L[i] = (float_buffer_L_3[i] * freqAdjFactor * Osc_Q) + (float_buffer_R_3[i] * freqAdjFactor * Osc_I); // multiply I/Q data by sine/cosine data to do translation
-    float_buffer_R[i] = (float_buffer_R_3[i] * freqAdjFactor * Osc_Q) - (float_buffer_L_3[i] * freqAdjFactor * Osc_I);
+    float_buffer_L[i] = (float_buffer_L_EX[i] * freqAdjFactor * Osc_Q) + (float_buffer_R_EX[i] * freqAdjFactor * Osc_I); // multiply I/Q data by sine/cosine data to do translation
+    float_buffer_R[i] = (float_buffer_R_EX[i] * freqAdjFactor * Osc_Q) - (float_buffer_L_EX[i] * freqAdjFactor * Osc_I);
   }
 }

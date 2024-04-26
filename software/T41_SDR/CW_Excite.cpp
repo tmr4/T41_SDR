@@ -1,7 +1,16 @@
 #include "SDT.h"
+#include "Exciter.h"
+#include "Utility.h"
 
-//=====================  file all new  AFP 09-01-22
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
 
+uint8_t keyPressedOn = 0;
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: to send a Morse code dit
@@ -12,8 +21,7 @@
   Return value:
     void
 *****/
-void KeyTipOn()
-{
+void KeyTipOn() {
   if (digitalRead(KEYER_DIT_INPUT_TIP) == LOW && xmtMode == CW_MODE ) {
     keyPressedOn = 1;
   }
@@ -28,17 +36,15 @@ void KeyTipOn()
   voidKeyRingOn(
 
 *****/
-void KeyRingOn() //AFP 09-25-22
-{
+void KeyRingOn() {
   if (keyType == 1) {
     if (digitalRead(KEYER_DAH_INPUT_RING) == LOW && xmtMode == CW_MODE ) {
       keyPressedOn = 1;
     }
   }
 }
+
 /*****
-
-
   Purpose: Create I and Q signals from Mic input
 
   Parameter list:
@@ -57,9 +63,8 @@ void KeyRingOn() //AFP 09-25-22
     6.  Interpolate 8x (upsample and filter) the data stream to 192KHz sample rate
     7.  Output the data stream thruogh the DACs at 192KHz
 *****/
-void CW_ExciterIQData() //AFP 08-20-22
-{
-  uint32_t N_BLOCKS_EX = N_B_EX;
+void CW_ExciterIQData() {
+  uint32_t N_BLOCKS_EX = 16;
  
   arm_scale_f32 (cosBuffer2, 0.127, float_buffer_L_EX, 256);  // AFP 10-13-22 Use pre-calculated sin & cos instead of Hilbert
   arm_scale_f32 (sinBuffer2, 0.127, float_buffer_R_EX, 256);  // AFP 10-13-22
@@ -85,12 +90,14 @@ void CW_ExciterIQData() //AFP 08-20-22
               Requires a LPF FIR 48 tap 10KHz and 8KHz
      **********************************************************************************/
     //24KHz effective sample rate here
-    arm_fir_interpolate_f32(&FIR_int1_EX_I, float_buffer_L_EX, float_buffer_LTemp, 256);
-    arm_fir_interpolate_f32(&FIR_int1_EX_Q, float_buffer_R_EX, float_buffer_RTemp, 256);
+    arm_fir_interpolate_f32(&FIR_int1_EX_I, float_buffer_L_EX, float_buffer_Temp, 256);
 
     // interpolation-by-4,  48KHz effective sample rate here
-    arm_fir_interpolate_f32(&FIR_int2_EX_I, float_buffer_LTemp, float_buffer_L_EX, 512);
-    arm_fir_interpolate_f32(&FIR_int2_EX_Q, float_buffer_RTemp, float_buffer_R_EX, 512);
+    arm_fir_interpolate_f32(&FIR_int2_EX_I, float_buffer_Temp, float_buffer_L_EX, 512);
+
+    // and again with R channel
+    arm_fir_interpolate_f32(&FIR_int1_EX_Q, float_buffer_R_EX, float_buffer_Temp, 256);
+    arm_fir_interpolate_f32(&FIR_int2_EX_Q, float_buffer_Temp, float_buffer_R_EX, 512);
 
     //  192KHz effective sample rate here
     arm_scale_f32(float_buffer_L_EX, 20, float_buffer_L_EX, 2048); //Scale to compensate for losses in Interpolation

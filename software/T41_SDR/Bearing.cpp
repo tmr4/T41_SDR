@@ -1,8 +1,15 @@
 #include "SDT.h"
+#include "Bearing.h"
+#include "Button.h"
+#include "Display.h"
+#include "Menu.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
 
 /*
-  #define SD_CS                       BUILTIN_SDCARD        // Works on T_3.6 and T_4.1 ...
-
   #define MY_LON                      -84.42676671875002
   #define MY_LAT                      39.074660204008886
   #define CENTER_SCREEN_X             387
@@ -10,26 +17,33 @@
   #define IMAGE_CORNER_X              211 // ImageWidth = 378 Therefore 800 - 378 = 422 / 2 = 211
   #define IMAGE_CORNER_Y              89  // ImageHeight = 302 Therefore 480 - 302 = 178 / 2 = 89
   #define RAY_LENGTH                  190
-  #define BUFFPIXEL                   20  // Use buffer to read image rather than 1 pixel at a time
-
-  #define DEGREES2RADIANS             0.01745329
-  #define RADIANS2DEGREES             57.29578
-  #define PI_BY_180                   0.01745329
 */
+
+#define DEGREES2RADIANS             0.01745329
+#define RADIANS2DEGREES             57.29578
+#define PI_BY_180                   0.01745329
+
+#define BUFFPIXEL                   20  // Use buffer to read image rather than 1 pixel at a time
+
+#define MAX_KEY_NAME 20
+
 enum { SCL_HALF = 0,
        SCL_QUARTER,
        SCL_EIGHTH,
        SCL_16TH
 };
-#define MAX_KEY_NAME 20
+
 typedef struct {
   const char key_name[MAX_KEY_NAME];
   int *key_value_addr;
 } key_name_value_t;
 
+char keyboardBuffer[10];  // Set for call prefixes. May be increased later
+int countryIndex = -1;
+int selectedMapIndex;
 
 uint8_t sdbuffer[3 * BUFFPIXEL];  // pixel buffer (R+G+B per pixel)
-
+const char DEGREE_SYMBOL[] = { 0xB0, '\0' };
 
 int g_background_color = RA8875_BLACK;
 int g_debug_output = 0;
@@ -53,14 +67,12 @@ int g_tft_width;
 int g_WRCount;
 // debug count how many time writeRect called
 int keyCell;  // Where to place the cell in the X axis
-//const int chipSelect          = BUILTIN_SDCARD;
 uint8_t g_ra8875_layer_active = 0;
 
 float bearingDegrees;
 float bearingRadians;
 float bearingDistance;
 float displayBearing;  // Different because of image distortion
-
 
 #ifdef TFT_CLIP_SUPPORT
 inline void writeClippedRect(int16_t x, int16_t y, int16_t cx, int16_t cy, uint16_t *pixels, bool waitForWRC = true) {
@@ -542,7 +554,23 @@ PROGMEM struct cities dxCities[] = {
   "", "", 0.0, 0.0  // EOT
 };
 
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
 
+void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight);
+void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight);
+int FindCountry(char *prefix);
+float HaversineDistance(float lat2, float lon2);
+uint16_t read16(File &f);
+uint32_t read32(File &f);
+int CreateMapList(char ptrMaps[][50], int *count);
+int WhichOneToUse(char ptrMaps[][50], int count);
+void WaitforWRComplete();
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: To draw the onscreen keyboard and prompts
@@ -553,7 +581,7 @@ PROGMEM struct cities dxCities[] = {
   Return value:
     void
 *****/
-void DrawKeyboard() {
+FLASHMEM void DrawKeyboard() {
   int i;
   int keyWidth = 60;
   int keySpace = 10;
@@ -573,7 +601,7 @@ void DrawKeyboard() {
   tft.drawRect(30, 150, 730, 280, RA8875_WHITE);  // Draw frame
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
 
-  MyDelay(100L);
+  delay(100L);
   row = 160;
   xOffset = 50;
   keyCell = 0;
@@ -641,7 +669,6 @@ void DrawKeyboard() {
   tft.printf("Enter call prefix: ");
 }
 
-
 /*****
   Purpose: To process the user keystrokes for the onscreen keyboard
 
@@ -651,7 +678,7 @@ void DrawKeyboard() {
   Return value:
     void
 *****/
-void CaptureKeystrokes() {
+FLASHMEM void CaptureKeystrokes() {
   int keyWidth = 60;
   int keySpace = 10;
   int keyHeight = 40;
@@ -675,12 +702,12 @@ void CaptureKeystrokes() {
   DrawActiveLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
   while (true) {
     valPin = ReadSelectedPushButton();  // Poll UI push buttons
-    MyDelay(150L);
+    delay(150L);
     if (valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
       pushButtonSwitchIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
       switch (pushButtonSwitchIndex) {
         case MENU_OPTION_SELECT:  // They selected a letter
-          MyDelay(150L);
+          delay(150L);
           if (row < 240) {
             keyboardBuffer[bufferIndex] = whichLetterIndex;
           } else {
@@ -696,7 +723,7 @@ void CaptureKeystrokes() {
           if (row <= 155)   // Trying to go up above numerics
             break;
           DrawNormalLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
-          MyDelay(150L);
+          delay(150L);
           row -= 60;
           if (row < 240) {          // Move up to number line
             whichLetterIndex = 53;  // Move to 5
@@ -845,7 +872,7 @@ void CaptureKeystrokes() {
   Return value:
     void
 *****/
-void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
+FLASHMEM void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
   tft.fillRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_BLACK);
   tft.drawRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_YELLOW);
@@ -938,6 +965,7 @@ float BearingHeading(char *dxCallPrefix) {
   }
   return displayBearing;
 }
+
 /*****
   Purpose: This function searches the ARRL list of country prefixes
            and returns an index into the cities array. The coordiantes
@@ -978,7 +1006,6 @@ int FindCountry(char *prefix) {
   }
 }
 
-
 /*****
   Purpose: This function calculates the distance between your
            QTH and some other coordinates on the globe
@@ -1009,8 +1036,9 @@ float HaversineDistance(float lat2, float lon2) {
 }
 //======================================
 
-
-void bmpDraw(const char *filename, int x, int y) {
+/*
+*****/
+FLASHMEM void bmpDraw(const char *filename, int x, int y) {
   //  int image_width, image_height;        // W+H in pixels
   int len;
   int rayStart = 0, rayEnd = 0;
@@ -1032,7 +1060,8 @@ void bmpDraw(const char *filename, int x, int y) {
   uint8_t r, g, b;
   uint32_t pos = 0;
   uint8_t lcdidx = 0;
-  float x1, y1, y2;
+//  float x1, x2, y1, y2;
+  float x1, y1;
   float homeLatRadians;
   float dxLatRadians;
   float deltaLon = (dxLon - homeLon);
@@ -1041,9 +1070,9 @@ void bmpDraw(const char *filename, int x, int y) {
   if ((x >= tft.width()) || (y >= tft.height()))
     return;
 
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
-    MyDelay(2000L);  // Given them time to read it.
+    delay(2000L);  // Given them time to read it.
     return;
   }
   // Open requested file on SD card
@@ -1083,7 +1112,7 @@ void bmpDraw(const char *filename, int x, int y) {
         w = bmpWidth;
         h = bmpHeight;
         if ((x + w - 1) >= tft.width()) w = tft.width() - x;
-        if ((y + h - 1) >= tft.height()) h = tft.height() - y;
+        if ((y + 135 - 1) >= tft.height()) h = tft.height() - y;
 
         // Set TFT address window to clipped image bounds
         ypos = y;
@@ -1159,8 +1188,8 @@ void bmpDraw(const char *filename, int x, int y) {
 
   x1 = CENTER_SCREEN_X;                                          // The image center coordinates
   y1 = CENTER_SCREEN_Y;                                          // and should be the same for all
-  x2 = CENTER_SCREEN_X * sin(bearingRadians) + CENTER_SCREEN_X;  // Endpoints for ray
-  y2 = CENTER_SCREEN_Y * cos(bearingRadians) - CENTER_SCREEN_Y;
+//  x2 = CENTER_SCREEN_X * sin(bearingRadians) + CENTER_SCREEN_X;  // Endpoints for ray
+//  y2 = CENTER_SCREEN_Y * cos(bearingRadians) - CENTER_SCREEN_Y;
 
   rayStart = displayBearing - 8.0;
   rayEnd = displayBearing + 8.0;
@@ -1179,9 +1208,9 @@ void bmpDraw(const char *filename, int x, int y) {
       }
     }
   }
-  if (y2 < 0) {
-    y2 = fabs(y2);
-  }
+//  if (y2 < 0) {
+//    y2 = fabs(y2);
+//  }
 
   for (int i = rayStart; i < rayEnd; i++) {
     tft.drawLineAngle(x1, y1, displayBearing + i, RAY_LENGTH, RA8875_RED, -90);
@@ -1228,6 +1257,7 @@ uint16_t read16(File &f) {
   ((uint8_t *)&result)[1] = f.read();  // MSB
   return result;
 }
+
 /*****
   Purpose: Read 32-bit image data from the SD card file.
            BMP data is stored little-endian, Arduino is little-endian too.
@@ -1268,7 +1298,7 @@ uint16_t Color565(uint8_t r, uint8_t g, uint8_t b) {
 
 //=============================================================================
 // TFT Helper functions to work on ILI9341_t3
-// which doe snot have offset/clipping support
+// which does not have offset/clipping support
 //=============================================================================
 
 #if !defined(TFT_CLIP_SUPPORT)
@@ -1287,7 +1317,7 @@ inline void writeRect(int x, int y, int cx, int cy, uint16_t *pixels) {
 #endif
 }
 
-void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, bool waitForWRC) {
+FLASHMEM void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, bool waitForWRC) {
   x += g_image_offset_x;
   y += g_image_offset_y;
   int end_x = x + cx;
@@ -1373,11 +1403,6 @@ void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, bool waitF
 
 #endif
 
-inline void Color565ToRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b) {
-  tft.Color565ToRGB(color, r, g, b);
-}
-
-
 /*****
   Purpose: Initialize the SD card
 
@@ -1387,37 +1412,22 @@ inline void Color565ToRGB(uint16_t color, uint8_t &r, uint8_t &g, uint8_t &b) {
   Return value;
     int                   0 if cannot initialize, 1 otherwise
 *****/
-int InitializeSDCard() {
+FLASHMEM int InitializeSDCard() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_RED, RA8875_BLACK);
   tft.setCursor(100, 240);
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
-    MyDelay(2000L);  // Given them time to read it.
+    delay(2000L);  // Given them time to read it.
     return 0;
   }
 
   //  tft.print("Initializing SD card.");
-  //  MyDelay(2000L);
+  //  delay(2000L);
   return 1;
 }
 
-/*****
-  Purpose: Erase initialization error message
-
-  Parameter list:
-    void
-
-  Return value;
-    int                   0 if cannot initialize, 1 otherwise
-*****/
-void TurnOffInitializingMessage() {
-  tft.setFontScale((enum RA8875tsize)1);
-  tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
-  tft.setCursor(100, 240);
-  tft.print("                              ");
-}
-void WaitforWRComplete() {
+FLASHMEM void WaitforWRComplete() {
 #if defined(_RA8876_T3)
   // bugbug: ra8876 may use dma code, and since some of our decoders
   // want to reuse the same memory we wait for these to complete
@@ -1433,20 +1443,20 @@ void WaitforWRComplete() {
     void
 
   Return value;
-    int                   0 if cannot initialize, 1 otherwise
+    void
 *****/
-int BearingMaps() {
+FLASHMEM void BearingMaps() {
   char ptrMaps[10][50];
   int count;
 
-  if (sdCardPresent == 0) {  // JJP 8/11/23
+  if (sdCardPresent == 0) {
     tft.setCursor(200, 300);
     tft.setTextColor(RA8875_RED, RA8875_BLACK);
     tft.println("No SD card.");
-    MyDelay(SDCARD_MESSAGE_LENGTH);
+    delay(SDCARD_MESSAGE_LENGTH);
     tft.fillRect(200, 300, tft.getFontWidth() * 12, tft.getFontHeight(), RA8875_BLACK);
     tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
-    return 0;
+    return;
   }
   count = CreateMapList(ptrMaps, &count);  // Reads the SD card for BMP files and returns ptrMaps filled in with names and return the count
 
@@ -1454,7 +1464,7 @@ int BearingMaps() {
     tft.setCursor(300, 300);
     tft.print("No Maps found");
     selectedMapIndex = -1;
-    return -1;  // Didn't find any
+    return;  // Didn't find any
   }
   if (count == 1) {
     selectedMapIndex = 0;
@@ -1462,6 +1472,7 @@ int BearingMaps() {
     tft.clearMemory();  // Need to clear overlay too
     tft.writeTo(L2);
     tft.fillWindow();
+    tft.writeTo(L1);
 
     tft.setFontScale((enum RA8875tsize)1);
     tft.drawRect(30, 50, 730, 400, RA8875_WHITE);  // Outline
@@ -1470,13 +1481,13 @@ int BearingMaps() {
     tft.print("Select map file:");
     tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
 
-    if (!SD.begin(chipSelect)) {
+    if (!SD.begin(BUILTIN_SDCARD)) {
       tft.setCursor(200, 200);
       tft.setTextColor(RA8875_RED, RA8875_BLACK);
       tft.println("initialization failed!");
-      MyDelay(2000L);
+      delay(2000L);
       tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
-      return -1;
+      return;
     }
     selectedMapIndex = WhichOneToUse(ptrMaps, count);
   }
@@ -1486,10 +1497,8 @@ int BearingMaps() {
   strcpy(mapFileName, (const char *)myMapFiles[selectedMapIndex].mapNames);
 
   RedrawDisplayScreen();
-  ShowFrequency();
-  DrawFrequencyBarValue();
-
-  return selectedMapIndex;
+  //ShowFrequency();
+  //ShowSpectrumFreqValues();
 }
 
 
@@ -1546,7 +1555,7 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
   int i;
   int val;
 
-  MyDelay(100L);
+  delay(100L);
   for (i = 0; i < count; i++) {  // Yep.
     tft.setCursor(50, 55 + i * 30);
     tft.print(ptrMaps[i]);
@@ -1557,11 +1566,11 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
   tft.print(ptrMaps[0]);
 
   while (true) {
-    if (filterEncoderMove != 0) {         // Did they move the encoder?
+    if (menuEncoderMove != 0) {         // Did they move the encoder?
       tft.setCursor(50, 55 + temp * 30);  // Restore old highlighted name
       tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
       tft.print(ptrMaps[temp]);
-      temp += (int)filterEncoderMove;
+      temp += (int)menuEncoderMove;
       if (temp > count - 1) {
         temp = 0;  // Wrap to the first in the list
       } else {
@@ -1572,11 +1581,11 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
       tft.setCursor(50, 55 + temp * 30);  // Highlight new name
       tft.setTextColor(RA8875_BLACK, RA8875_GREEN);
       tft.print(ptrMaps[temp]);
-      filterEncoderMove = 0;
+      menuEncoderMove = 0;
     }
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(100L);
+    delay(100L);
     if (val == MENU_OPTION_SELECT) {  // Make a choice??
       break;                          // Yep.
     }

@@ -1,4 +1,28 @@
 #include "SDT.h"
+#include "Exciter.h"
+#include "EEPROM.h"
+#include "Filter.h"
+#include "Menu.h"
+#include "Utility.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+arm_fir_instance_f32 FIR_Hilbert_L;
+arm_fir_instance_f32 FIR_Hilbert_R;
+
+arm_fir_decimate_instance_f32 FIR_dec1_EX_I;
+arm_fir_decimate_instance_f32 FIR_dec1_EX_Q;
+arm_fir_decimate_instance_f32 FIR_dec2_EX_I;
+arm_fir_decimate_instance_f32 FIR_dec2_EX_Q;
+
+int16_t *sp_L2;
+int16_t *sp_R2;
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: Create I and Q signals from Mic input
@@ -19,9 +43,8 @@
     6.  Interpolate 8x (upsample and filter) the data stream to 192KHz sample rate
     7.  Output the data stream thruogh the DACs at 192KHz
 *****/
-void ExciterIQData()
-{
-  uint32_t N_BLOCKS_EX                         = N_B_EX;
+void ExciterIQData() {
+  uint32_t N_BLOCKS_EX = 16;
 
   /**********************************************************************************  AFP 12-31-20
         Get samples from queue buffers
@@ -117,12 +140,15 @@ void ExciterIQData()
               Requires a LPF FIR 48 tap 10KHz and 8KHz
      **********************************************************************************/
     //24KHz effective sample rate here
-    arm_fir_interpolate_f32(&FIR_int1_EX_I, float_buffer_L_EX, float_buffer_LTemp, 256);
-    arm_fir_interpolate_f32(&FIR_int1_EX_Q, float_buffer_R_EX, float_buffer_RTemp, 256);
+    arm_fir_interpolate_f32(&FIR_int1_EX_I, float_buffer_L_EX, float_buffer_Temp, 256);
 
     // interpolation-by-4,  48KHz effective sample rate here
-    arm_fir_interpolate_f32(&FIR_int2_EX_I, float_buffer_LTemp, float_buffer_L_EX, 512);
-    arm_fir_interpolate_f32(&FIR_int2_EX_Q, float_buffer_RTemp, float_buffer_R_EX, 512);
+    arm_fir_interpolate_f32(&FIR_int2_EX_I, float_buffer_Temp, float_buffer_L_EX, 512);
+
+    // and again for R channel
+    arm_fir_interpolate_f32(&FIR_int1_EX_Q, float_buffer_R_EX, float_buffer_Temp, 256);
+    arm_fir_interpolate_f32(&FIR_int2_EX_Q, float_buffer_Temp, float_buffer_R_EX, 512);
+    
     //  192KHz effective sample rate here
     arm_scale_f32(float_buffer_L_EX, 20, float_buffer_L_EX, 2048); //Scale to compensate for losses in Interpolation
     arm_scale_f32(float_buffer_R_EX, 20, float_buffer_R_EX, 2048);
@@ -151,12 +177,11 @@ void ExciterIQData()
   Return value;
     void
 *****/
-void SetBandRelay(int state)
-{
+void SetBandRelay(int state) {
   // There are 4 physical relays.  Turn all of them off.
   for(int i = 0; i < 4; i = i + 1) {
   digitalWrite(bandswitchPins[i], LOW); // Set ALL band relays low.  KF5N July 21, 2023
   }
 // Set current band relay "on".  Ignore 12M and 10M.  15M and 17M use the same relay.  KF5N September 27, 2023.
-  if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], state);  
+  if(currentBand < BAND_12M) digitalWrite(bandswitchPins[currentBand], state);  
 }

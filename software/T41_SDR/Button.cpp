@@ -1,9 +1,29 @@
 #include "SDT.h"
+#include "Bearing.h"
+#include "Button.h"
+#include "ButtonProc.h"
+#include "Display.h"
+#include "EEPROM.h"
+#include "ft8.h"
+#include "InfoBox.h"
+#include "Menu.h"
+#include "MenuProc.h"
+#include "Process.h"
+#include "Process2.h"
+#include "psk31.h"
+#include "Tune.h"
+#include "Utility.h"
+
+#include "debug.h"
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#define MAX_FREQ_INDEX              8
 
 int buttonRead = 0;
 int minPinRead = 1024;
-int secondaryMenuChoiceMade;
-long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
 
 /*
 The button interrupt routine implements a first-order recursive filter, or "leaky integrator,"
@@ -27,6 +47,7 @@ Filter bandwidth is dependent on the sample rate and the "k" parameter, as follo
 Thus, the default values below create a filter with 10000 * 0.0217 = 217 Hz bandwidth
 */
 
+#ifndef ALT_ISR
 #define BUTTON_FILTER_SAMPLERATE 10000  // Hz
 #define BUTTON_FILTER_SHIFT 3           // Filter parameter k
 #define BUTTON_DEBOUNCE_DELAY 5000      // uSec
@@ -44,6 +65,38 @@ bool buttonInterruptsEnabled = false;
 static unsigned long buttonFilterRegister;
 static int buttonState, buttonADCPressed, buttonElapsed;
 static volatile int buttonADCOut;
+#else
+#define BUTTON_FILTER_SAMPLERATE 10000  // Hz
+#define BUTTON_FILTER_SHIFT 3           // Filter parameter k
+//#define BUTTON_DEBOUNCE_DELAY 5000      // uSec
+#define BUTTON_DEBOUNCE_DELAY 2500      // uSec
+#define BUTTON_DEBOUNCE_RELEASE_DELAY 2500      // uSec
+
+#define BUTTON_STATE_UP 0
+#define BUTTON_STATE_DEBOUNCE 1
+#define BUTTON_STATE_PRESSED 2
+#define BUTTON_STATE_RELEASE_DEBOUNCE 3
+
+#define BUTTON_USEC_PER_ISR (1000000 / BUTTON_FILTER_SAMPLERATE)
+
+#define BUTTON_OUTPUT_UP 1023  // Value to be output when in the UP state
+
+IntervalTimer buttonInterrupts;
+bool buttonInterruptsEnabled = false;
+static unsigned long buttonFilterRegister;
+//static int buttonState, buttonADCPressed, buttonElapsed;
+static int buttonADCPressed, buttonElapsed;
+int buttonState = BUTTON_STATE_UP;
+static volatile int buttonADCOut;
+#endif
+
+//-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 /*****
   Purpose: ISR to read button ADC and detect button presses
@@ -53,8 +106,8 @@ static volatile int buttonADCOut;
   Return value;
     void
 *****/
-
 void ButtonISR() {
+#ifndef ALT_ISR
   int filteredADCValue;
 
   buttonFilterRegister = buttonFilterRegister - (buttonFilterRegister >> BUTTON_FILTER_SHIFT) + analogRead(BUSY_ANALOG_PIN);
@@ -62,12 +115,12 @@ void ButtonISR() {
 
   switch (buttonState) {
     case BUTTON_STATE_UP:
-      if (filteredADCValue <= EEPROMData.buttonThresholdPressed) {
+      if (filteredADCValue <= buttonThresholdPressed) {
         buttonElapsed = 0;
         buttonState = BUTTON_STATE_DEBOUNCE;
       }
-
       break;
+
     case BUTTON_STATE_DEBOUNCE:
       if (buttonElapsed < BUTTON_DEBOUNCE_DELAY) {
         buttonElapsed += BUTTON_USEC_PER_ISR;
@@ -76,22 +129,73 @@ void ButtonISR() {
         buttonElapsed = 0;
         buttonState = BUTTON_STATE_PRESSED;
       }
-
       break;
-    case BUTTON_STATE_PRESSED:
-      if (filteredADCValue >= EEPROMData.buttonThresholdReleased) {
-        buttonState = BUTTON_STATE_UP;
-      } else if (EEPROMData.buttonRepeatDelay != 0) {  // buttonRepeatDelay of 0 disables repeat
-        if (buttonElapsed < EEPROMData.buttonRepeatDelay) {
-          buttonElapsed += BUTTON_USEC_PER_ISR;
-        } else {
-          buttonADCOut = buttonADCPressed;
-          buttonElapsed = 0;
-        }
-      }
 
+    case BUTTON_STATE_PRESSED:
+      if (filteredADCValue >= buttonThresholdReleased) {
+        buttonState = BUTTON_STATE_UP;
+        } else if (buttonRepeatDelay != 0) {  // buttonRepeatDelay of 0 disables repeat
+          if (buttonElapsed < buttonRepeatDelay) {
+            buttonElapsed += BUTTON_USEC_PER_ISR;
+          } else {
+            buttonADCOut = buttonADCPressed;
+            buttonElapsed = 0;
+          }
+        }
       break;
   }
+#else
+  int filteredADCValue;
+
+  buttonFilterRegister = buttonFilterRegister - (buttonFilterRegister >> BUTTON_FILTER_SHIFT) + analogRead(BUSY_ANALOG_PIN);
+  filteredADCValue = (int)(buttonFilterRegister >> BUTTON_FILTER_SHIFT);
+
+  switch (buttonState) {
+    case BUTTON_STATE_UP:
+      if (filteredADCValue <= buttonThresholdPressed) {
+        buttonElapsed = 0;
+        buttonState = BUTTON_STATE_DEBOUNCE;
+      }
+      break;
+
+    case BUTTON_STATE_DEBOUNCE:
+      if (buttonElapsed < BUTTON_DEBOUNCE_DELAY) {
+        buttonElapsed += BUTTON_USEC_PER_ISR;
+      } else {
+        buttonADCOut = buttonADCPressed = filteredADCValue;
+        //buttonADCPressed = filteredADCValue;
+        buttonElapsed = 0;
+        buttonState = BUTTON_STATE_PRESSED;
+      }
+      break;
+
+    case BUTTON_STATE_PRESSED:
+      if (filteredADCValue >= buttonThresholdReleased) {
+        buttonState = BUTTON_STATE_UP;
+        //buttonState = BUTTON_STATE_RELEASE_DEBOUNCE;
+      } else {
+        if (buttonRepeatDelay != 0) {  // buttonRepeatDelay of 0 disables repeat
+          if (buttonElapsed < buttonRepeatDelay) {
+            buttonElapsed += BUTTON_USEC_PER_ISR;
+          } else {
+            buttonADCOut = buttonADCPressed;
+            buttonElapsed = 0;
+          }
+        }
+      }
+      break;
+
+    case BUTTON_STATE_RELEASE_DEBOUNCE:
+      if (buttonElapsed < BUTTON_DEBOUNCE_RELEASE_DELAY) {
+        buttonElapsed += BUTTON_USEC_PER_ISR;
+      } else {
+        buttonADCOut = buttonADCPressed;
+        buttonElapsed = 0;
+        buttonState = BUTTON_STATE_UP;
+      }
+      break;
+  }
+#endif
 }
 
 /*****
@@ -103,7 +207,6 @@ void ButtonISR() {
   Return value;
     void
 *****/
-
 void EnableButtonInterrupts() {
   buttonADCOut = BUTTON_OUTPUT_UP;
   buttonFilterRegister = buttonADCOut << BUTTON_FILTER_SHIFT;
@@ -127,11 +230,18 @@ int ProcessButtonPress(int valPin) {
   int switchIndex;
 
   if (valPin == BOGUS_PIN_READ) {  // Not valid press
+#ifdef DEBUG_SW
+//  NoActiveMenu();
+  Serial.println("NAM BOGUS_PIN_READ");
+#endif
     return -1;
   }
 
   if (valPin == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {
-    NoActiveMenu();
+#ifdef DEBUG_SW
+  NoActiveMenu();
+  Serial.println("NAM #2");
+#endif
     return -1;
   }
 
@@ -157,7 +267,7 @@ int ProcessButtonPress(int valPin) {
 int ReadSelectedPushButton() {
   minPinRead = 0;
   int buttonReadOld = 1023;
-
+  
   if (buttonInterruptsEnabled) {
     noInterrupts();
     buttonRead = buttonADCOut;
@@ -179,12 +289,12 @@ int ReadSelectedPushButton() {
     }
   }
 
-  if (buttonRead > EEPROMData.switchValues[0] + WIGGLE_ROOM) {  //AFP 10-29-22 per Jack Wilson
+  if (buttonRead > EEPROMData.switchValues[0] + WIGGLE_ROOM) {
     return -1;
   }
   minPinRead = buttonRead;
   if (!buttonInterruptsEnabled) {
-    MyDelay(100L);
+    delay(100L);
   }
 
   return minPinRead;
@@ -192,7 +302,7 @@ int ReadSelectedPushButton() {
 
 /*****
   Purpose: Function is designed to route program control to the proper execution point in response to
-           a button press.
+           a button press.  To avoid duplication, display updates are generally handled in the routed routine.
 
   Parameter list:
     int vsl               the value from analogRead in loop()
@@ -200,110 +310,100 @@ int ReadSelectedPushButton() {
   Return value;
     void
 *****/
-void ExecuteButtonPress(int val) 
-{
-  /*
-  if (val == 1) {                           // If they selected Menu Up
-    DrawMenuDisplay();
-  }
-
-  if (val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
-    NoActiveMenu();
-    return;
-  } else {
-    menuStatus = PRIMARY_MENU_ACTIVE;
-  }
-menuStatus = PRIMARY_MENU_ACTIVE;
-*/
-
-#ifdef DEBUG
-Serial.print("In ExecuteButtonPress(int val): val = ");
-Serial.println(val);  
+void ExecuteButtonPress(int val) {
+#ifdef DEBUG_SW
+  Serial.print("ExecuteButtonPress TOP: val = ");
+  Serial.println(val);
 #endif
-
   switch (val) {
-/*  
     case MENU_OPTION_SELECT:  // 0
 
-      if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
-        ErasePrimaryMenu();
-        secondaryMenuChoiceMade = functionPtr[mainMenuIndex]();  // These are processed in MenuProcessing.cpp
-Serial.print("In ExecuteButtonPress() mainMenuIndex = ");
-Serial.print(mainMenuIndex);  
-Serial.print("   secondaryMenuChoiceMade = ");
-Serial.print(secondaryMenuChoiceMade);  
-Serial.print("   secondaryMenuIndex = ");
-Serial.println(secondaryMenuIndex);  
-        menuStatus = SECONDARY_MENU_ACTIVE;
-        secondaryMenuIndex = -1;  // Reset secondary menu
-      } else {
-        if (menuStatus == SECONDARY_MENU_ACTIVE) {  // Doing primary menu
+      if(USE_FULL_MENU) {
+        if (val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
+#ifdef DEBUG_SW
+  //NoActiveMenu();
+  Serial.print("NAM #0: val = ");
+  Serial.println(val);
+#endif
+          return;
+        } else {
           menuStatus = PRIMARY_MENU_ACTIVE;
-          mainMenuIndex = 0;
         }
+
+        if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
+          ErasePrimaryMenu();
+          functionPtr[mainMenuIndex]();  // These are processed in MenuProc.cpp
+          menuStatus = SECONDARY_MENU_ACTIVE;
+          secondaryMenuIndex = -1;  // Reset secondary menu
+        } else {
+          if (menuStatus == SECONDARY_MENU_ACTIVE) {  // Doing primary menu
+            menuStatus = PRIMARY_MENU_ACTIVE;
+            mainMenuIndex = 0;
+          }
+        }
+
+        EraseMenus();
+      } else {
+        MenuBarSelect();
       }
-      EraseMenus();
-      break;
-*/
-    case MAIN_MENU_UP:                      // 11/16/23 JJP
-      DrawMenuDisplay();                    // Draw selection box and primary menu
-      SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
-      SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
-      secondaryMenuChoiceMade = functionPtr[mainMenuIndex](); 
-      tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
-      DrawSpectrumDisplayContainer();
-      EraseMenus();
       break;
 
-    case BAND_UP:  // 2 Now calls ProcessIQData and Encoders calls
-      EraseMenus();
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], LOW);  // Added if so unused GPOs will not be touched.  KF5N October 16, 2023.
-      ButtonBandIncrease();
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], HIGH);
-      BandInformation();
-      NCOFreq = 0L;
-      DrawBandWidthIndicatorBar();  // AFP 10-20-22
-      SetFreq();
-      ShowSpectrum();
+    case MAIN_MENU_UP:  // 1
+      if(USE_FULL_MENU) {
+        DrawMenuDisplay();                    // Draw selection box and primary menu
+        SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
+        if(mainMenuIndex < TOP_MENU_COUNT - 1) {
+          SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
+          functionPtr[mainMenuIndex](); 
+        }
+
+        tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
+        DrawSpectrumFrame();
+        EraseMenus();
+      } else {
+        ShowMenuBar(0, 1);
+      }
+      break;
+
+    case BAND_UP:  // 2
+      BandChange(1);
       break;
 
     case ZOOM:  // 3
-      menuStatus = PRIMARY_MENU_ACTIVE;
-      EraseMenus();
-      ButtonZoom();
+      SetZoom(spectrumZoom+1);
       break;
 
     case MAIN_MENU_DN:  // 4
-      ButtonMenuDecrease();
-      if (menuStatus != NO_MENUS_ACTIVE) {  // Doing primary menu
-        ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
+      if(USE_FULL_MENU) {
+        DrawMenuDisplay();                    // Draw selection box and primary menu
+        SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
+        if(mainMenuIndex < TOP_MENU_COUNT - 1) {
+          SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
+          functionPtr[mainMenuIndex](); 
+        }
+
+        tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
+        DrawSpectrumFrame();
+        EraseMenus();
+      } else {
+        ShowMenuBar(TOP_MENU_COUNT - 2, -1);
       }
       break;
 
     case BAND_DN:  // 5
-      EraseMenus();
-      ShowSpectrum();  //Now calls ProcessIQData and Encoders calls
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], LOW);
-      ButtonBandDecrease();
-      if(currentBand < 5) digitalWrite(bandswitchPins[currentBand], HIGH);
-      BandInformation();
-      NCOFreq = 0L;
-      DrawBandWidthIndicatorBar();  //AFP 10-20-22
+      BandChange(-1);
       break;
 
     case FILTER:  // 6
-      EraseMenus();
       ButtonFilter();
       break;
 
     case DEMODULATION:  // 7
-      EraseMenus();
       ButtonDemodMode();
       break;
 
     case SET_MODE:  // 8
       ButtonMode();
-      ShowSpectrumdBScale();
       break;
 
     case NOISE_REDUCTION:  // 9
@@ -312,38 +412,84 @@ Serial.println(secondaryMenuIndex);
 
     case NOTCH_FILTER:  // 10
       ButtonNotchFilter();
-      UpdateNotchField();
+      UpdateInfoBoxItem(IB_ITEM_NOTCH);
       break;
 
     case NOISE_FLOOR:  // 11
-      ButtonSetNoiseFloor();
+      ToggleLiveNoiseFloorFlag();
       break;
 
     case FINE_TUNE_INCREMENT:  // 12
-      UpdateIncrementField();
+      ChangeFTIncrement(1);
       break;
 
     case DECODER_TOGGLE:  // 13
       decoderFlag = !decoderFlag;
-      UpdateDecoderField();
-      break;
+      UpdateInfoBoxItem(IB_ITEM_DECODER);
 
-    case MAIN_TUNE_INCREMENT:  // 14
-      ButtonFreqIncrement();
-      UpdateEEPROMSyncIndicator(0);
-      break;
-
-    case RESET_TUNING:  // 15   AFP 10-11-22
-      ResetTuning();    // AFP 10-11-22
-      break;            // AFP 10-11-22
-
-    case UNUSED_1:  // 16
-      if (calOnFlag == 0) {
-        ButtonFrequencyEntry();
+      if(xmtMode == CW_MODE) {
+        if(decoderFlag == ON) {
+          // reduce waterfall height if we're decoding CW
+          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+          tft.writeTo(L2); // it's on layer 2 as well
+          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+          tft.writeTo(L1);
+          wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
+        } else {
+          // erase any decoded CW and return waterfall to normal
+          tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
+          wfRows = WATERFALL_H;
+        }
       }
       break;
 
-    case BEARING:  // 17  // AFP 10-11-22
+    case MAIN_TUNE_INCREMENT:  // 14
+      ChangeFreqIncrement(-1);
+      break;
+
+    case RESET_TUNING:  // 15
+      ResetTuning();
+      break;
+
+    case UNUSED_1:  // 16
+      if(xmtMode == DATA_MODE) {
+        switch (bands[currentBand].mode) {
+          case DEMOD_PSK31:
+            // try to load wav file
+            if(setupPSK31Wav()) {
+              // switch to play a wav file
+              bands[currentBand].mode = DEMOD_PSK31_WAV;
+              currentDataMode = DEMOD_PSK31_WAV;
+              ShowOperatingStats();
+            }
+            break;
+
+          case DEMOD_FT8:
+            // try to load wav file
+            if(setupFT8Wav()) {
+              // switch to play a wav file
+              bands[currentBand].mode = DEMOD_FT8_WAV;
+              currentDataMode = DEMOD_FT8_WAV;
+              ShowOperatingStats();
+              syncFlag = true;
+              ft8State = 2;
+              UpdateInfoBoxItem(IB_ITEM_FT8);
+            } else {
+              // couldn't load wav file
+              syncFlag = false; 
+              ft8State = 1;
+              UpdateInfoBoxItem(IB_ITEM_FT8);
+            }
+            break;
+        }
+      } else {
+        if (calOnFlag == 0) {
+          ButtonFrequencyEntry();
+        }
+      }
+      break;
+
+    case BEARING:  // 17
       int buttonIndex, doneViewing, valPin;
       float retVal;
       
@@ -365,7 +511,7 @@ Serial.println(secondaryMenuIndex);
       }
       while (true) {
         valPin = ReadSelectedPushButton();            // Poll UI push buttons
-        MyDelay(100L);
+        delay(100L);
         if (valPin != BOGUS_PIN_READ) {               // If a button was pushed...
           buttonIndex = ProcessButtonPress(valPin);   // Winner, winner...chicken dinner!
           switch (buttonIndex) {
@@ -384,17 +530,16 @@ Serial.println(secondaryMenuIndex);
           break;
         }
       }
-      RedrawDisplayScreen();
-      ShowFrequency();
-      DrawFrequencyBarValue();
-      
+
+      //RedrawDisplayScreen();
+      //ShowFrequency();
+      //ShowSpectrumFreqValues();
       break;
   }
 }
 
-
 /*****
-  Purpose: To process a band decrease button push
+  Purpose: To process a frequency increment button push
 
   Parameter list:
     void
@@ -402,15 +547,46 @@ Serial.println(secondaryMenuIndex);
   Return value:
     void
 *****/
-void ButtonFreqIncrement() {
-  tuneIndex--;
-  if (tuneIndex < 0)
+void ChangeFreqIncrement(int change) {
+  long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
+
+  tuneIndex += change;
+  if (tuneIndex < 0) {
     tuneIndex = MAX_FREQ_INDEX - 1;
+  }
+  if (tuneIndex >= MAX_FREQ_INDEX) {
+    tuneIndex = 0;
+  }
+
   freqIncrement = incrementValues[tuneIndex];
-  //UpdateEEPROMSyncIndicator(0);   //  JJP 7/25/23
-  DisplayIncrementField();
+
+  UpdateInfoBoxItem(IB_ITEM_TUNE);
 }
 
+/*****
+  Purpose: To process a fine tune frequency increment button push
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+void ChangeFTIncrement(int change) {
+  long selectFT[] = { 10, 50, 250, 500 };
+
+  ftIndex += change;
+  if (ftIndex > 3) {
+    ftIndex = 0;
+  }
+  if (ftIndex < 0) {
+    ftIndex = 3;
+  }
+
+  ftIncrement = selectFT[ftIndex];
+
+  UpdateInfoBoxItem(IB_ITEM_FINE);
+}
 
 /*****
   Purpose: Error message if Select button pressed with no Menu active
@@ -424,7 +600,7 @@ void ButtonFreqIncrement() {
 void NoActiveMenu() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_RED);
-  tft.setCursor(10, 0);
+  tft.setCursor(PRIMARY_MENU_X + 1, MENUS_Y);
   tft.print("No menu selected");
 
   menuStatus = NO_MENUS_ACTIVE;

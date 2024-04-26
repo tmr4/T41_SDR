@@ -65,13 +65,13 @@ float32_t volts = 0.0;
     void
 *****/
 void SetupMyCompressors(bool use_HP_filter1, float knee_dBFS1, float comp_ratio1, float attack_sec1, float release_sec1) {
-  comp1.enableHPFilter(use_HP_filter1);   comp2.enableHPFilter(use_HP_filter1);
-  comp1.setThresh_dBFS(knee_dBFS1);       comp2.setThresh_dBFS(knee_dBFS1);
-  comp1.setCompressionRatio(comp_ratio1); comp2.setCompressionRatio(comp_ratio1);
+  comp1.enableHPFilter(use_HP_filter1);   // comp2.enableHPFilter(use_HP_filter1);  Compressor2 not required as there is only 1 microphone channel.  KF5N March 11, 2024
+  comp1.setThresh_dBFS(knee_dBFS1);       // comp2.setThresh_dBFS(knee_dBFS1);
+  comp1.setCompressionRatio(comp_ratio1); // comp2.setCompressionRatio(comp_ratio1);
 
   float fs_Hz = AUDIO_SAMPLE_RATE;
-  comp1.setAttack_sec(attack_sec1, fs_Hz);       comp2.setAttack_sec(attack_sec1, fs_Hz);
-  comp1.setRelease_sec(release_sec1, fs_Hz);     comp2.setRelease_sec(release_sec1, fs_Hz);
+  comp1.setAttack_sec(attack_sec1, fs_Hz);     //  comp2.setAttack_sec(attack_sec1, fs_Hz);
+  comp1.setRelease_sec(release_sec1, fs_Hz);   //  comp2.setRelease_sec(release_sec1, fs_Hz);
 }
 
 
@@ -463,6 +463,8 @@ void AGCPrep()
 void AGCThresholdChanged() {
   max_gain = powf (10.0, (float32_t)bands[EEPROMData.currentBand].AGC_thresh / 20.0);
 }
+
+
 /*****
   Purpose: Audio AGC()
   Parameter list:
@@ -619,10 +621,8 @@ void AGC()
   }
 }
 
+
 // ========== AM-Decode stuff
-
-
-
 /*****
   Purpose: Demod IQ
   Parameter list:
@@ -636,7 +636,6 @@ void DecodeIQ() {
     float_buffer_R[i] = iFFT_buffer[FFT_length + i * 2 + 1];
   }
 }
-
 
 
 /*****
@@ -677,7 +676,7 @@ void SetCompressionLevel()
     }
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
     if (val == MENU_OPTION_SELECT) {                             // Make a choice??
       // micCompression = EEPROMData.currentMicThreshold;
       //EEPROMData.EEPROMData.currentMicThreshold = EEPROMData.currentMicThreshold;
@@ -688,6 +687,7 @@ void SetCompressionLevel()
   }
   EraseMenus();
 }
+
 
 /*****
   Purpose: Allow user to set the mic compression ratio
@@ -727,7 +727,7 @@ void SetCompressionRatio()
 
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
 
     if (val == MENU_OPTION_SELECT) {                             // Make a choice??
      // EEPROMData.EEPROMData.currentMicCompRatio = EEPROMData.currentMicCompRatio;
@@ -738,6 +738,8 @@ void SetCompressionRatio()
   }
   EraseMenus();
 }
+
+
 /*****
   Purpose: Allow user to set the mic Attack in sec
 
@@ -776,7 +778,7 @@ void SetCompressionAttack()
 
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
 
     if (val == MENU_OPTION_SELECT) {                             // Make a choice??
       //EEPROMData.EEPROMData.currentMicAttack = EEPROMData.currentMicAttack;
@@ -787,6 +789,7 @@ void SetCompressionAttack()
   }
   EraseMenus();
 }
+
 
 /*****
   Purpose: Allow user to set the mic compression ratio
@@ -826,7 +829,7 @@ void SetCompressionRelease()
 
     val = ReadSelectedPushButton();                                  // Read pin that controls all switches
     val = ProcessButtonPress(val);
-    MyDelay(150L);
+    delay(150L);
 
     if (val == MENU_OPTION_SELECT) {                             // Make a choice??
       //EEPROMData.EEPROMData.currentMicCompRatio = EEPROMData.currentMicCompRatio;

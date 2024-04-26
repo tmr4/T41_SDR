@@ -266,7 +266,7 @@ FASTRUN void ShowSpectrum()  //AFP Extensively Modified 3-15-21 Adjusted 12-13-2
     }
     if (FH_max_box < LOWERPIXTARGET) {
       EEPROMData.rfGainCurrent = EEPROMData.rfGainCurrent + 1;
-      if(EEPROMData.rfGainCurrent > 20.0) EEPROMData.rfGainCurrent = 20.0;  //  Do not allow RF gain greater than 20.
+      if(EEPROMData.rfGainCurrent > 25.0) EEPROMData.rfGainCurrent = 25.0;  //  Do not allow RF gain greater than 25.
     }
   }
   tft.fillRect(SPECTRUM_LEFT_X + 131, SPECTRUM_TOP_Y + 10, 33, tft.getFontHeight(), RA8875_BLACK);
@@ -1145,6 +1145,7 @@ void DisplaydbM() {
   tft.print(unit_label);
 }
 
+
 /*****
   Purpose: Display the current temperature and load figures for T4.1
 
@@ -1263,7 +1264,7 @@ void UpdateVolumeField() {
   tft.setTextColor(RA8875_WHITE);
   tft.print("Vol:");
   tft.setTextColor(RA8875_GREEN);
-  tft.fillRect(BAND_INDICATOR_X + 90, BAND_INDICATOR_Y, tft.getFontWidth() * 3 + 2, tft.getFontHeight(), RA8875_BLACK);
+  tft.fillRect(BAND_INDICATOR_X + 90, BAND_INDICATOR_Y, tft.getFontWidth() * 3 - 3, tft.getFontHeight(), RA8875_BLACK);
   tft.setCursor(FIELD_OFFSET_X, BAND_INDICATOR_Y);
   tft.print(EEPROMData.audioVolume);
 }
@@ -1280,16 +1281,17 @@ void UpdateVolumeField() {
 *****/
 void UpdateAGCField() {
   tft.setFontScale((enum RA8875tsize)1);
-  tft.fillRect(AGC_X_OFFSET, AGC_Y_OFFSET, tft.getFontWidth() * 6, tft.getFontHeight(), RA8875_BLACK);
-  tft.setCursor(BAND_INDICATOR_X + 140, BAND_INDICATOR_Y);
-  switch (EEPROMData.AGCMode) {  // The opted for AGC
+  tft.fillRect(AGC_X_OFFSET, AGC_Y_OFFSET, tft.getFontWidth() * 7 - 3, tft.getFontHeight(), RA8875_BLACK);
+  tft.setCursor(BAND_INDICATOR_X + 135, BAND_INDICATOR_Y);
+  switch (EEPROMData.AGCMode) {  // The option for AGC
     case 0:                      // Off
+//    tft.setCursor(BAND_INDICATOR_X + 140, BAND_INDICATOR_Y);
       tft.setTextColor(DARKGREY);
-      tft.print("AGC");
-      tft.setFontScale((enum RA8875tsize)0);
-      tft.setCursor(BAND_INDICATOR_X + 200, BAND_INDICATOR_Y + 15);
-      tft.print(" off");
-      tft.setFontScale((enum RA8875tsize)1);
+      tft.print("AGC OFF");
+//      tft.setFontScale((enum RA8875tsize)0);
+//      tft.setCursor(BAND_INDICATOR_X + 200, BAND_INDICATOR_Y + 15);
+//      tft.print(" off");
+//      tft.setFontScale((enum RA8875tsize)1);
       break;
 
     case 1:  // Long
@@ -1328,8 +1330,10 @@ void UpdateAGCField() {
     void
 *****/
 void DisplayAGC() {
+  if(EEPROMData.AGCMode != 0) {  // Don't update AGC indicator if AGC is off.
   if (agc_action) tft.fillRect(765, AGC_Y_OFFSET + 10, 15, 15, RA8875_GREEN);
   else tft.fillRect(765, AGC_Y_OFFSET + 10, 15, 15, RA8875_BLACK);
+  }
 //  Serial.printf("agc_action = %d\n", agc_action);
 }
 
@@ -1409,11 +1413,11 @@ void UpdateNotchField() {
   tft.print("AutoNotch:");
   tft.setCursor(FIELD_OFFSET_X, NOTCH_Y - 2);
   tft.setTextColor(RA8875_GREEN);
-  if (ANR_notchOn == 0) {
+  if (ANR_notch == 0) {
     tft.print("Off");
   } else {
     tft.print("On");
-    ANR_notchOn = 1;  //AFP 10-21-22
+//    ANR_notchOn = 1;  //AFP 10-21-22
   }
 }
 
@@ -1575,7 +1579,7 @@ FLASHMEM void UpdateEqualizerField(bool rxEqState, bool txEqState) {
 
 
 /*****
-  Purpose: Updates the WPM setting on the display
+  Purpose: Updates the Keyer and WPM setting on the display
 
   Parameter list:
     void
@@ -1590,7 +1594,7 @@ void UpdateWPMField() {
   tft.setCursor(WPM_X + 5, WPM_Y - 5);
   tft.print("Keyer:");
   tft.setTextColor(RA8875_GREEN);
-  tft.fillRect(WPM_X + 60, WPM_Y, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
+  tft.fillRect(WPM_X + 59, WPM_Y - 4, tft.getFontWidth() * 15, tft.getFontHeight(), RA8875_BLACK);
   tft.setCursor(FIELD_OFFSET_X, WPM_Y - 5);
   //EEPROMData.EEPROMData.currentWPM = EEPROMData.currentWPM;
   if (EEPROMData.keyType == KEYER) {
@@ -1807,7 +1811,7 @@ void EraseSpectrumWindow() {
 *****/
 void EraseMenus() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, BOTH_MENU_WIDTHS, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                            // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                            // Change menu state
 }
 /*****
   Purpose: To erase primary menu from display
@@ -1819,7 +1823,7 @@ void EraseMenus() {
 *****/
 void ErasePrimaryMenu() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                           // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                           // Change menu state
 }
 /*****
   Purpose: To erase secondary menu from display
@@ -1831,7 +1835,7 @@ void ErasePrimaryMenu() {
 *****/
 void EraseSecondaryMenu() {
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
-  menuStatus = NO_MENUS_ACTIVE;                                                             // Change menu state
+//  menuStatus = NO_MENUS_ACTIVE;                                                             // Change menu state
 }
 
 /*****
