@@ -1,34 +1,14 @@
 # T41_SDR
 
-Software designed receiver based on the T41-EP developed by Albert Peter and Jack Purdum.
+Software designed transceiver based on the T41-EP developed by Albert Peter and Jack Purdum.
 
 Initial "fork" from T41-EP software version SDTVer049.2K.
 
-This is a work in progress.  Use at your own risk.
-
-Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better button response)* but want to maintain version SDTVer049.2K functionality.  *Note that the EEPROM configuration file is different and is not compatible with software version SDTVer049.2K.  You should take note of any calibration settings you'd like to retain to make restoring these easier.  You should load this branch after a full memory erase.*
-
-## Tags
-
-* V049.2K - original T41 software version SDTVer049.2K
-* SDR.1 - adds T41EEE switch matrix functionality
-
-  * #pragma once for SDT.h
-  * separate change log
-  * consistent EOL and EOF for all files
-  * cleared compiler warnings (commented out unused code; should probably just be removed)
-  * added EEPROMWriteSize(), EEPROMReadSize(), ButtonISR(), EnableButtonInterrupts() from T41EEE
-  * modified EEPROMWrite()EEPROMRead(), , EEPROMStartup(), SaveAnalogSwitchValues() and ReadSelectedPushButton() to incorporate button interrupts per T41EEE
-  * added a temporary function, LoadOpVars() to initialize SDTVer049 global variables to those in EEPROMData (needed until all functions pull from EEPROMData and individual global variables can be eliminated)
-  * modified setup() to call LoadOpVars() and EnableButtonInterrupts() and remove extraneous global variable initialization
-  * some cleanup in MyConfigurationsFile
-  * modified splash screen
-  * some code cleanup (mostly removing unused variables/code)
-
+This is a work in progress.  Some functions from the original version are broken.  Use at your own risk.
 
 ## Branches
 
-* main - currently SDR.1
+* main - dev/v0.1
 * dev/v0.1 - SDR.1 with:
 
   * feature/menu
@@ -37,6 +17,8 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * feature/NFMDemod
   * feature/dataMode
   * feature/keyboard
+  * feature/mouse
+  * feature/psk31
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
 * feature/psk31 - adds PSK31 data mode. Still a work in progress.
@@ -46,6 +28,12 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
   * Made wav file support more generic
 
 * feature/mouse - added mouse support.   Currently the mouse can be used as follows:
+
+  * Within the menu area:
+    * Open menu with right click
+    * Scroll through menu options with the mouse wheel
+    * Select menu option with left click
+    * Adjust entry value with mouse wheel
 
   * Within the frequency area:
     * Adjust the frequency in deciles with the mouse wheel
@@ -176,3 +164,22 @@ Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better bu
     * likely some cleanup for CW transmit still needed
 
   * also some general cleanup
+
+Try out `Tag SDR.1` if you like the T41EEE switch matrix routine *(for better button response)* but want to maintain version SDTVer049.2K functionality.  *Note that the EEPROM configuration file is different and is not compatible with software version SDTVer049.2K.  You should take note of any calibration settings you'd like to retain to make restoring these easier.  You should load this branch after a full memory erase.*
+
+## Tags
+
+* V049.2K - original T41 software version SDTVer049.2K
+* SDR.1 - adds T41EEE switch matrix functionality
+
+  * #pragma once for SDT.h
+  * separate change log
+  * consistent EOL and EOF for all files
+  * cleared compiler warnings (commented out unused code; should probably just be removed)
+  * added EEPROMWriteSize(), EEPROMReadSize(), ButtonISR(), EnableButtonInterrupts() from T41EEE
+  * modified EEPROMWrite()EEPROMRead(), , EEPROMStartup(), SaveAnalogSwitchValues() and ReadSelectedPushButton() to incorporate button interrupts per T41EEE
+  * added a temporary function, LoadOpVars() to initialize SDTVer049 global variables to those in EEPROMData (needed until all functions pull from EEPROMData and individual global variables can be eliminated)
+  * modified setup() to call LoadOpVars() and EnableButtonInterrupts() and remove extraneous global variable initialization
+  * some cleanup in MyConfigurationsFile
+  * modified splash screen
+  * some code cleanup (mostly removing unused variables/code)

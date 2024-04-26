@@ -38,8 +38,8 @@ typedef struct {
   int decoderFlag;
   int keyType;
   int currentWPM;
-  float32_t sidetoneVolume;
-  uint32_t cwTransmitDelay;
+  int sidetoneVolume;
+  int cwTransmitDelay;
 
   int activeVFO;
   int freqIncrement;

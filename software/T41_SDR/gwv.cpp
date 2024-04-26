@@ -18,7 +18,7 @@ int rfGainAllBands = 1;
 int spectrumNoiseFloor = 247; // SPECTRUM_NOISE_FLOOR;
 int tuneIndex = DEFAULTFREQINDEX;
 int ftIndex = DEFAULT_FT_INDEX;
-float32_t transmitPowerLevel = DEFAULT_POWER_LEVEL;
+int transmitPowerLevel = DEFAULT_POWER_LEVEL;
 int xmtMode = SSB_MODE;  // 0 = SSB, 1 = CW, 2 = FT8
 int nrOptionSelect = 0;
 int currentScale = 1;  // 20 dB/division
@@ -31,8 +31,8 @@ int paddleDah = KEYER_DAH_INPUT_RING;
 int decoderFlag = DECODER_STATE;  // Startup state for decoder
 int keyType = STRAIGHT_KEY_OR_PADDLES;
 int currentWPM =  DEFAULT_KEYER_WPM;
-float32_t sidetoneVolume = 20;
-uint32_t cwTransmitDelay = 750;
+int sidetoneVolume = 20;
+int cwTransmitDelay = 750;
 
 int activeVFO = 0;
 

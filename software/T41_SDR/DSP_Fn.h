@@ -16,7 +16,3 @@ void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples);
 void AGCLoadValues();
 void AGCPrep();
 void AGC();
-void SetCompressionLevel();
-void SetCompressionRatio();
-void SetCompressionAttack();
-void SetCompressionRelease();

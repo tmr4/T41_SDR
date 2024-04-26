@@ -134,58 +134,6 @@ void EncoderCenterTune() {
 }
 
 /*****
-  Purpose: Encoder volume control
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-// why not FASTRUN
-void EncoderVolume() {
-  char result;
-  int increment [[maybe_unused]] = 0;
-  static float adjustVolEncoder = 1;
-
-
-  result = volumeEncoder.process();  // Read the encoder
-
-  if (result == 0) {  // Nothing read
-    return;
-  }
-  switch (result) {
-    case DIR_CW:  // Turned it clockwise, 16
-      adjustVolEncoder = 1;
-      break;
-
-    case DIR_CCW:  // Turned it counter-clockwise
-      adjustVolEncoder = -1;
-      break;
-  }
-  audioVolume += adjustVolEncoder;
-  // simulate log taper.  As we go higher in volume, the increment increases.
-
-  if (audioVolume < (MIN_AUDIO_VOLUME + 10)) increment = 2;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 20)) increment = 3;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 30)) increment = 4;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 40)) increment = 5;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 50)) increment = 6;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 60)) increment = 7;
-  else increment = 8;
-
-
-  if (audioVolume > MAX_AUDIO_VOLUME) {
-    audioVolume = MAX_AUDIO_VOLUME;
-  } else {
-    if (audioVolume < MIN_AUDIO_VOLUME)
-      audioVolume = MIN_AUDIO_VOLUME;
-  }
-
-  volumeChangeFlag = true;  // Need this because of unknown timing in display updating.
-}
-
-/*****
   Purpose: Use the encoder to change the value of a number in some other function
 
   Parameter list:
@@ -235,60 +183,59 @@ float GetEncoderValueLive(float minValue, float maxValue, float startValue, floa
 }
 
 /*****
-  Purpose: Use the encoder to change the value of a number in some other function
+  Purpose: Encoder volume control ISR
 
   Parameter list:
-    int minValue                the lowest value allowed
-    int maxValue                the largest value allowed
-    int startValue              the numeric value to begin the count
-    int increment               the amount by which each increment changes the value
-    char prompt[]               the input prompt
+    void
+
   Return value;
-    int                         the new value
+    void
 *****/
-int GetEncoderValue(int minValue, int maxValue, int startValue, int increment, char prompt[]) {
-  int currentValue = startValue;
-  int val;
+// why not FASTRUN
+void EncoderVolumeISR() {
+  char result;
+  int increment [[maybe_unused]] = 0;
+  static float adjustVolEncoder = 1;
 
-  getEncoderValueFlag = true;
 
-  tft.setFontScale((enum RA8875tsize)1);
-  tft.setTextColor(RA8875_WHITE);
-  //tft.fillRect(250, 0, 280, CHAR_HEIGHT, RA8875_MAGENTA);
-  tft.fillRect(SECONDARY_MENU_X, 0, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
-  tft.setCursor(257, 1);
-  tft.print(prompt);
-  tft.setCursor(470, 1);
-  tft.print(startValue);
+  result = volumeEncoder.process();  // Read the encoder
 
-  while (true) {
-    if (menuEncoderMove != 0) {
-      currentValue += menuEncoderMove * increment;  // Bump up or down...
-      if (currentValue < minValue)
-        currentValue = minValue;
-      else if (currentValue > maxValue)
-        currentValue = maxValue;
-
-      tft.fillRect(465, 0, 55, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setCursor(470, 1);
-      tft.print(currentValue);
-      menuEncoderMove = 0;
-    }
-
-    val = ReadSelectedPushButton();  // Read the ladder value
-    //delay(100L);
-    if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
-      val = ProcessButtonPress(val);    // Use ladder value to get menu choice
-      if (val == MENU_OPTION_SELECT) {  // Make a choice??
-        getEncoderValueFlag = false;
-        return currentValue;
-      }
-    }
+  if (result == 0) {  // Nothing read
+    return;
   }
+  switch (result) {
+    case DIR_CW:  // Turned it clockwise, 16
+      adjustVolEncoder = 1;
+      break;
+
+    case DIR_CCW:  // Turned it counter-clockwise
+      adjustVolEncoder = -1;
+      break;
+  }
+  audioVolume += adjustVolEncoder;
+  // simulate log taper.  As we go higher in volume, the increment increases.
+
+  if (audioVolume < (MIN_AUDIO_VOLUME + 10)) increment = 2;
+  else if (audioVolume < (MIN_AUDIO_VOLUME + 20)) increment = 3;
+  else if (audioVolume < (MIN_AUDIO_VOLUME + 30)) increment = 4;
+  else if (audioVolume < (MIN_AUDIO_VOLUME + 40)) increment = 5;
+  else if (audioVolume < (MIN_AUDIO_VOLUME + 50)) increment = 6;
+  else if (audioVolume < (MIN_AUDIO_VOLUME + 60)) increment = 7;
+  else increment = 8;
+
+
+  if (audioVolume > MAX_AUDIO_VOLUME) {
+    audioVolume = MAX_AUDIO_VOLUME;
+  } else {
+    if (audioVolume < MIN_AUDIO_VOLUME)
+      audioVolume = MIN_AUDIO_VOLUME;
+  }
+
+  volumeChangeFlag = true;  // Need this because of unknown timing in display updating.
 }
 
 /*****
-  Purpose: Fine tune control
+  Purpose: Fine tune control ISR
 
   Parameter list:
     void
@@ -296,7 +243,7 @@ int GetEncoderValue(int minValue, int maxValue, int startValue, int increment, c
   Return value;
     void
 *****/
-FASTRUN void EncoderFineTune() {
+FASTRUN void EncoderFineTuneISR() {
   char result;
 
   result = fineTuneEncoder.process();  // Read the encoder
@@ -317,7 +264,7 @@ FASTRUN void EncoderFineTune() {
 }
 
 /*****
-  Purpose: Process Menu/Change/Filter encoder movement
+  Purpose: Menu/Change/Filter encoder movement ISR
 
   Parameter list:
     void
@@ -325,7 +272,7 @@ FASTRUN void EncoderFineTune() {
   Return value;
     void
 *****/
-FASTRUN void EncoderMenuChangeFilter() {
+FASTRUN void EncoderMenuChangeFilterISR() {
   char result;
 
   result = menuChangeEncoder.process();  // Read the encoder
@@ -344,9 +291,13 @@ FASTRUN void EncoderMenuChangeFilter() {
       break;
   }
 
-  if(calibrateFlag != 0) return; // we're calibrating
+  if(calibrateFlag >= 0) return; // we're calibrating
 
   // interpret encoder according to flag settings
+  if(getEncoderValueFlag) {
+    return; // menuEncoderMove processed in GetEncoderValueLive and GetMenuValueLoop routines
+  }
+
   if(liveNoiseFloorFlag) {
     // we're setting noise floor
     currentNoiseFloor[currentBand] += menuEncoderMove;
@@ -368,12 +319,8 @@ FASTRUN void EncoderMenuChangeFilter() {
         // we're adjusting NFM demod bandwidth
         filter_pos_BW = last_filter_pos_BW - 5 * menuEncoderMove;
       } else {
-        if(getEncoderValueFlag) {
-          return; // menuEncoderMove processed in GetEncoderValue(Live) routines
-        } else {
-          // we're adjusting audio spectrum filter
-          posFilterEncoder = lastFilterEncoder - 5 * menuEncoderMove;
-        }
+        // we're adjusting audio spectrum filter
+        posFilterEncoder = lastFilterEncoder - 5 * menuEncoderMove;
       }
     }
   }

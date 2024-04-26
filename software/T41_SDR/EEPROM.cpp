@@ -30,7 +30,7 @@ config_t EEPROMData {
   SPECTRUM_NOISE_FLOOR,         // int spectrumNoiseFloor
   DEFAULTFREQINDEX,             // int tuneIndex
   DEFAULT_FT_INDEX,             // int ftIndex
-  DEFAULT_POWER_LEVEL,          // float32_t transmitPowerLevel
+  DEFAULT_POWER_LEVEL,          // int transmitPowerLevel
   0,                            // int xmtMode
   0,                            // int nrOptionSelect
   1,                            // int currentScale
@@ -43,7 +43,7 @@ config_t EEPROMData {
   DECODER_STATE,                // int decoderFlag
   STRAIGHT_KEY_OR_PADDLES,      // int keyType - straight key = 0, keyer = 1                   
   DEFAULT_KEYER_WPM,            // int currentWPM
-  20.0,                         // float32_t sidetoneVolume
+  20,                           // int sidetoneVolume
   750,                          // uint32_t cwTransmitDelay
 
   0,                            // int activeVFO
@@ -671,7 +671,7 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.decoderFlag = 0;
   EEPROMData.keyType = 0;            // straight key = 0, keyer = 1
   EEPROMData.currentWPM = 15;        // 4 bytes
-  EEPROMData.sidetoneVolume = 50.0;  // 4 bytes.  Changed to default 50.  KF5N October 7, 2023.
+  EEPROMData.sidetoneVolume = 50;    // 4 bytes.  Changed to default 50.  KF5N October 7, 2023.
   EEPROMData.cwTransmitDelay = 750;  // 4 bytes
 
   EEPROMData.activeVFO = 0;      // 2 bytes, 0 = VFOa
@@ -1578,8 +1578,9 @@ FLASHMEM int CopyEEPROMToSD() {
   strcat(buffer, temp);
   file.println(buffer);
 
-  strcpy(buffer, "EEPROMData.sidetoneVolume = ");  // float data type
-  dtostrf(sidetoneVolume, 6, 4, temp);             // Field of up to 6 digits with 1 decimal place
+  strcpy(buffer, "EEPROMData.sidetoneVolume = ");
+  //dtostrf(sidetoneVolume, 6, 4, temp);             // Field of up to 6 digits with 1 decimal place
+  itoa(sidetoneVolume, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
   strcpy(buffer, "EEPROMData.cwTransmitDelay = ");  // long data type

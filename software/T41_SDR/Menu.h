@@ -52,16 +52,25 @@ extern void (*functionPtr[])();
 extern int receiveEQFlag;
 extern int xmitEQFlag;
 
+extern bool getMenuValueActive;
+extern bool getMenuValueSelected;
+extern void (*getMenuValue)();
+extern void (*getMenuValueFollowup)();
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
 void Cancel();
+void ShowMenu(const char *menu[], int where);
+void MenuBarChange(int change);
 void ShowMenuBar(int menu, int change);
 inline void ShowMenuBar() { ShowMenuBar(0,0); }
-void MenuBarChange(int change);
-void ShowMenu(const char *menu[], int where);
 void MenuBarSelect();
+
+void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, const char *prompt, int offset, void (*setup)(), void (*getValue)(), void (*followup)());
+void GetMenuValueLoop();
+
 int DrawMenuDisplay();
 int SetPrimaryMenuIndex();
 int SetSecondaryMenuIndex();

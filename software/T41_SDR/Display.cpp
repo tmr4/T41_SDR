@@ -279,10 +279,15 @@ FASTRUN void ShowSpectrum() {
         getMenuValueFollowup();
 
         // wrap up menu
+        getMenuValueSelected = false;
+        getMenuValueActive = false;
+        getMenuValue = NULL;
+        getMenuValueFollowup = NULL;
+
         EraseMenus();
         menuStatus = NO_MENUS_ACTIVE;
       } else {
-        getMenuValue();
+        GetMenuValueLoop();
       }
     }
 

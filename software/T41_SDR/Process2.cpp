@@ -127,7 +127,6 @@ FLASHMEM void CalibratePrologue() {
   centerFreq = TxRxFreq;
   NCOFreq = 0L;
   xrState = RECEIVE_STATE;
-  calibrateFlag = 0;  // KF5N
   calFreqShift = 0;
   currentScale = userScale;                     //  Restore vertical scale to user preference.  KF5N
   ShowSpectrumdBScale();
@@ -141,11 +140,10 @@ FLASHMEM void CalibratePrologue() {
   tft.clearMemory();
   tft.writeTo(L1);  // Exit function in layer 1.  KF5N August 3, 2023
   RedrawDisplayScreen();
-  IQChoice = 5;
   calOnFlag = 0;
   radioState = CW_RECEIVE_STATE;  // KF5N
   SetFreq();                      // Return Si5351 to normal operation mode.  KF5N
-  lastState = 1111;  // This is required due to the function deactivating the receiver.  This forces a pass through the receiver set-up code.  KF5N October 16, 2023
+  lastState = -1;  // This is required due to the function deactivating the receiver.  This forces a pass through the receiver set-up code.  KF5N October 16, 2023
   return;
 }
 
@@ -161,6 +159,8 @@ FLASHMEM void CalibratePrologue() {
 FLASHMEM void DoReceiveCalibrate() {
   int task = -1;
   int lastUsedTask = -2;
+  int IQChoice = 0;
+
   CalibratePreamble(0);                                                   // Set zoom to 1X.
   if (bands[currentBand].mode == DEMOD_LSB) calFreqShift = 24000 - 2000;  //  LSB offset.  KF5N
   if (bands[currentBand].mode == DEMOD_USB) calFreqShift = 24000 + 2250;  //  USB offset.  KF5N
@@ -226,6 +226,8 @@ FLASHMEM void DoReceiveCalibrate() {
 FLASHMEM void DoXmitCalibrate() {
   int task = -1;
   int lastUsedTask = -2;
+  int IQChoice = 0;
+
   CalibratePreamble(2);  // Set zoom to 4X.
   calTypeFlag = 1;       // TX cal
   calFreqShift = 750;
@@ -291,11 +293,11 @@ FLASHMEM void DoXmitCalibrate() {
       void
  *****/
 FLASHMEM void ProcessIQData2() {
-  float bandCouplingFactor[7] = { 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 };  // AFP 2-11-23  KF5N uniform values
-  float bandOutputFactor;                                               // AFP 2-11-23
-  float rfGainValue;                                                    // AFP 2-11-23
-  float recBandFactor[7] = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };       // AFP 2-11-23  KF5N uniform values
-  /**********************************************************************************  AFP 12-31-20
+  float bandCouplingFactor[7] = { 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 };
+  float bandOutputFactor;                                             
+  float rfGainValue;                                                  
+  float recBandFactor[7] = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };     
+  /**********************************************************************************
         Get samples from queue buffers
         Teensy Audio Library stores ADC data in two buffers size=128, Q_in_L and Q_in_R as initiated from the audio lib.
         Then the buffers are read into two arrays sp_L and sp_R in blocks of 128 up to N_BLOCKS.  The arrarys are
@@ -304,20 +306,20 @@ FLASHMEM void ProcessIQData2() {
         BUFFER_SIZE*N_BLOCKS = 2024 samples
      **********************************************************************************/
 
-  bandOutputFactor = bandCouplingFactor[currentBand] * CWPowerCalibrationFactor[currentBand] / CWPowerCalibrationFactor[1];  //AFP 2-7-23
+  bandOutputFactor = bandCouplingFactor[currentBand] * CWPowerCalibrationFactor[currentBand] / CWPowerCalibrationFactor[1];
 
-  // Generate I and Q for the transmit or receive calibration.  KF5N
-  if (IQChoice == 2 || IQChoice == 3) {                                   // KF5N
-    arm_scale_f32(cosBuffer3, bandOutputFactor, float_buffer_L_EX, 256);  // AFP 2-11-23 Use pre-calculated sin & cos instead of Hilbert
-    arm_scale_f32(sinBuffer3, bandOutputFactor, float_buffer_R_EX, 256);  // AFP 2-11-23 Sidetone = 3000
+  // Generate I and Q for the transmit or receive calibration
+  if (calibrateFlag == 2 || calibrateFlag == 3) {
+    arm_scale_f32(cosBuffer3, bandOutputFactor, float_buffer_L_EX, 256);  //Use pre-calculated sin & cos instead of Hilbert
+    arm_scale_f32(sinBuffer3, bandOutputFactor, float_buffer_R_EX, 256);  //Sidetone = 3000
   }
 
   if (bands[currentBand].mode == DEMOD_LSB) {
-    arm_scale_f32(float_buffer_L_EX, -IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);       //Adjust level of L buffer // AFP 2-11-23
+    arm_scale_f32(float_buffer_L_EX, -IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);       //Adjust level of L buffer
     IQPhaseCorrection(float_buffer_L_EX, float_buffer_R_EX, IQXPhaseCorrectionFactor[currentBand], 256);  // Adjust phase
   } else {
     if (bands[currentBand].mode == DEMOD_USB) {
-      arm_scale_f32(float_buffer_L_EX, IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);  // AFP 2-11-23
+      arm_scale_f32(float_buffer_L_EX, IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);
       IQPhaseCorrection(float_buffer_L_EX, float_buffer_R_EX, IQXPhaseCorrectionFactor[currentBand], 256);
     }
   }

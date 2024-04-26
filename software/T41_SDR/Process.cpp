@@ -213,8 +213,8 @@ void ProcessIQData() {
         // does not work for magnifications > 8
       }
 
-      if (calibrateFlag == 1) {
-        CalibrateOptions(IQChoice);
+      if (calibrateFlag >= 0) {
+        CalibrateOptions();
       }
 
       /*************************************************************************************************

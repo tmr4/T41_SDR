@@ -4,12 +4,6 @@
 //-------------------------------------------------------------------------------------------------------------
 
 extern int calibrateFlag;
-extern int IQChoice;
-
-extern bool getMenuValueActive;
-extern bool getMenuValueSelected;
-extern void (*getMenuValue)();
-extern void (*getMenuValueFollowup)();
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -26,6 +20,5 @@ void EqualizerRecOptions();
 void EqualizerXmtOptions();
 void MicGainSet();
 void MicOptions();
-void IQOptions();
-int CalibrateOptions(int IQChoice);
+void CalibrateOptions();
 

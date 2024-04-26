@@ -420,7 +420,7 @@ void MouseLoop() {
       } else if(CursorInSpectrumWaterfall()) {
         MouseWheelSpectrumWaterfall(wheel);
       } else if(CursorInAudioSpectrum()) {
-        // *** TODO: consider refactoring with similar code in EncoderMenuChangeFilter()
+        // *** TODO: consider refactoring with similar code in EncoderMenuChangeFilterISR()
         if (ft8MsgSelectActive) {
           if(num_decoded_msg > 0) {
             activeMsg += wheel;

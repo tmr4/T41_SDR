@@ -737,7 +737,7 @@ FLASHMEM void SoftReset() {
 
   SetKeyPowerUp();  // Use keyType and paddleFlip to configure key GPIs
   SetDitLength(currentWPM);
-  SetTransmitDitLength(currentWPM);
+  SetTransmitDitLength();
   CWFreqShift = 750;
   calFreqShift = 0;
   menuEncoderMove = 0;
@@ -850,14 +850,14 @@ FLASHMEM void setup() {
 
   tuneEncoder.begin(true);
   volumeEncoder.begin(true);
-  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_A), EncoderVolume, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_B), EncoderVolume, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_A), EncoderVolumeISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_B), EncoderVolumeISR, CHANGE);
   menuChangeEncoder.begin(true);
-  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_A), EncoderMenuChangeFilter, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_B), EncoderMenuChangeFilter, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_A), EncoderMenuChangeFilterISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_B), EncoderMenuChangeFilterISR, CHANGE);
   fineTuneEncoder.begin(true);
-  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_A), EncoderFineTune, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_B), EncoderFineTune, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_A), EncoderFineTuneISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_B), EncoderFineTuneISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(KEYER_DIT_INPUT_TIP), KeyTipOn, CHANGE);
   attachInterrupt(digitalPinToInterrupt(KEYER_DAH_INPUT_RING), KeyRingOn, CHANGE);
 
@@ -1103,14 +1103,14 @@ FASTRUN void loop()
       modeSelectOutExL.gain(0, 0);
       modeSelectOutExR.gain(0, 0);
       cwTimer = millis();
-      while (millis() - cwTimer <= cwTransmitDelay) {  //Start CW transmit timer on
+      while (millis() - cwTimer - cwTransmitDelay <= 0) {  // Start CW transmit timer on
         digitalWrite(RXTX, HIGH);
         if (digitalRead(paddleDit) == LOW && keyType == 0) {       // Turn on CW signal
           cwTimer = millis();                                      //Reset timer
           modeSelectOutExL.gain(0, powerOutCW[currentBand]);
           modeSelectOutExR.gain(0, powerOutCW[currentBand]);
           digitalWrite(MUTE, LOW);                                 // unmutes audio
-          modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone
+          modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);  // Sidetone
         } else {
           if (digitalRead(paddleDit) == HIGH && keyType == 0) {  //Turn off CW signal
             keyPressedOn = 0;
@@ -1141,7 +1141,7 @@ FASTRUN void loop()
       modeSelectOutExL.gain(0, 0);
       modeSelectOutExR.gain(0, 0);
       cwTimer = millis();
-      while (millis() - cwTimer <= cwTransmitDelay) {
+      while (millis() - cwTimer - cwTransmitDelay <= 0) {
         digitalWrite(RXTX, HIGH);  //Turns on relay
         CW_ExciterIQData();
         modeSelectInR.gain(0, 0);
@@ -1159,7 +1159,7 @@ FASTRUN void loop()
             modeSelectOutExL.gain(0, powerOutCW[currentBand]);
             modeSelectOutExR.gain(0, powerOutCW[currentBand]);
             digitalWrite(MUTE, LOW);                                 // unmutes audio
-            modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);  // Sidetone
+            modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);  // Sidetone
             CW_ExciterIQData();                                      // Creates CW output signal
             keyPressedOn = 0;
           }
@@ -1182,7 +1182,7 @@ FASTRUN void loop()
               modeSelectOutExL.gain(0, powerOutCW[currentBand]);
               modeSelectOutExR.gain(0, powerOutCW[currentBand]);
               digitalWrite(MUTE, LOW);                                  // unmutes audio
-              modeSelectOutL.gain(1, volumeLog[(int)sidetoneVolume]);   // Dah sidetone was using constants.  KD0RC
+              modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);   // Dah sidetone was using constants.  KD0RC
               CW_ExciterIQData();                                       // Creates CW output signal
               keyPressedOn = 0;
             }

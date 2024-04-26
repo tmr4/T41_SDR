@@ -25,15 +25,7 @@
 
 #define MAX_WPM                  60
 
-int calibrateFlag = 0;
-int IQChoice;
-int micChoice;
-int micGainChoice;
-
-bool getMenuValueActive = false;
-bool getMenuValueSelected = false;
-void (*getMenuValue)() = NULL;
-void (*getMenuValueFollowup)() = NULL;
+int calibrateFlag = -1;
 
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
@@ -61,7 +53,9 @@ void CWOptions() {
   //Serial.println(menuBarSelected);
   switch (secondaryMenuIndex) {
     case 0:  // WPM
-      SetWPM();
+      //SetWPM();
+      // GetMenuValue(minValue, maxValue, startValue, increment, prompt, valueOffset)
+      GetMenuValue(5, MAX_WPM, &currentWPM, 1, "WPM:", 200, NULL, NULL, &SetWPMFollowup);
       break;
 
     case 1:          // Type of key:
@@ -79,11 +73,14 @@ void CWOptions() {
       break;
 
     case 4:  // Sidetone volume
-      SetSideToneVolume();
-      break;
+      //SetSideToneVolume();
+      // GetMenuValue(minValue, maxValue, startValue, increment, prompt, valueOffset)
+      GetMenuValue(0, 100, &sidetoneVolume, 1, "Volume:", 200, &SetSideToneVolumeSetup, &SetSideToneVolumeValue, &SetSideToneVolumeFollowup);
+  break;
 
-    case 5:                // new function
-      SetTransmitDelay();  // Transmit relay hold delay
+    case 5:                // Transmit relay hold delay
+      //SetTransmitDelay();
+      GetMenuValue(0, 10000, &cwTransmitDelay, 250, "Delay:", 150, NULL, NULL, &SetTransmitDelayFollowup);
       break;
 
     default:  // Cancel
@@ -91,39 +88,48 @@ void CWOptions() {
   }
 }
 
+// *** TODO: T41EEE does this for each band ***
+void RFPowerFollowup() {
+  if (xmtMode == CW_MODE) {                                                                                                                                      //AFP 10-13-22
+    powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];  //  afp 10-21-22
+
+    EEPROMData.powerOutCW[currentBand] = powerOutCW[currentBand];
+  } else {
+    if (xmtMode == SSB_MODE) {
+      powerOutSSB[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * SSBPowerCalibrationFactor[currentBand];  // afp 10-21-22
+      EEPROMData.powerOutSSB[currentBand] = powerOutSSB[currentBand];                                                                                                //AFP 10-21-22
+    }
+  }
+  EEPROMData.transmitPowerLevel = transmitPowerLevel;
+  EEPROMWrite();
+  ShowCurrentPowerSetting();
+}
+
+void RFGainFollowup() {
+  EEPROMData.rfGainAllBands = rfGainAllBands;
+  EEPROMWrite();
+}
+
 /*****
-  Purpose: Present the bands available and return the selection
-            *** consider FT8 power options ***
+  Purpose: Process RF options
+
   Parameter list:
     void
 
-  Return value12
+  Return value
     void
 *****/
 void RFOptions() {
   //  const char *rfOptions[] = { "Power level", "Gain", "Cancel" };
   switch (secondaryMenuIndex) {
     case 0: // Power Level
-      transmitPowerLevel = (float)GetEncoderValue(1, 20, transmitPowerLevel, 1, (char *)"Power: ");
-      if (xmtMode == CW_MODE) {                                                                                                                                      //AFP 10-13-22
-        powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];  //  afp 10-21-22
-
-        EEPROMData.powerOutCW[currentBand] = powerOutCW[currentBand];
-      } else {
-        if (xmtMode == SSB_MODE) {
-          powerOutSSB[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * SSBPowerCalibrationFactor[currentBand];  // afp 10-21-22
-          EEPROMData.powerOutSSB[currentBand] = powerOutSSB[currentBand];                                                                                                //AFP 10-21-22
-        }
-      }
-      EEPROMData.transmitPowerLevel = transmitPowerLevel;
-      EEPROMWrite();
-      ShowCurrentPowerSetting();
+      //transmitPowerLevel = (float)GetEncoderValue(1, 20, transmitPowerLevel, 1, (char *)"Power: ");
+      GetMenuValue(1, 20, &transmitPowerLevel, 1, "Power:", 200, NULL, NULL, &RFPowerFollowup);
       break;
 
     case 1: // Gain
-      rfGainAllBands = GetEncoderValue(-60, 10, rfGainAllBands, 5, (char *)"RF Gain dB: ");  // Argument: min, max, start, increment
-      EEPROMData.rfGainAllBands = rfGainAllBands;
-      EEPROMWrite();
+      //rfGainAllBands = GetEncoderValue(-60, 10, rfGainAllBands, 5, (char *)"RF Gain dB: ");
+      GetMenuValue(-60, 10, &rfGainAllBands, 5, "Gain:", 200, NULL, NULL, &RFGainFollowup);
       break;
   }
 }
@@ -143,8 +149,9 @@ void VFOSelect(int32_t index) {
     bands[currentBand].mode = priorDemodMode;
   }
 
-  //delay(10);
+  splitVFO = false;
   NCOFreq = 0L;
+
   switch (index) {
     case VFO_A:
       centerFreq = TxRxFreq = currentFreqA;
@@ -356,8 +363,13 @@ void EqualizerXmtOptions() {
   }
 }
 
+void MicGainFollowup() {
+  EEPROMData.currentMicGain = currentMicGain;
+  EEPROMWrite();
+}
+
 /*****
-  Purpose: Set Mic level
+  Purpose: Set mic gain level
 
   Parameter list:
     void
@@ -369,40 +381,47 @@ void MicGainSet() {
   //  const char *micGainChoices[] = { "Set Mic Gain", "Cancel" };
   switch (secondaryMenuIndex) {
     case 0:
-      int val;
-      currentMicGain = EEPROMData.currentMicGain;
-      tft.setFontScale((enum RA8875tsize)1);
-      tft.fillRect(SECONDARY_MENU_X - 50, MENUS_Y, EACH_MENU_WIDTH + 50, CHAR_HEIGHT, RA8875_MAGENTA);
-      tft.setTextColor(RA8875_WHITE);
-      tft.setCursor(SECONDARY_MENU_X - 48, MENUS_Y);
-      tft.print("Mic Gain:");
-      tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
-      tft.print(currentMicGain);
-      while (true) {
-        if (menuEncoderMove != 0) {
-          currentMicGain += ((float)menuEncoderMove);
-          if (currentMicGain < -40)
-            currentMicGain = -40;
-          else if (currentMicGain > 30)  // 100% max
-            currentMicGain = 30;
-          tft.fillRect(SECONDARY_MENU_X + 180, MENUS_Y, 80, CHAR_HEIGHT, RA8875_MAGENTA);
-          tft.setCursor(SECONDARY_MENU_X + 180, MENUS_Y);
-          tft.print(currentMicGain);
-          menuEncoderMove = 0;
-        }
-        val = ReadSelectedPushButton();  // Read pin that controls all switches
-        val = ProcessButtonPress(val);
-        //delay(150L);
-        if (val == MENU_OPTION_SELECT) {  // Make a choice??
-          EEPROMData.currentMicGain = currentMicGain;
-          EEPROMWrite();
-          break;
-        }
-      }
+      // GetMenuValue(minValue, maxValue, startValue, increment, prompt, valueOffset)
+      GetMenuValue(-40, 30, &currentMicGain, 1, "Gain:", 200, NULL, NULL, &MicGainFollowup);
+      break;
+
     case 1:
       break;
   }
 }
+
+void SetCompressionLevelFollowup() {
+  EEPROMData.currentMicThreshold = currentMicThreshold;
+  EEPROMWrite();
+  UpdateInfoBoxItem(IB_ITEM_COMPRESS);
+}
+
+/*
+void SetCompressionRatioFollowup() {
+  //currentMicCompRatio += ((float) menuEncoderMove * .1);
+
+  EEPROMData.currentMicCompRatio = currentMicCompRatio;
+  EEPROMWrite();
+}
+
+void SetCompressionAttackFollowup() {
+  //currentMicAttack += ((float) menuEncoderMove * 0.1);
+  //else if (currentMicAttack < .1)
+  //  currentMicAttack = .1;
+
+  EEPROMData.currentMicAttack = currentMicAttack;
+  EEPROMWrite();
+}
+
+void SetCompressionReleaseFollowup() {
+  //currentMicRelease += ((float) menuEncoderMove * 0.1);
+  //else if (currentMicRelease < 0.1)                 // 100% max
+  //  currentMicRelease = 0.1;
+
+  EEPROMData.currentMicCompRatio = currentMicCompRatio;
+  EEPROMWrite();
+}
+*/
 
 /*****
   Purpose: Turn mic compression on and set the level
@@ -420,46 +439,43 @@ void MicOptions() {
       compressorFlag = 1;
       UpdateInfoBoxItem(IB_ITEM_COMPRESS);
       break;
+
     case 1:  // Off
       compressorFlag = 0;
       UpdateInfoBoxItem(IB_ITEM_COMPRESS);
       break;
+
     case 2:
-      SetCompressionLevel();
+      //SetCompressionLevel();
+      GetMenuValue(-60, 00, &currentMicThreshold, 1, "Compression:", 200, NULL, NULL, &SetCompressionLevelFollowup);
       break;
+
+    /* *** TODO: these aren't used currently ***
     case 3:
-      SetCompressionRatio();
+      //SetCompressionRatio();
+      // *** TODO: FIX: original had increment at 0.1 ***
+      //GetMenuValue(1, 10, &currentMicCompRatio, 1, "Ratio:", 200, NULL, NULL, &SetCompressionRatioFollowup);
       break;
+
     case 4:
-      SetCompressionAttack();
+      //SetCompressionAttack();
+      // *** TODO: FIX: original had min and increment at 0.1 ***
+      //GetMenuValue(1, 10, &currentMicAttack, 1, "Ratio:", 200, NULL, NULL, &SetCompressionAttackFollowup);
       break;
+
     case 5:
-      SetCompressionRelease();
+      //SetCompressionRelease();
+      // *** TODO: FIX: original had increment at 0.1 ***
+      //GetMenuValue(1, 10, &currentMicRelease, 1, "Ratio:", 200, NULL, NULL, &SetCompressionReleaseFollowup);
       break;
+
     case 6:
       break;
+    */
     default:  // Cancelled choice
-      micChoice = -1;
       break;
   }
   secondaryMenuIndex = -1;
-}
-
-/*****
-  Purpose: IQ Options
-
-  Parameter list:
-    void
-
-  Return value
-    void
-*****/
-void IQOptions() {
-  // const char *IQOptions[] = { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" };  //AFP 10-21-22
-  // const char *IQOptions[] = {"Rec Cal", "Xmit Cal", "Freq Cal", "SSB PA Cal", "CW PA Cal", "Cancel"}; //AFP 10-21-22
-  calibrateFlag = 1;
-  IQChoice = secondaryMenuIndex;
-  CalibrateOptions(IQChoice);
 }
 
 /*****
@@ -471,15 +487,18 @@ void IQOptions() {
   Return value
    void
 *****/
-int CalibrateOptions(int IQChoice) {
+void CalibrateOptions() {
   static long long freqCorrectionFactorOld = freqCorrectionFactor;
-
   int val;
   int32_t increment = 100L;
-  tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 30, CHAR_HEIGHT, RA8875_BLACK);
-  //  float transmitPowerLevelTemp;  //AFP 05-11-23
-  switch (IQChoice) {
 
+  tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 30, CHAR_HEIGHT, RA8875_BLACK);
+
+  if(calibrateFlag < 0) {
+    calibrateFlag = secondaryMenuIndex;
+  }
+
+  switch (calibrateFlag) {
     case 0:  // Calibrate Frequency  - uses WWV
       freqCorrectionFactor = GetEncoderValueLive(-200000, 200000, freqCorrectionFactor, increment, (char *)"Freq Cal: ");
       if (freqCorrectionFactor != freqCorrectionFactorOld) {
@@ -496,9 +515,7 @@ int CalibrateOptions(int IQChoice) {
         if (val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
           tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 35, CHAR_HEIGHT, RA8875_BLACK);
           EEPROMWrite();
-          calibrateFlag = 0;
-          IQChoice = 5;
-          return IQChoice;
+          calibrateFlag = 5;
         }
       }
       break;
@@ -531,20 +548,21 @@ int CalibrateOptions(int IQChoice) {
           tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 35, CHAR_HEIGHT, RA8875_BLACK);
           EEPROMData.CWPowerCalibrationFactor[currentBand] = CWPowerCalibrationFactor[currentBand];
           EEPROMWrite();
-          calibrateFlag = 0;
-          IQChoice = 5;
-          return IQChoice;
+          calibrateFlag = 5;
         }
       }
       break;
+
     case 2:                  // IQ Receive Cal - Gain and Phase
       DoReceiveCalibrate();  // This function was significantly revised
-      IQChoice = 5;
+      calibrateFlag = 5;
       break;
+
     case 3:               // IQ Transmit Cal - Gain and Phase
       DoXmitCalibrate();  // This function was significantly revised
-      IQChoice = 5;
+      calibrateFlag = 5;
       break;
+
     case 4:  // SSB PA Cal
       SSBPowerCalibrationFactor[currentBand] = GetEncoderValueLive(-2.0, 2.0, SSBPowerCalibrationFactor[currentBand], 0.001, (char *)"SSB PA Cal: ");
       powerOutSSB[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * SSBPowerCalibrationFactor[currentBand];  // AFP 10-21-22
@@ -554,30 +572,26 @@ int CalibrateOptions(int IQChoice) {
         if (val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
           tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 35, CHAR_HEIGHT, RA8875_BLACK);
           EEPROMWrite();
-          calibrateFlag = 0;
-          IQChoice = 5;
-          return IQChoice;
+          calibrateFlag = 5;
         }
       }
       break;
 
-    case 5:
+    case 5: // wrap up calibration
       //EraseMenus();
       //RedrawDisplayScreen();
       TxRxFreq = centerFreq + NCOFreq;
       //DrawBandwidthBar();
       //ShowFrequency();
       //ShowOperatingStats();
-      calibrateFlag = 0;
+      calibrateFlag = -1;
       modeSelectOutExL.gain(0, 0);
       modeSelectOutExR.gain(0, 0);
       break;
 
     default:  // Cancelled choice
-      micChoice = -1;
       break;
   }
-  return 1;
 }
 
 /*****
