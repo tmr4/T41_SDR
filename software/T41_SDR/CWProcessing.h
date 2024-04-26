@@ -43,7 +43,6 @@ extern float goertzelMagnitude;
 extern arm_fir_instance_f32 FIR_CW_DecodeL;
 extern arm_fir_instance_f32 FIR_CW_DecodeR;
 
-extern const char *CWFilter[];
 extern unsigned long ditLength;
 extern unsigned long transmitDitLength;
 

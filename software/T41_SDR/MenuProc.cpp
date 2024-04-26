@@ -46,7 +46,7 @@ void ProcessEqualizerChoices(int EQType, char *title);
   Return value
     void
 *****/
-void CWOptions() {
+FLASHMEM void CWOptions() {
   // const char *cwChoices[] = { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Volume", "Transmit Delay", "Cancel" };  // AFP 10-18-22
 
   //Serial.println(secondaryMenuIndex);
@@ -89,7 +89,7 @@ void CWOptions() {
 }
 
 // *** TODO: T41EEE does this for each band ***
-void RFPowerFollowup() {
+FLASHMEM void RFPowerFollowup() {
   if (xmtMode == CW_MODE) {                                                                                                                                      //AFP 10-13-22
     powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];  //  afp 10-21-22
 
@@ -105,7 +105,7 @@ void RFPowerFollowup() {
   ShowCurrentPowerSetting();
 }
 
-void RFGainFollowup() {
+FLASHMEM void RFGainFollowup() {
   EEPROMData.rfGainAllBands = rfGainAllBands;
   EEPROMWrite();
 }
@@ -119,7 +119,7 @@ void RFGainFollowup() {
   Return value
     void
 *****/
-void RFOptions() {
+FLASHMEM void RFOptions() {
   //  const char *rfOptions[] = { "Power level", "Gain", "Cancel" };
   switch (secondaryMenuIndex) {
     case 0: // Power Level
@@ -143,7 +143,7 @@ void RFOptions() {
   Return value
     void
 *****/
-void VFOSelect(int32_t index) {
+FLASHMEM void VFOSelect(int32_t index) {
   if(xmtMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
     bands[currentBand].mode = priorDemodMode;
@@ -207,7 +207,7 @@ void VFOSelect(int32_t index) {
   }
 }
 
-void VFOSelect() {
+FLASHMEM void VFOSelect() {
   VFOSelect(secondaryMenuIndex);
 }
 
@@ -220,7 +220,7 @@ void VFOSelect() {
   Return value
     void
 *****/
-void EEPROMOptions() {
+FLASHMEM void EEPROMOptions() {
   //  const char *EEPROMOpts[] = { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite",
   //                               "Copy EEPROM-->SD", "Copy SD-->EEPROM", "SD EEPROM Dump", "Cancel" };
   switch (secondaryMenuIndex) {   
@@ -271,7 +271,7 @@ void EEPROMOptions() {
   Return value
     void
 *****/
-void AGCOptions() {
+FLASHMEM void AGCOptions() {
   // const char *AGCChoices[] = { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" }; // G0ORX (Added Long) September 5, 2023
 
   AGCMode = secondaryMenuIndex;
@@ -291,7 +291,7 @@ void AGCOptions() {
   Return value
     void
 *****/
-void SpectrumOptions() {
+FLASHMEM void SpectrumOptions() {
   const char *spectrumChoices[] = { "20 dB/unit", "10 dB/unit", "5 dB/unit", "2 dB/unit", "1 dB/unit", "Cancel" };
   int spectrumSet = EEPROMData.currentScale;
 
@@ -314,7 +314,7 @@ void SpectrumOptions() {
   Return value
     void
 *****/
-void EqualizerRecOptions() {
+FLASHMEM void EqualizerRecOptions() {
   //  const char *RecEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
  switch (secondaryMenuIndex) {
      case 0:
@@ -344,7 +344,7 @@ void EqualizerRecOptions() {
   Return value
     void
 *****/
-void EqualizerXmtOptions() {
+FLASHMEM void EqualizerXmtOptions() {
   //  const char *XmtEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
  switch (secondaryMenuIndex) {
     case 0:
@@ -363,7 +363,7 @@ void EqualizerXmtOptions() {
   }
 }
 
-void MicGainFollowup() {
+FLASHMEM void MicGainFollowup() {
   EEPROMData.currentMicGain = currentMicGain;
   EEPROMWrite();
 }
@@ -377,7 +377,7 @@ void MicGainFollowup() {
   Return value
     void
 *****/
-void MicGainSet() {
+FLASHMEM void MicGainSet() {
   //  const char *micGainChoices[] = { "Set Mic Gain", "Cancel" };
   switch (secondaryMenuIndex) {
     case 0:
@@ -390,21 +390,21 @@ void MicGainSet() {
   }
 }
 
-void SetCompressionLevelFollowup() {
+FLASHMEM void SetCompressionLevelFollowup() {
   EEPROMData.currentMicThreshold = currentMicThreshold;
   EEPROMWrite();
   UpdateInfoBoxItem(IB_ITEM_COMPRESS);
 }
 
 /*
-void SetCompressionRatioFollowup() {
+FLASHMEM void SetCompressionRatioFollowup() {
   //currentMicCompRatio += ((float) menuEncoderMove * .1);
 
   EEPROMData.currentMicCompRatio = currentMicCompRatio;
   EEPROMWrite();
 }
 
-void SetCompressionAttackFollowup() {
+FLASHMEM void SetCompressionAttackFollowup() {
   //currentMicAttack += ((float) menuEncoderMove * 0.1);
   //else if (currentMicAttack < .1)
   //  currentMicAttack = .1;
@@ -413,7 +413,7 @@ void SetCompressionAttackFollowup() {
   EEPROMWrite();
 }
 
-void SetCompressionReleaseFollowup() {
+FLASHMEM void SetCompressionReleaseFollowup() {
   //currentMicRelease += ((float) menuEncoderMove * 0.1);
   //else if (currentMicRelease < 0.1)                 // 100% max
   //  currentMicRelease = 0.1;
@@ -432,7 +432,7 @@ void SetCompressionReleaseFollowup() {
   Return value
     void
 *****/
-void MicOptions() {
+FLASHMEM void MicOptions() {
   //  const char *micChoices[] = { "On", "Off", "Set Threshold", "Set Comp_Ratio", "Set Attack", "Set Decay", "Cancel" };
   switch (secondaryMenuIndex) {
     case 0:                // On
@@ -487,7 +487,7 @@ void MicOptions() {
   Return value
    void
 *****/
-void CalibrateOptions() {
+FLASHMEM void CalibrateOptions() {
   static long long freqCorrectionFactorOld = freqCorrectionFactor;
   int val;
   int32_t increment = 100L;
@@ -603,7 +603,7 @@ void CalibrateOptions() {
   Return value
     void
 *****/
-void ProcessEqualizerChoices(int EQType, char *title) {
+FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
   for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
   }
   const char *eqFreq[] = { " 200", " 250", " 315", " 400", " 500", " 630", " 800",

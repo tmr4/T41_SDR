@@ -475,7 +475,7 @@ FLASHMEM void ShowSpectrum2() {
   Return value;
     float returns the adjusted value in dB
 *****/
-float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
+FLASHMEM float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
   float adjdB = 0.0;
   int16_t adjAmplitude = 0;  // Was float; cast to float in dB calculation.  KF5N
   int16_t refAmplitude = 0;  // Was float; cast to float in dB calculation.  KF5N

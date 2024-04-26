@@ -168,7 +168,7 @@ bool CursorInInfoBox() {
 
 void MouseButtonMenuArea(int button) {
   if(button == 1) {
-    if(getMenuValueActive) {
+    if(getMenuValueActive || getMenuOptionActive) {
       menuBarSelected = true;
     } else {
       MenuBarSelect();
@@ -179,7 +179,7 @@ void MouseButtonMenuArea(int button) {
 }
 
 void MouseWheelMenuArea(int wheel) {
-  if(getMenuValueActive) {
+  if(getMenuValueActive || getMenuOptionActive) {
     mouseWheelValue = wheel;
   } else {
     MenuBarChange(wheel);

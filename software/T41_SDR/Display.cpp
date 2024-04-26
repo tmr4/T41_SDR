@@ -275,19 +275,35 @@ FASTRUN void ShowSpectrum() {
 
     // handle any live menu items
     if(getMenuValueActive) {
-      if(getMenuValueSelected) {
-        getMenuValueFollowup();
+      if(getMenuSelected) {
+        ptrMenuFollowup();
 
         // wrap up menu
-        getMenuValueSelected = false;
+        getMenuSelected = false;
         getMenuValueActive = false;
-        getMenuValue = NULL;
-        getMenuValueFollowup = NULL;
+        ptrMenuLoop = NULL;
+        ptrMenuFollowup = NULL;
 
         EraseMenus();
         menuStatus = NO_MENUS_ACTIVE;
       } else {
         GetMenuValueLoop();
+      }
+    }
+    if(getMenuOptionActive) {
+      if(getMenuSelected) {
+        ptrMenuFollowup();
+
+        // wrap up menu
+        getMenuSelected = false;
+        getMenuOptionActive = false;
+        ptrMenuLoop = NULL;
+        ptrMenuFollowup = NULL;
+
+        EraseMenus();
+        menuStatus = NO_MENUS_ACTIVE;
+      } else {
+        GetMenuOptionLoop();
       }
     }
 
@@ -766,7 +782,7 @@ void ShowOperatingStats() {
     case CW_MODE:
       tft.print("CW ");
       tft.setCursor(OPERATION_STATS_CWF, OPERATION_STATS_T);
-      tft.print(CWFilter[CWFilterIndex]);
+      tft.print(menuOptions[1][CWFilterIndex]);
       break;
 
     case SSB_MODE:

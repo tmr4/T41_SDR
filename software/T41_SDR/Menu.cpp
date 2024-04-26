@@ -20,11 +20,12 @@ int32_t secondaryMenuIndex;
 int32_t subMenuMaxOptions;           // holds the number of submenu options
 
 bool getMenuValueActive = false;
-bool getMenuValueSelected = false;
-void (*getMenuValue)() = NULL;
-void (*getMenuValueFollowup)() = NULL;
-int getMenuValueMin, getMenuValueMax, getMenuValueInc, getMenuValueOffset;
-int *getMenuValueCurrent;
+bool getMenuOptionActive = false;
+bool getMenuSelected = false;
+void (*ptrMenuLoop)() = NULL;
+void (*ptrMenuFollowup)() = NULL;
+int getMenuMin, getMenuMax, getMenuInc, getMenuOffset;
+int *ptrMenuValueCurrent;
 
 int8_t menuStatus = NO_MENUS_ACTIVE;
 
@@ -52,8 +53,14 @@ const char *secondaryChoices[][8] = {
   /* Bearing */ { "Set Prefix", "Cancel" },
   /* Cancel */ { "" }
 };
-
 const int secondaryMenuCount[] {7, 3, 4, 8, 6, 6, 2, 7, 4, 4, 6, 2, 1};
+
+const char *menuOptions[][6] = {
+  /* keyChoice */ { "Straight Key", "Keyer", "Cancel" },
+  /* CWFilter */  { "0.8kHz", "1.0kHz", "1.3kHz", "1.8kHz", "2.0kHz", " Off " },
+  /* paddleState */ { "Right = dah", "Right = dit" }
+};
+const int menuOptionsCount[] {2, 6, 2};
 
 int receiveEQFlag;
 int xmitEQFlag;
@@ -75,7 +82,7 @@ void Cancel() {
   Return value;
     void
 *****/
-void ShowMenu(const char *menu[], int where) {
+FLASHMEM void ShowMenu(const char *menu[], int where) {
   tft.setFontScale( (enum RA8875tsize) 1);
 
   if (menuStatus == NO_MENUS_ACTIVE) {
@@ -113,7 +120,7 @@ void ShowMenu(const char *menu[], int where) {
   Return value:
     void
 *****/
-void MenuBarChange(int change) {
+FLASHMEM void MenuBarChange(int change) {
   switch (menuStatus) {
     case PRIMARY_MENU_ACTIVE:
       mainMenuIndex += change;
@@ -144,7 +151,7 @@ void MenuBarChange(int change) {
   }
 }
 
-void ShowMenuBar(int menu = 0, int change = 0) {
+FLASHMEM void ShowMenuBar(int menu = 0, int change = 0) {
   if (menuStatus == NO_MENUS_ACTIVE) {
     menuStatus = PRIMARY_MENU_ACTIVE;
     mainMenuIndex = menu;
@@ -154,7 +161,7 @@ void ShowMenuBar(int menu = 0, int change = 0) {
   }
 }
 
-void MenuBarSelect() {
+FLASHMEM void MenuBarSelect() {
   switch (menuStatus) {
     case NO_MENUS_ACTIVE:
       #ifdef DEBUG_SW
@@ -173,7 +180,6 @@ void MenuBarSelect() {
         menuStatus = SECONDARY_MENU_ACTIVE;
         secondaryMenuIndex = 0;
         subMenuMaxOptions = secondaryMenuCount[mainMenuIndex];
-        //secondaryMenuIndex = SubmenuSelect(secondaryChoices[mainMenuIndex], secondaryMenuCount[mainMenuIndex], 0);
         ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
       }
       break;
@@ -187,7 +193,7 @@ void MenuBarSelect() {
         functionPtr[mainMenuIndex]();
 
         // wrap up menu unless we're still getting a value
-        if(!getMenuValueActive) {
+        if(!getMenuValueActive  && !getMenuOptionActive) {
           EraseMenus();
           menuStatus = NO_MENUS_ACTIVE;
         }
@@ -208,19 +214,19 @@ void MenuBarSelect() {
     int *currentValue           pointer to current value
     int increment               amount by which each increment changes the value
     char prompt[]               menu bar prompt
-    void (*setup)()             pointer to function that will run at setup
-    void (*getValue)()          pointer to function that will run at the beginning of each loop
-    void (*followup)()          pointer to function that will run after Select button is pressed or on mouse left click
+    void (*ptrSetup)()          pointer to function that will run at setup
+    void (*ptrValue)()          pointer to function that will run at the beginning of each loop
+    void (*ptrFollowup)()       pointer to function that will run after Select button is pressed or on mouse left click
 
   Return value;
     void
 *****/
-void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, const char *prompt, int offset, void (*setup)(), void (*getValue)(), void (*followup)()) {
-  getMenuValueMin = minValue;
-  getMenuValueMax = maxValue;
-  getMenuValueInc = increment;
-  getMenuValueCurrent = currentValue;
-  getMenuValueOffset = offset;
+FLASHMEM void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, const char *prompt, int offset, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)()) {
+  getMenuMin = minValue;
+  getMenuMax = maxValue;
+  getMenuInc = increment;
+  ptrMenuValueCurrent = currentValue;
+  getMenuOffset = offset;
 
   getEncoderValueFlag = true;
 
@@ -230,48 +236,48 @@ void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, 
   tft.setTextColor(RA8875_WHITE);
   tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
   tft.print(prompt);
-  tft.setCursor(SECONDARY_MENU_X + getMenuValueOffset, MENUS_Y);
+  tft.setCursor(SECONDARY_MENU_X + getMenuOffset, MENUS_Y);
   tft.print(*currentValue);
 
-  if(setup) setup();
+  if(ptrSetup) ptrSetup();
 
   getMenuValueActive = true;
-  getMenuValueSelected = false;
-  getMenuValue = getValue;
-  getMenuValueFollowup = followup;
+  getMenuSelected = false;
+  ptrMenuLoop = ptrValue;
+  ptrMenuFollowup = ptrFollowup;
 
   menuBarSelected = false;
 }
 
 // the changes made here are reflected immediately
 // *** TODO: consider ability to cancel w/o change or making live update optional (that could replace GetEncoderValueLive as well ***
-FLASHMEM void GetMenuValueLoop() {
+void GetMenuValueLoop() {
   int val = -1;
   int change = menuEncoderMove + mouseWheelValue;
-  long oldValue = *getMenuValueCurrent;
+  long oldValue = *ptrMenuValueCurrent;
 
-  if(getMenuValue) getMenuValue();
+  if(ptrMenuLoop) ptrMenuLoop();
 
   if (change != 0) {
-    oldValue += change * getMenuValueInc;
+    oldValue += change * getMenuInc;
 
     // limit value
-    if (oldValue < getMenuValueMin) {
-      oldValue = getMenuValueMin;
-    } else if (oldValue > getMenuValueMax) {
-      oldValue = getMenuValueMax;
+    if (oldValue < getMenuMin) {
+      oldValue = getMenuMin;
+    } else if (oldValue > getMenuMax) {
+      oldValue = getMenuMax;
     }
 
-    *getMenuValueCurrent = oldValue;
+    *ptrMenuValueCurrent = oldValue;
 
     tft.setFontScale((enum RA8875tsize)1);
 
     // erase old value *** TODO: consider tft.getFontWidth() * value width in place of 50 below ***
-    tft.fillRect(SECONDARY_MENU_X + getMenuValueOffset, MENUS_Y, 50, CHAR_HEIGHT, RA8875_MAGENTA);
+    tft.fillRect(SECONDARY_MENU_X + getMenuOffset, MENUS_Y, 50, CHAR_HEIGHT, RA8875_MAGENTA);
 
     // update current value
     tft.setTextColor(RA8875_WHITE);
-    tft.setCursor(SECONDARY_MENU_X + getMenuValueOffset, MENUS_Y);
+    tft.setCursor(SECONDARY_MENU_X + getMenuOffset, MENUS_Y);
     tft.print(oldValue);
   }
 
@@ -286,8 +292,7 @@ FLASHMEM void GetMenuValueLoop() {
   }
 
   if (val == MENU_OPTION_SELECT) {
-    currentWPM = oldValue;
-    getMenuValueSelected = true;
+    getMenuSelected = true;
     getEncoderValueFlag = false;
   }
 
@@ -296,73 +301,119 @@ FLASHMEM void GetMenuValueLoop() {
 }
 
 /*****
-  Purpose: To select an option from a fixed bar submenu using the Menu Up and Down buttons
+  Purpose: Select an option from a fixed bar submenu using the Menu Up/Down button, encoder or mouse wheel
 
   Parameter list:
-    char *options[]           bar submenu options
-    int numberOfChoices       choices available
-    int defaultState          the starting option
+    int menuIndex               submenu options index (menuOptions)
+    int numberOfChoices         number of choices available
+    int *ptrCurrentValue        pointer to current value or option index
+    void (*ptrSetup)()          pointer to function that will run at setup
+    void (*ptrValue)()          pointer to function that will run at the beginning of each loop
+    void (*ptrFollowup)()       pointer to function that will run after Select button is pressed or on mouse left click
 
-  Return value
-    int           an index into the band array
+  Return value;
+    void
 *****/
-int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart) {
-  int refreshFlag = 0;
-  int val;
-  int encoderReturnValue;
+FLASHMEM void GetMenuOption(int menuIndex, int *ptrCurrentValue, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)()) {
+  getMenuOffset = menuIndex;
+  ptrMenuValueCurrent = ptrCurrentValue;
+  getMenuMin = 0;
+  getMenuMax = menuOptionsCount[menuIndex];
 
-  tft.setTextColor(RA8875_BLACK);
-  encoderReturnValue = defaultStart;  // Start the options using this option
+  getEncoderValueFlag = true;
 
   tft.setFontScale((enum RA8875tsize)1);
-  if (refreshFlag == 0) {
-    tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Show the option in the second field
-    tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
-    tft.print(options[encoderReturnValue]);  // Secondary Menu
-    refreshFlag = 1;
-  }
-  delay(150L);
 
-  while (true) {
-    val = ReadSelectedPushButton();  // Read the ladder value
-    delay(150L);
-    if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
-      val = ProcessButtonPress(val);  // Use ladder value to get menu choice
+  tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);
+  //tft.setTextColor(RA8875_WHITE);
+  tft.setTextColor(RA8875_BLACK);
+  tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
+  tft.print(menuOptions[menuIndex][*ptrCurrentValue]);
+
+  if(ptrSetup) ptrSetup();
+
+  getMenuOptionActive = true;
+  getMenuSelected = false;
+  ptrMenuLoop = ptrValue;
+  ptrMenuFollowup = ptrFollowup;
+
+  menuBarSelected = false;
+}
+
+// the changes made here are reflected immediately
+// *** TODO: consider ability to cancel w/o change or making live update optional (that could replace GetEncoderValueLive as well ***
+void GetMenuOptionLoop() {
+  int val = -1;
+  int change = menuEncoderMove + mouseWheelValue;
+  int currentValue = *ptrMenuValueCurrent;
+
+  if(ptrMenuLoop) ptrMenuLoop();
+
+  if (change == 0) {
+    // see if a change was made through menu buttons
+    val = ReadSelectedPushButton();  // Read pin that controls all switches
+    if (val != -1 && val < (switchValues[0] + WIGGLE_ROOM)) {
+      val = ProcessButtonPress(val);
       if (val > -1) {                 // Valid choice?
         switch (val) {
-          case MENU_OPTION_SELECT:  // They made a choice
-            tft.setTextColor(RA8875_WHITE);
-            EraseMenus();
-            return encoderReturnValue;
+          case MENU_OPTION_SELECT:
+            val = MENU_OPTION_SELECT;
             break;
 
           case MAIN_MENU_UP:
-            encoderReturnValue++;
-            if (encoderReturnValue >= numberOfChoices)
-              encoderReturnValue = 0;
+            change = 1;
+            val = -1;
             break;
 
           case MAIN_MENU_DN:
-            encoderReturnValue--;
-            if (encoderReturnValue < 0)
-              encoderReturnValue = numberOfChoices - 1;
+            change = -1;
+            val = -1;
             break;
 
           default:
-            encoderReturnValue = -1;  // An error selection
+            val = -1;
             break;
-        }
-        if (encoderReturnValue != -1) {
-          tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);  // Show the option in the second field
-          tft.setTextColor(RA8875_BLACK);
-          tft.setCursor(SECONDARY_MENU_X + 1, MENUS_Y);
-          tft.print(options[encoderReturnValue]);
-          delay(50L);
-          refreshFlag = 0;
         }
       }
     }
   }
+
+  if (change != 0) {
+    currentValue += change;
+
+    // roll value at ends
+    if (currentValue < getMenuMin) {
+      currentValue = getMenuMax - 1;
+    } else if (currentValue >= getMenuMax) {
+      currentValue = 0;
+    }
+
+    *ptrMenuValueCurrent = currentValue;
+
+    tft.setFontScale((enum RA8875tsize)1);
+
+    // erase old value *** TODO: consider tft.getFontWidth() * value width in place of 50 below ***
+    tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_GREEN);
+
+    // update current value
+    //tft.setTextColor(RA8875_WHITE);
+    tft.setTextColor(RA8875_BLACK);
+    tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
+    tft.print(menuOptions[getMenuOffset][currentValue]);
+  }
+
+  // check if an option was selected with the mouse
+  if(menuBarSelected) {
+    val = MENU_OPTION_SELECT;
+  }
+
+  if (val == MENU_OPTION_SELECT) {
+    getMenuSelected = true;
+    getEncoderValueFlag = false;
+  }
+
+  menuEncoderMove = 0;
+  mouseWheelValue = 0;
 }
 
 /*****
@@ -390,7 +441,7 @@ const char *secondaryFunctions[][8] = {
   { "Set Prefix", "Cancel" }
 };
 */
-int DrawMenuDisplay() {
+FLASHMEM int DrawMenuDisplay() {
   int i;
   menuStatus = 0;                                                       // No primary or secondary menu set
   mainMenuIndex = 0;
@@ -432,7 +483,7 @@ int DrawMenuDisplay() {
 
   Return value: index number for the selected primary menu 
 *****/
-int SetPrimaryMenuIndex() {
+FLASHMEM int SetPrimaryMenuIndex() {
   int i;
   int val;
 
@@ -493,7 +544,7 @@ int SetPrimaryMenuIndex() {
 
   Return value: index number for the selected primary menu 
 *****/
-int SetSecondaryMenuIndex() {
+FLASHMEM int SetSecondaryMenuIndex() {
   int i = 0;
   int secondaryMenuCount = 0;
   int oldIndex = 0;

@@ -80,7 +80,7 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E );
   Return value;
     void
 *****/
-void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_ratio1, float attack_sec1, float release_sec1) {
+FLASHMEM void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_ratio1, float attack_sec1, float release_sec1) {
   comp1.enableHPFilter(use_HP_filter1);
   comp2.enableHPFilter(use_HP_filter1);
   comp1.setThresh_dBFS(knee_dBFS1);
@@ -102,7 +102,7 @@ void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_rat
   Return value;
     void
 *****/
-void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
+FLASHMEM void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
   float32_t* Energy = 0;
 
   AltNoiseBlanking(inputsamples, NB_FFT_SIZE, Energy);
@@ -134,7 +134,7 @@ void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
   backward prediction)
   hopefully we have enough processor power left....
 *****/
-void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
+FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
   float32_t NB_thresh = 2.5;
   int impulse_positions[20];      //we allow a maximum of 5 impulses per frame
   int search_pos    = 0;
@@ -365,7 +365,7 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
 
 // G0ORX broke this code out so can be called from other places
 
-void AGCLoadValues() {
+FLASHMEM void AGCLoadValues() {
   float32_t tmp;
   float32_t sample_rate = (float32_t)SampleRate / DF;
 
@@ -441,7 +441,7 @@ void AGCLoadValues() {
   Return value;
     void
 *****/
-void AGCPrep() {
+FLASHMEM void AGCPrep() {
   // Start variables taken from wdsp
 
   tau_attack      = 0.001;                // tau_attack

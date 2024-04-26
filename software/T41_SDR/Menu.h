@@ -47,15 +47,19 @@ extern const char *secondaryChoices[][8];
 extern const int secondaryMenuCount[];
 extern int8_t menuStatus;                       // 0 = none, 1 = primary, 2 = secondary
 
+extern const char *menuOptions[][6];
+
 extern void (*functionPtr[])();
 
 extern int receiveEQFlag;
 extern int xmitEQFlag;
 
 extern bool getMenuValueActive;
-extern bool getMenuValueSelected;
-extern void (*getMenuValue)();
-extern void (*getMenuValueFollowup)();
+extern bool getMenuOptionActive;
+extern bool getMenuSelected;
+extern int getMenuInc;
+extern void (*ptrMenuLoop)();
+extern void (*ptrMenuFollowup)();
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -68,10 +72,11 @@ void ShowMenuBar(int menu, int change);
 inline void ShowMenuBar() { ShowMenuBar(0,0); }
 void MenuBarSelect();
 
-void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, const char *prompt, int offset, void (*setup)(), void (*getValue)(), void (*followup)());
+void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, const char *prompt, int offset, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)());
 void GetMenuValueLoop();
+void GetMenuOption(int menuIndex, int *ptrCurrentValue, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)());
+void GetMenuOptionLoop();
 
 int DrawMenuDisplay();
 int SetPrimaryMenuIndex();
 int SetSecondaryMenuIndex();
-int SubmenuSelect(const char *options[], int numberOfChoices, int defaultStart);

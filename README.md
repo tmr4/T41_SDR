@@ -1,10 +1,18 @@
 # T41_SDR
 
-Software designed transceiver based on the T41-EP developed by Albert Peter and Jack Purdum.
+Initial "fork" from T41-EP software version SDTVer049.2K, based on the T41-EP developed by Albert Peter and Jack Purdum.
 
-Initial "fork" from T41-EP software version SDTVer049.2K.
+Ultimately, it would be nice to be able to add or remove features from the T41 simply by adding or removing a file.  The software is far from that goal.  The structure of the original software also makes it difficult to collaborate.  Thus this version.  
 
-This is a work in progress.  Some functions from the original version are broken.  Use at your own risk.
+I've focused on a few areas of interest to me:
+
+* cleaning up and making better use of the display *(within the bounds of the original software)*
+* adding new input capability *(mouse and keyboard)*
+* adding new modes *(NFM demodulation and some data modes)*
+
+The structure of my version has changed sufficiently from the original.  It's unlikely that any of the features I've added can be incorporated back into the original software without some work.  Still, these show what's possible with the 4SQRP kit hardware.
+
+This is a work in progress.  Some functions from the original version are broken and will likely remain so until they are of interest to me.  Use at your own risk.
 
 ## Branches
 
@@ -64,7 +72,6 @@ This is a work in progress.  Some functions from the original version are broken
   * Within the the Data mode message area:
     * Select active message with a left click
     * Cycle through messages with mouse wheel
-
 
 * feature/keyboard - adds optional keyboard support to the T41. It uses about 7k RAM.  Keyboard connects to the Teensy USB Host connection.
 

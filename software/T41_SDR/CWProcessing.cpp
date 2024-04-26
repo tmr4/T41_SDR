@@ -57,8 +57,6 @@ float goertzelMagnitude;
 arm_fir_instance_f32 FIR_CW_DecodeL;
 arm_fir_instance_f32 FIR_CW_DecodeR;
 
-const char *CWFilter[] = { "0.8kHz", "1.0kHz", "1.3kHz", "1.8kHz", "2.0kHz", " Off " };
-
 //------------------------- Local Variables ----------
 // *** looks like many of these should be function variables ***
 
@@ -132,13 +130,21 @@ void Dit();
   Return value;
     void
 *****/
-void SetWPMFollowup() {
+FLASHMEM void SetWPMFollowup() {
   SetTransmitDitLength();
   EEPROMData.currentWPM = currentWPM;
   EEPROMWrite();
   UpdateInfoBoxItem(IB_ITEM_KEY);
 }
 
+FLASHMEM void SetKeyTypeFollowup() {
+  // Make sure the paddleDit and paddleDah variables are set correctly for straight key.
+  // Paddle flip can reverse these, making the straight key inoperative.
+  if (keyType == 0) {
+    paddleDit = KEYER_DIT_INPUT_TIP;
+    paddleDah = KEYER_DAH_INPUT_RING;
+  }
+}
 /*****
   Purpose: Select straight key or keyer
 
@@ -149,19 +155,12 @@ void SetWPMFollowup() {
     void
 *****/
 FLASHMEM void SetKeyType() {
-  const char *keyChoice[] = { "Straight Key", "Keyer", "Cancel" };
-
   if(USE_FULL_MENU) {
     keyType = SetSecondaryMenuIndex();
+    SetKeyTypeFollowup();
   } else {
-    keyType = SubmenuSelect(keyChoice, 3, keyType);
-  }
-
-  // Make sure the paddleDit and paddleDah variables are set correctly for straight key.
-  // Paddle flip can reverse these, making the straight key inoperative.  KF5N August 9, 2023
-  if (keyType == 0) {
-    paddleDit = KEYER_DIT_INPUT_TIP;
-    paddleDah = KEYER_DAH_INPUT_RING;
+    //GetMenuOption(optionIndex, *currentValue, *setup(), *getValue(), *followup());
+    GetMenuOption(0, &keyType, NULL, NULL, &SetKeyTypeFollowup);
   }
 }
 
@@ -189,6 +188,16 @@ FLASHMEM void SetKeyPowerUp() {
   }
 }
 
+FLASHMEM void SelectCWFilterFollowup() {
+  // update CW filters if index is different
+  if(CWFilterIndex != getMenuInc) {
+    ShowOperatingStats();
+    if (xmtMode == CW_MODE) {
+      UpdateCWFilter();
+    }
+  }
+}
+
 /*****
   Purpose: Select CW Filter. CWFilterIndex has these values:
            0 = 840Hz
@@ -205,16 +214,27 @@ FLASHMEM void SetKeyPowerUp() {
     void
 *****/
 FLASHMEM void SelectCWFilter() {
-  int temp = CWFilterIndex;
+  // save CW filter index for later
+  getMenuInc = CWFilterIndex;
 
-  CWFilterIndex = SubmenuSelect(CWFilter, 6, 0);
+  //GetMenuOption(optionIndex, *currentValue, *setup(), *getValue(), *followup());
+  GetMenuOption(1, &CWFilterIndex, NULL, NULL, &SelectCWFilterFollowup);
+}
 
-  if(temp != CWFilterIndex) {
-    ShowOperatingStats();
-    if (xmtMode == CW_MODE) {
-      UpdateCWFilter();
-    }
+FLASHMEM void DoPaddleFlipFollowup() {
+  if(getMenuInc) {  // right-paddle dit
+    paddleDit = KEYER_DAH_INPUT_RING;
+    paddleDah = KEYER_DIT_INPUT_TIP;
+    paddleFlip = 1;
+  } else {
+    paddleDit = KEYER_DIT_INPUT_TIP;
+    paddleDah = KEYER_DAH_INPUT_RING;
+    paddleFlip = 0;
   }
+
+  EEPROMData.paddleDit = paddleDit;
+  EEPROMData.paddleDah = paddleDah;
+  UpdateInfoBoxItem(IB_ITEM_KEY);
 }
 
 /*****
@@ -226,54 +246,12 @@ FLASHMEM void SelectCWFilter() {
   Return value
     void
 *****/
-void DoPaddleFlip() {
-  const char *paddleState[] = { "Right paddle = dah", "Right paddle = dit" };
-  int choice, lastChoice;
-  int pushButtonSwitchIndex;
-  int valPin;
+FLASHMEM void DoPaddleFlip() {
+  getMenuInc = paddleDah == KEYER_DAH_INPUT_RING ? 0 : 1;
 
-  paddleDah = KEYER_DAH_INPUT_RING;  // Defaults
-  paddleDit = KEYER_DIT_INPUT_TIP;
-  choice = lastChoice = 0;
+  //GetMenuOption(optionIndex, *currentValue, *setup(), *getValue(), *followup());
+  GetMenuOption(2, &getMenuInc, NULL, NULL, &DoPaddleFlipFollowup);
 
-  tft.setTextColor(RA8875_BLACK);
-  tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_GREEN);
-  tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y);
-  tft.print(paddleState[choice]);  // Show the default (right paddle = dah
-
-  while (true) {
-    delay(150L);
-    valPin = ReadSelectedPushButton();                     // Poll buttons
-    if (valPin != -1) {                                    // button was pushed
-      pushButtonSwitchIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
-      if (pushButtonSwitchIndex == MAIN_MENU_UP || pushButtonSwitchIndex == MAIN_MENU_DN) {
-        choice = !choice;  // Reverse the last choice
-        tft.fillRect(SECONDARY_MENU_X - 100, MENUS_Y, EACH_MENU_WIDTH + 100, CHAR_HEIGHT, RA8875_GREEN);
-        tft.setCursor(SECONDARY_MENU_X - 93, MENUS_Y);
-        tft.print(paddleState[choice]);
-      }
-      if (pushButtonSwitchIndex == MENU_OPTION_SELECT)
-      {  // Made a choice??
-        if (choice)
-        {  // Means right-paddle dit
-          paddleDit = KEYER_DAH_INPUT_RING;
-          paddleDah = KEYER_DIT_INPUT_TIP;
-          paddleFlip = 1; // KD0RC
-        }
-        else
-        {
-          paddleDit = KEYER_DIT_INPUT_TIP;
-          paddleDah = KEYER_DAH_INPUT_RING;
-          paddleFlip = 0;  // KD0RC
-        }
-        EEPROMData.paddleDit = paddleDit;
-        EEPROMData.paddleDah = paddleDah;
-        EraseMenus();
-        UpdateInfoBoxItem(IB_ITEM_KEY);
-        return;
-      }
-    }
-  }
 }
 
 /*****
@@ -285,7 +263,7 @@ void DoPaddleFlip() {
   Return value;
     void
 *****/
-void SetSideToneVolumeSetup() {
+FLASHMEM void SetSideToneVolumeSetup() {
   // I assume this is supposed to play a tone, varying the volume as we make the adjustment
   // *** TODO: this is non-functional w/o key before change in my version. Check if works with key down or if T41EEE works. Looks like he runs it through CW_Exciter ***
   //Q_in_L.clear();  // Clear other buffers too?
@@ -303,7 +281,7 @@ void SetSideToneVolumeSetup() {
   //modeSelectOutR.gain(1, 0.0);  // Sidetone
 }
 
-FLASHMEM void SetSideToneVolumeValue() {
+void SetSideToneVolumeValue() {
   //if(digitalRead(paddleDit) == LOW || digitalRead(paddleDah) == LOW) {
   //  CW_ExciterIQData();
   //}
@@ -311,7 +289,7 @@ FLASHMEM void SetSideToneVolumeValue() {
   //modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);
 }
 
-void SetSideToneVolumeFollowup() {
+FLASHMEM void SetSideToneVolumeFollowup() {
   EEPROMData.sidetoneVolume = sidetoneVolume;
   EEPROMWrite();
   //lastState = -1;  // This is required due to the function deactivating the receiver.  This forces a pass through the receiver set-up code.  KF5N October 7, 2023
@@ -326,7 +304,7 @@ void SetSideToneVolumeFollowup() {
   Return value;
     void
 *****/
-void SetTransmitDelayFollowup() {
+FLASHMEM void SetTransmitDelayFollowup() {
   EEPROMData.cwTransmitDelay = cwTransmitDelay;
   EEPROMWrite();
 }

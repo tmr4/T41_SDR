@@ -659,22 +659,22 @@ FLASHMEM void InitializeDataArrays() {
 FLASHMEM void Splash() {
   int centerTxt;
   int line1_Y = YPIXELS / 10;
-  int line2_Y = YPIXELS / 3;
-  int line3_Y = line1_Y + 55;
-  int line4_Y = YPIXELS / 4 + 80;
+  int line2_Y = line1_Y + 100;
+  int line3_Y = line2_Y + 50;
+  int line4_Y = line3_Y + 150;
   int line5_Y = line4_Y + 40;
-  int line6_Y = YPIXELS / 2 + 110;
-  int line7_Y = line6_Y + 50;
+  //int line6_Y = YPIXELS / 2 + 110;
+  //int line7_Y = line6_Y + 50;
 
   // 50 char max for 800x480 display with font scale = 1:
   //                     "          1         2         3         4"
   //                     "01234567890123456789012345678901234567890123456789";
-  const char*line1Txt = "T41-EP Receiver";
+  const char*line1Txt = "T41-EP";
   const char*line2Txt = "By: Terrance Robertson, KN6ZDE";
   const char*line3Txt = "Version: "; // + VERSION
-  const char*line4Txt = "Based on the T41-EP code by:";
+  const char*line4Txt = "Based on the T41-EP v49.2k code by:";
   const char*line5Txt = "Al Peter, AC8GY and Jack Purdum, W8TEE";
-  const char*line6Txt = "Property of:"; // line 7 MY_CALL
+  //const char*line6Txt = "Property of:"; // line 7 MY_CALL
 
   tft.fillWindow(RA8875_BLACK);
 
@@ -690,14 +690,12 @@ FLASHMEM void Splash() {
   tft.setCursor(centerTxt, line2_Y);
   tft.print(line2Txt);
 
-  tft.setFontScale(2);
   tft.setTextColor(RA8875_MAGENTA);
   centerTxt = (XPIXELS - (strlen(line3Txt) + strlen(VERSION)) * tft.getFontWidth()) / 2;
   tft.setCursor(centerTxt, line3_Y);
   tft.print("Version: ");
   tft.print(VERSION);
 
-  tft.setFontScale(1);
   tft.setTextColor(RA8875_WHITE);
   centerTxt = (XPIXELS - strlen(line4Txt) * tft.getFontWidth()) / 2;
   tft.setCursor(centerTxt, line4_Y);
@@ -706,16 +704,17 @@ FLASHMEM void Splash() {
   tft.setCursor(centerTxt, line5_Y);
   tft.print(line5Txt);
 
+/*
+  tft.setFontScale(1);
   centerTxt = (XPIXELS - strlen(line6Txt) * tft.getFontWidth()) / 2;
   tft.setCursor(centerTxt, line6_Y);
   tft.print(line6Txt);
 
-  tft.setFontScale(2);
   tft.setTextColor(RA8875_GREEN);
   centerTxt = (XPIXELS - strlen(MY_CALL) * tft.getFontWidth()) / 2;
   tft.setCursor(centerTxt, line7_Y);
   tft.print(MY_CALL);
-
+*/
   delay(1000);
   //delay(SPLASH_DELAY);
   tft.fillWindow(RA8875_BLACK);
