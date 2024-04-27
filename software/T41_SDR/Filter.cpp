@@ -106,8 +106,11 @@ arm_biquad_cascade_df2T_instance_f32 S14_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band14_st
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: void DoReceiveEQ  Parameter list:
+  Purpose: DoReceiveEQ
+  
+  Parameter list:
     void
+  
   Return value;
     void
 *****/
@@ -162,10 +165,11 @@ void DoReceiveEQ() {
 }
 
 /*****
-  Purpose: void DoExciterEQ
+  Purpose: DoExciterEQ
 
   Parameter list:
     void
+
   Return value;
     void
 *****/
@@ -334,7 +338,7 @@ void UpdateBWFilters() {
   Return value;
     void
 *****/
-void SetupMode() {
+FLASHMEM void SetupMode() {
   switch(bands[currentBand].mode) {
     case DEMOD_USB:
     case DEMOD_PSK31_WAV:
@@ -381,9 +385,11 @@ void SetupMode() {
 }
 
 /*****
-  Purpose: void SetDecIntFilters()
+  Purpose: SetDecIntFilters()
+
   Parameter list:
     void
+    
   Return value;
     void
 *****/

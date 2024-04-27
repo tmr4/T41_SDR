@@ -161,7 +161,6 @@ void ShowBandwidthBarValues();
 
 // 
 void ShowSpectrumdBScale();
-void ShowAnalogGain();
 void ShowTransmitReceiveStatus();
 void SetZoom(int zoom);
 void ShowCurrentPowerSetting();

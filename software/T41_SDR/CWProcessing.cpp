@@ -498,7 +498,7 @@ void MorseCharacterDisplay(char currentLetter) {
   Return value
     void
 *****/
-void ResetHistograms() {
+FLASHMEM void ResetHistograms() {
   gapAtom = 80;
   ditLength = 80;  // Start with 15wpm ditLength
   gapChar = 240;
@@ -856,7 +856,7 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
   return magnitude;
 }
 
-void initCW(void) {
+FLASHMEM void initCW(void) {
   //Serial.println(sizeof(float32_t));
   
   int offset = 0;

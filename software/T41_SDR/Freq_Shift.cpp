@@ -21,7 +21,7 @@ double Osc_I = 0.0;
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: void FreqShift1()
+  Purpose: FreqShift1()
         Frequency translation by Fs/4 without multiplication from Lyons (2011): chapter 13.1.2 page 646
         together with the savings of not having to shift/rotate the FFT_buffer, this saves
         about 1% of processor use
@@ -32,6 +32,7 @@ double Osc_I = 0.0;
            xnew(0) =  xreal(0) + jximag(0)
                leave first value (DC component) as it is!
            xnew(1) =  - ximag(1) + jxreal(1)
+           
   Parameter list:
     void
 

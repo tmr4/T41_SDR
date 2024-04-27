@@ -98,8 +98,10 @@ PROGMEM const float32_t sqrtHann[256] = {
 
 /*****
   Purpose: Kim1_NR()
+
   Parameter list:
     void
+
   Return value;
     void
 *****/
@@ -309,9 +311,11 @@ void Kim1_NR() {
 }
 
 /*****
-  Purpose:   void xanr
+  Purpose:   xanr
+
   Parameter list:
     void
+
   Return value;
     void
 *****/
@@ -641,7 +645,7 @@ void SpectralNoiseReduction() {
 }
 
 /*****
-  Purpose: void InitLMSNoiseReduction()
+  Purpose: InitLMSNoiseReduction()
   
   Parameter list:
     void
@@ -649,7 +653,7 @@ void SpectralNoiseReduction() {
   Return value;
     void
 *****/
-void InitLMSNoiseReduction() {
+FLASHMEM void InitLMSNoiseReduction() {
   uint16_t  calc_taps = 96;
   float32_t mu_calc;
   int LMS_nr_strength = 0;
@@ -685,7 +689,7 @@ void InitLMSNoiseReduction() {
   Return value;
     void
 *****/
-void SpectralNoiseReductionInit() {
+FLASHMEM void SpectralNoiseReductionInit() {
   for (int i = 0; i < NR_FFT_L / 2; i++)
   {
     NR_last_sample_buffer_L[i] = 0.1;

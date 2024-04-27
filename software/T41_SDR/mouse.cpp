@@ -130,7 +130,7 @@ void MoveCursor(int x, int y) {
   oldCursorY = cursorY;
 }
 
-void SetMouseArea(int left, int top, int width, int height) {
+FLASHMEM void SetMouseArea(int left, int top, int width, int height) {
   cursorL = left;
   cursorT = top;
   cursorR = left + width;

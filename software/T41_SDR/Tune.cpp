@@ -220,7 +220,7 @@ void SetFreq() {
   }
 }
 
-void SplitVFOFollowup() {
+FLASHMEM void SplitVFOFollowup() {
   // *** TODO: need to reestablish "Split Active" that didn't work in ver49.2k ***
   tft.setTextColor(RA8875_RED);
   tft.setCursor(FILTER_PARAMETERS_X + 180, FILTER_PARAMETERS_Y + 6);
@@ -237,7 +237,7 @@ void SplitVFOFollowup() {
   Return value;
     void
 *****/
-void DoSplitVFO() {
+FLASHMEM void DoSplitVFO() {
   currentFreqB = currentFreqA;
 
   // GetMenuValue(minValue, maxValue, startValue, increment, prompt, valueOffset)

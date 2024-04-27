@@ -42,12 +42,12 @@ extern int32_t mainMenuIndex;
 extern int32_t subMenuMaxOptions;
 extern int32_t secondaryMenuIndex; // -1 means haven't determined secondary menu
 
-extern const char *topMenus[];
-extern const char *secondaryChoices[][8];
+extern const char * topMenus[];
+extern const char * secondaryChoices[][8];
 extern const int secondaryMenuCount[];
 extern int8_t menuStatus;                       // 0 = none, 1 = primary, 2 = secondary
 
-extern const char *menuOptions[][6];
+extern const char * menuOptions[][6];
 
 extern void (*functionPtr[])();
 

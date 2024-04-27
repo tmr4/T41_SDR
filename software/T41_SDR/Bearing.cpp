@@ -904,7 +904,7 @@ FLASHMEM void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterInd
   Return value:
     void
 *****/
-void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
+FLASHMEM void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
   tft.fillRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_BLUE);
   if (letters[whichLetterIndex] == '*') {  // Space

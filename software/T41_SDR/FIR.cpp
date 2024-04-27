@@ -889,7 +889,7 @@ PROGMEM float32_t* mag_coeffs[11] =
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: void calc_FIR_coeffs
+  Purpose: calc_FIR_coeffs
     // pointer to coefficients variable, no. of coefficients to calculate, frequency where it happens, stopband attenuation in dB,
     // filter type, half-filter bandwidth (only for bandpass and notch)
 
@@ -992,7 +992,7 @@ void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop
 //////////////////////////////////////////////////////////////////////
 
 /*****
-  Purpose: void calc_cplx_FIR_coeffs
+  Purpose: calc_cplx_FIR_coeffs
 
   Parameter list:
     float *coeffs_I
@@ -1065,10 +1065,11 @@ void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float3
 }
 
 /*****
-  Purpose: void set_IIR_coeffs
+  Purpose: set_IIR_coeffs
 
   Parameter list:
     void
+    
   Return value;
     void
 *****/

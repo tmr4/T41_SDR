@@ -29,7 +29,7 @@ int *ptrMenuValueCurrent;
 
 int8_t menuStatus = NO_MENUS_ACTIVE;
 
-const char *topMenus[] = { "CW Options", "RF Set", "VFO Select",
+const char * topMenus[] = { "CW Options", "RF Set", "VFO Select",
                            "EEPROM", "AGC", "Spectrum Options", "Mic Gain", "Mic Comp",
                            "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing", "Cancel" };
 
@@ -37,7 +37,7 @@ void (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
                            &EEPROMOptions, &AGCOptions, &SpectrumOptions, &MicGainSet, &MicOptions,
                            &EqualizerRecOptions, &EqualizerXmtOptions, &CalibrateOptions, &BearingMaps, &Cancel };
 
-const char *secondaryChoices[][8] = {
+const char * secondaryChoices[][8] = {
   /* CW Options */ { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Vol", "Xmit Delay", "Cancel" },
   /* RF Set */ { "Power level", "Gain", "Cancel" },
   /* VFO Select */ { "VFO A", "VFO B", "Split", "Cancel" },
@@ -53,14 +53,14 @@ const char *secondaryChoices[][8] = {
   /* Bearing */ { "Set Prefix", "Cancel" },
   /* Cancel */ { "" }
 };
-const int secondaryMenuCount[] {7, 3, 4, 8, 6, 6, 2, 7, 4, 4, 6, 2, 1};
+const int secondaryMenuCount[] = {7, 3, 4, 8, 6, 6, 2, 7, 4, 4, 6, 2, 1};
 
-const char *menuOptions[][6] = {
+const char * menuOptions[][6] = {
   /* keyChoice */ { "Straight Key", "Keyer", "Cancel" },
   /* CWFilter */  { "0.8kHz", "1.0kHz", "1.3kHz", "1.8kHz", "2.0kHz", " Off " },
   /* paddleState */ { "Right = dah", "Right = dit" }
 };
-const int menuOptionsCount[] {2, 6, 2};
+const int menuOptionsCount[] = {2, 6, 2};
 
 int receiveEQFlag;
 int xmitEQFlag;
@@ -69,7 +69,7 @@ int xmitEQFlag;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void Cancel() {
+FLASHMEM void Cancel() {
 }
 
 /*****
@@ -546,7 +546,7 @@ FLASHMEM int SetPrimaryMenuIndex() {
 *****/
 FLASHMEM int SetSecondaryMenuIndex() {
   int i = 0;
-  int secondaryMenuCount = 0;
+  int secondaryMenuCounter = 0;
   int oldIndex = 0;
   int val;
 
@@ -554,7 +554,7 @@ FLASHMEM int SetSecondaryMenuIndex() {
     if (strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {    // Have we read the last entry in secondary menu?
       i++;                                                              // Nope.  
     } else {
-      secondaryMenuCount = i + 1;                                       // Add 1 because index starts with 0
+      secondaryMenuCounter = i + 1;                                       // Add 1 because index starts with 0
       break;
     }
   }
@@ -575,11 +575,11 @@ FLASHMEM int SetSecondaryMenuIndex() {
       tft.print(secondaryChoices[mainMenuIndex][oldIndex]);
       i += menuEncoderMove;  // Change the menu index to the new value
      
-      if (i == secondaryMenuCount) {  // Did they go past the end of the primary menu list?
+      if (i == secondaryMenuCounter) {  // Did they go past the end of the primary menu list?
         i = 0;                        // Yep. Set to start of the list.
       } else {
         if (i < 0) {                  // Did they go past the start of the list?
-          i = secondaryMenuCount - 1; // Yep. Set to end of the list.
+          i = secondaryMenuCounter - 1; // Yep. Set to end of the list.
         }
       }
       oldIndex = i;

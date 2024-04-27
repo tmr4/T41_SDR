@@ -50,7 +50,7 @@ int currentDataMode = DEMOD_PSK31; // preserves data mode between mode and band 
   Return value:
     void
 *****/
-void BandChange(int change) {
+FLASHMEM void BandChange(int change) {
   // Added if so unused GPOs will not be touched
   if(currentBand < BAND_12M) {
     digitalWrite(bandswitchPins[currentBand], LOW);  
@@ -146,7 +146,7 @@ void BandChange(int change) {
   Return value:
     void
 *****/
-void ButtonFilter() {
+FLASHMEM void ButtonFilter() {
   switch(bands[currentBand].mode) {
     case DEMOD_NFM:
     // Active filter in NFM demod mode:
@@ -206,7 +206,7 @@ void ButtonFilter() {
   Return value:
     void
 *****/
-void ButtonDemodMode() {
+FLASHMEM void ButtonDemodMode() {
   if(xmtMode == DATA_MODE) {
     switch(currentDataMode) {
       case DEMOD_PSK31:
@@ -266,7 +266,7 @@ void ButtonDemodMode() {
   Return value:
     void
 *****/
-void ButtonMode() {
+FLASHMEM void ButtonMode() {
   // Toggle the current mode: SSB -> CW -> DATA -> SSB
   switch(xmtMode) {
     case SSB_MODE:
@@ -332,7 +332,7 @@ void ButtonMode() {
   Return value:
     void
 *****/
-void ButtonNR() {
+FLASHMEM void ButtonNR() {
   nrOptionSelect++;
   if (nrOptionSelect > NR_OPTIONS) {
     nrOptionSelect = 0;
@@ -350,7 +350,7 @@ void ButtonNR() {
   Return value:
     void
 *****/
-void ButtonNotchFilter() {
+FLASHMEM void ButtonNotchFilter() {
   ANR_notchOn = !ANR_notchOn;
   delay(100L);
 }
@@ -368,7 +368,7 @@ void ButtonNotchFilter() {
   Return value;
     void
 *****/
-void ToggleLiveNoiseFloorFlag() {
+FLASHMEM void ToggleLiveNoiseFloorFlag() {
   // save final noise floor setting if toggling flag off
   if(liveNoiseFloorFlag) {
     EEPROMData.currentNoiseFloor[currentBand]  = currentNoiseFloor[currentBand];
@@ -389,7 +389,7 @@ void ToggleLiveNoiseFloorFlag() {
     void
     Base Code courtesy of Harry  GM3RVL
 *****/
-void ButtonFrequencyEntry() {
+FLASHMEM void ButtonFrequencyEntry() {
   TxRxFreqOld = TxRxFreq;
 
 #define show_FEHelp

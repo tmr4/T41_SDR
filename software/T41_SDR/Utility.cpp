@@ -35,7 +35,7 @@ float32_t sinBuffer2[256];
 float32_t sinBuffer3[256];
 
 // Voltage in one-hundred 1 dB steps for volume control.
-const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016, 0.000018, 0.000020, 0.000022, 0.000025, 0.000028,
+PROGMEM const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 0.000016, 0.000018, 0.000020, 0.000022, 0.000025, 0.000028,
                                 0.000032, 0.000035, 0.000040, 0.000045, 0.000050, 0.000056, 0.000063, 0.000071, 0.000079, 0.000089,
                                 0.000100, 0.000112, 0.000126, 0.000141, 0.000158, 0.000178, 0.000200, 0.000224, 0.000251, 0.000282,
                                 0.000316, 0.000355, 0.000398, 0.000447, 0.000501, 0.000562, 0.000631, 0.000708, 0.000794, 0.000891,
@@ -82,8 +82,7 @@ FLASHMEM void sineTone(int numCycles) {
   }
 }
 
-
-const float32_t atanTable[68] = {
+PROGMEM const float32_t atanTable[68] = {
   -0.015623728620477f,
   0.000000000000000f,  // = 0 for in = 0.0
   0.015623728620477f,
@@ -443,7 +442,7 @@ void DisplayClock() {
   Return value;
     void
 *****/
-void SetBand() {
+FLASHMEM void SetBand() {
   SetFreq();
 
   CalcFilters();
@@ -598,11 +597,12 @@ FLASHMEM void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAla
 
 /*****
   Purpose: Format frequency for printing
+
   Parameter list:
     void
+
   Return value;
     void
-    // show frequency
 *****/
 void FormatFrequency(long freq, char *freqBuffer) {
   char outBuffer[15];
@@ -704,13 +704,14 @@ FLASHMEM int SetI2SFreq(int freq) {
 /*****
   Purpose: fully allocate the heap and then free it
             mallinfo() will provide useful heap size info if we prime it with this info
+
   Parameter list:
     void
 
   Return value;
     void
 *****/
-void PrimeMallInfo() {
+FLASHMEM void PrimeMallInfo() {
   char *alloc[30];
   for(size_t j = 0; j < 30; j++) {
     alloc[j] = NULL;

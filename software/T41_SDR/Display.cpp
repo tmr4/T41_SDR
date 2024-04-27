@@ -121,7 +121,7 @@ int16_t spectrum_x = 10;
 float xExpand = 1.4;
 int attenuator = 0;
 
-const uint16_t gradient[] = {  // Color array for waterfall background
+PROGMEM const uint16_t gradient[] = {  // Color array for waterfall background
   0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9,
   0x10, 0x1F, 0x11F, 0x19F, 0x23F, 0x2BF, 0x33F, 0x3BF, 0x43F, 0x4BF,
   0x53F, 0x5BF, 0x63F, 0x6BF, 0x73F, 0x7FE, 0x7FA, 0x7F5, 0x7F0, 0x7EB,
@@ -178,7 +178,7 @@ void DrawAudioSpectContainer();
   Return value;
     void
 *****/
-void ShowName() {
+FLASHMEM void ShowName() {
   tft.fillRect(RIGNAME_X_OFFSET, 0, XPIXELS - RIGNAME_X_OFFSET, tft.getFontHeight(), RA8875_BLACK);
 
   tft.setFontScale((enum RA8875tsize)1);
@@ -484,7 +484,7 @@ FASTRUN void ShowSpectrum() {
   Return value;
     void
 *****/
-void ShowBandwidthBarValues() {
+FLASHMEM void ShowBandwidthBarValues() {
   char buff[10];
   int posLeft, posRight;
   //int hi_offset = 80;
@@ -576,7 +576,7 @@ void ShowBandwidthBarValues() {
   Return value;
     void
 *****/
-void ShowSpectrumdBScale() {
+FLASHMEM void ShowSpectrumdBScale() {
   tft.writeTo(L2);
   tft.setFontScale((enum RA8875tsize)0);
 
@@ -600,7 +600,7 @@ void ShowSpectrumdBScale() {
   Return value;
     void
 *****/
-void ShowSpectrumFreqValues() {
+FLASHMEM void ShowSpectrumFreqValues() {
   char txt[16];
 
   int bignum;
@@ -699,46 +699,6 @@ void ShowSpectrumFreqValues() {
 }
 
 /*****
-  Purpose: void ShowAnalogGain()
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-    // This function draws the frequency bar at the bottom of the spectrum scope, putting markers at every graticule and the full frequency
-*****/
-void ShowAnalogGain() {
-  static uint8_t RF_gain_old = 0;
-  static uint8_t RF_att_old = 0;
-  const uint16_t col = RA8875_GREEN;
-  if ((((bands[currentBand].RFgain != RF_gain_old) || (attenuator != RF_att_old)) && twinpeaks_tested == 1) || write_analog_gain) {
-    tft.setFontScale((enum RA8875tsize)0);
-    tft.setCursor(pos_x_time - 40, pos_y_time + 26);
-    tft.print((float)(RF_gain_old * 1.5));
-    tft.setTextColor(col);
-    tft.print("dB -");
-
-    tft.setTextColor(RA8875_BLACK);
-    tft.print("dB -");
-    tft.setTextColor(RA8875_BLACK);
-    tft.print("dB");
-    tft.setTextColor(col);
-    tft.print("dB = ");
-
-    tft.setFontScale((enum RA8875tsize)0);
-
-    tft.setTextColor(RA8875_BLACK);
-    tft.print("dB");
-    tft.setTextColor(RA8875_WHITE);
-    tft.print("dB");
-    RF_gain_old = bands[currentBand].RFgain;
-    RF_att_old = attenuator;
-    write_analog_gain = 0;
-  }
-}
-
-/*****
   Purpose: To display the current transmission frequency, band, mode, and sideband above the spectrum display
 
   Parameter list:
@@ -748,7 +708,7 @@ void ShowAnalogGain() {
     void
 
 *****/
-void ShowOperatingStats() {
+FLASHMEM void ShowOperatingStats() {
   tft.setFontScale((enum RA8875tsize)0);
 
   // clear operating stats
@@ -836,7 +796,7 @@ void ShowOperatingStats() {
   Return value;
     void
 *****/
-void ShowCurrentPowerSetting() {
+FLASHMEM void ShowCurrentPowerSetting() {
   tft.setFontScale((enum RA8875tsize)0);
   tft.fillRect(OPERATION_STATS_PWR, OPERATION_STATS_T, tft.getFontWidth() * 11, tft.getFontHeight(), RA8875_BLACK);
   tft.setCursor(OPERATION_STATS_PWR, OPERATION_STATS_T);
@@ -854,7 +814,7 @@ void ShowCurrentPowerSetting() {
   Return value;
     void
 *****/
-void UpdateCWFilter() {
+FLASHMEM void UpdateCWFilter() {
   float CWFilterPosition = 85.0; // max filter position
 
   tft.writeTo(L2);
@@ -961,7 +921,7 @@ const float pixels_per_s = 12.2;
   Return value;
     void
 *****/
-void DrawSmeterBar() {
+FASTRUN void DrawSmeterBar() {
   char buff[10];
   const char *unit_label;
   int16_t smeterPad;
@@ -1036,11 +996,11 @@ void DrawSmeterBar() {
   Return value;
     void
 *****/
-void MyDrawFloat(float val, int decimals, int x, int y, char *buff) {
+FLASHMEM void MyDrawFloat(float val, int decimals, int x, int y, char *buff) {
   MyDrawFloatP(val, decimals, x, y, buff, FLOAT_PRECISION);
 }
 
-void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, int width) {
+FLASHMEM void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, int width) {
   dtostrf(val, width, decimals, buff);  // Use 8 as that is the max prevision on a float
 
   tft.fillRect(x, y, width * tft.getFontWidth(), 15, RA8875_BLACK);
@@ -1058,7 +1018,7 @@ void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, int width) 
   Return value;
     void
 *****/
-void RedrawDisplayScreen() {
+FLASHMEM void RedrawDisplayScreen() {
   // clear display
   tft.fillWindow();
   
@@ -1205,7 +1165,7 @@ FASTRUN void DrawBandwidthBar() {
   Return value;
     void
 *****/
-void DrawSpectrumFrame() {
+FLASHMEM void DrawSpectrumFrame() {
   tft.drawRect(SPEC_BOX_L, SPEC_BOX_T, SPEC_BOX_W, SPEC_BOX_H, RA8875_YELLOW);
 }
 
@@ -1218,7 +1178,7 @@ void DrawSpectrumFrame() {
   Return value;
     void
 *****/
-void EraseSpectrumDisplayContainer() {
+FLASHMEM void EraseSpectrumDisplayContainer() {
   tft.fillRect(SPECTRUM_LEFT_X - 2, SPECTRUM_TOP_Y - 1, SPECTRUM_RES + 6, SPECTRUM_HEIGHT + 8, RA8875_BLACK);  // Spectrum box
 }
 
@@ -1231,7 +1191,7 @@ void EraseSpectrumDisplayContainer() {
   Return value;
     void
 *****/
-void EraseSpectrumWindow() {
+FLASHMEM void EraseSpectrumWindow() {
   newSpectrumFlag = 0; // old noise floor needs reset
   tft.fillRect(SPECTRUM_LEFT_X, SPECTRUM_TOP_Y, SPECTRUM_RES, SPECTRUM_HEIGHT, RA8875_BLACK);  // Spectrum box
 }
@@ -1245,7 +1205,7 @@ void EraseSpectrumWindow() {
   Return value;
     void
 *****/
-void DrawSMeterContainer() {
+FLASHMEM void DrawSMeterContainer() {
   int i;
   // DB2OO, 30-AUG-23: the white line must only go till S9
   tft.drawFastHLine(SMETER_X, SMETER_Y - 1, 9 * pixels_per_s, RA8875_WHITE);
@@ -1309,7 +1269,7 @@ void DrawSMeterContainer() {
     void
 *****/
 // old factor 43.8
-void DrawAudioSpectContainer() {
+FLASHMEM void DrawAudioSpectContainer() {
   tft.drawRect(AUDIO_SPEC_BOX_L, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_W, AUDIO_SPEC_BOX_H, RA8875_WHITE);
   for (int k = 0; k < 6; k++) {
     tft.drawFastVLine(AUDIO_SPEC_BOX_L + k * 43, AUDIO_SPEC_BOTTOM, 15, RA8875_WHITE);
@@ -1331,7 +1291,7 @@ void DrawAudioSpectContainer() {
   Return value;
     void
 *****/
-void EraseMenus() {
+FLASHMEM void EraseMenus() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, BOTH_MENU_WIDTHS, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
 //  menuStatus = NO_MENUS_ACTIVE;                                                            // Change menu state
 }
@@ -1344,7 +1304,7 @@ void EraseMenus() {
   Return value;
     void
 *****/
-void ErasePrimaryMenu() {
+FLASHMEM void ErasePrimaryMenu() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
 //  menuStatus = NO_MENUS_ACTIVE;                                                           // Change menu state
 }
@@ -1357,7 +1317,7 @@ void ErasePrimaryMenu() {
   Return value;
     void
 *****/
-void EraseSecondaryMenu() {
+FLASHMEM void EraseSecondaryMenu() {
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
 //  menuStatus = NO_MENUS_ACTIVE;                                                             // Change menu state
 }
@@ -1370,7 +1330,7 @@ void EraseSecondaryMenu() {
   Return value;
     void
 *****/
-void ShowTransmitReceiveStatus() {
+FLASHMEM void ShowTransmitReceiveStatus() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_BLACK);
   if (xrState == TRANSMIT_STATE) {
@@ -1394,7 +1354,7 @@ void ShowTransmitReceiveStatus() {
     void
 
 *****/
-void SetZoom(int zoom) {
+FLASHMEM void SetZoom(int zoom) {
   spectrumZoom = zoom;
 
   if(spectrumZoom == MAX_ZOOM_ENTRIES) {
@@ -1420,7 +1380,7 @@ void SetZoom(int zoom) {
     void
 
 *****/
-void DrawStaticDisplayItems() {
+FLASHMEM void DrawStaticDisplayItems() {
   ShowName();
   DrawSpectrumFrame();
   DrawSMeterContainer();

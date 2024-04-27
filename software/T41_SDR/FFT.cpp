@@ -30,7 +30,7 @@ float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
   Return value;
     void
 *****/
-void ZoomFFTPrep() {
+FLASHMEM void ZoomFFTPrep() {
   // take value of spectrumZoom and initialize IIR lowpass and FIR decimation filters for the right values
 
   float32_t Fstop_Zoom = 0.5 * (float32_t) SampleRate / (1 << spectrumZoom);
@@ -154,12 +154,14 @@ void ZoomFFTExe(uint32_t blockSize) {
 }
 
 /*****
-  Purpose: CalcZoom1Magn()
+  Purpose: Calcculate zoom magnification when Spectrum Zoom = 1
+
+
   Parameter list:
     void
+
   Return value;
     void
-    Used when Spectrum Zoom =1
 *****/
 void CalcZoom1Magn() {
  if (updateDisplayFlag == 1) {

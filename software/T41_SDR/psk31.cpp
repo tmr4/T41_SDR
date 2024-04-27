@@ -22,7 +22,7 @@ typedef struct psk31_varicode_item_s
     unsigned char ascii;
 } psk31_varicode_item_t;
 
-psk31_varicode_item_t psk31_varicode_items[] =
+PROGMEM psk31_varicode_item_t psk31_varicode_items[] =
 {
   { .code = 0b1010101011, .bitcount=10,   .ascii=0x00 }, //NUL, null
   { .code = 0b1011011011, .bitcount=10,   .ascii=0x01 }, //SOH, start of heading
@@ -154,7 +154,7 @@ psk31_varicode_item_t psk31_varicode_items[] =
   { .code = 0b1110110101, .bitcount=10,   .ascii=0x7f }, //DEL
 };
 
-unsigned long long psk31_varicode_masklen_helper[] =
+PROGMEM unsigned long long psk31_varicode_masklen_helper[] =
 {
   0b0000000000000000000000000000000000000000000000000000000000000000,
   0b0000000000000000000000000000000000000000000000000000000000000001,

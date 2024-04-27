@@ -207,7 +207,7 @@ void ButtonISR() {
   Return value;
     void
 *****/
-void EnableButtonInterrupts() {
+FLASHMEM void EnableButtonInterrupts() {
   buttonADCOut = BUTTON_OUTPUT_UP;
   buttonFilterRegister = buttonADCOut << BUTTON_FILTER_SHIFT;
   buttonState = BUTTON_STATE_UP;
@@ -310,7 +310,7 @@ int ReadSelectedPushButton() {
   Return value;
     void
 *****/
-void ExecuteButtonPress(int val) {
+FLASHMEM void ExecuteButtonPress(int val) {
 #ifdef DEBUG_SW
   Serial.print("ExecuteButtonPress TOP: val = ");
   Serial.println(val);
@@ -547,7 +547,7 @@ void ExecuteButtonPress(int val) {
   Return value:
     void
 *****/
-void ChangeFreqIncrement(int change) {
+FLASHMEM void ChangeFreqIncrement(int change) {
   long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
 
   tuneIndex += change;
@@ -572,7 +572,7 @@ void ChangeFreqIncrement(int change) {
   Return value;
     void
 *****/
-void ChangeFTIncrement(int change) {
+FLASHMEM void ChangeFTIncrement(int change) {
   long selectFT[] = { 10, 50, 250, 500 };
 
   ftIndex += change;
@@ -597,7 +597,7 @@ void ChangeFTIncrement(int change) {
   Return value;
     void
 *****/
-void NoActiveMenu() {
+FLASHMEM void NoActiveMenu() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_RED);
   tft.setCursor(PRIMARY_MENU_X + 1, MENUS_Y);
