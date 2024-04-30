@@ -214,6 +214,9 @@ complexf fmdemod_quadri_novect_cf(complexf* input, float* output, int input_size
 }
 */
 
+// derivation of this algorithm to calculate the time derivative of the phase angle
+// is from Lyons, Understanding Digital Signal Processing, section 13.22-Frequency Demodulation Algorithms
+// also from here: https://www.embedded.com/dsp-tricks-frequency-demodulation-algorithms/
 void nfmdemod(float32_t* input, float32_t* output, int input_size) {
   static float32_t last_sample_i = 0;
   static float32_t last_sample_q = 0;

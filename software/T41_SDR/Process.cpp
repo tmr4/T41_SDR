@@ -140,16 +140,16 @@ void ProcessIQData() {
         in that case, we clear the buffers to keep the whole audio chain running smoothly
         **********************************************************************************/
       // *** this creates loop artifacts (in my version at least) needs reworked ***
-      //if (Q_in_L.available() > 25) {
+      if (Q_in_L.available() > 25) {
       //  //Serial.println("audio buffer cleared ...");
-      //  Q_in_L.clear();
+        Q_in_L.clear();
       //  AudioInterrupts();
-      //}
-      //if (Q_in_R.available() > 25) {
+      }
+      if (Q_in_R.available() > 25) {
       //  //Serial.println("audio buffer cleared ...");
-      //  Q_in_R.clear();
+        Q_in_R.clear();
       //  AudioInterrupts();
-      //}
+      }
 
       /**********************************************************************************
         IQ amplitude and phase correction.  For this scaled down version the I an Q channels are
@@ -387,64 +387,77 @@ void ProcessIQData() {
 
       case DEMOD_PSK31_WAV:
         // test file has a sample rate of 8000 sps
-        // T41 worls with audio samples at 24 kHz and 256 byte blocks (FFT_length / 2)
-        if(readWave(float_buffer_R, FFT_length / 2 / 3)) {
+        // T41 works with audio samples at 24 kHz and 256 byte blocks (FFT_length / 2)
+        if(readWave(float_buffer_R, 85 + 1)) { // FFT_length / 2 / 3 + 1
           // prepare audio stream (mostly just allow user to verify proper wav file transfer)
 
           // interpolate by 3 to 24 kHz to get audio signal for T41
-          float_buffer_L[0] = float_buffer_R[0];
-          for (unsigned i = 1; i < FFT_length / 2; i++) {
-            float_buffer_L[3*i-2] = (float_buffer_R[i-1] + float_buffer_R[i]) / 3;
-            float_buffer_L[3*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) * 2 / 3;
+          float_buffer_L[0] = wold;
+          for (unsigned int i = 1; i < 85; i++) {
+            float_buffer_L[3*i-2] = (float_buffer_R[i-1] + float_buffer_R[i]) / 3.0;
+            float_buffer_L[3*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) * 2.0 / 3.0;
             float_buffer_L[3*i] = float_buffer_R[i];
           }
+          wold = float_buffer_R[85];
 
-          // generate I and Q
-          //arm_copy_f32 (float_buffer_L, float_buffer_R, 256);
-          //arm_fir_f32(&FIR_Hilbert_L, float_buffer_L, float_buffer_L, 256);
-          //arm_fir_f32(&FIR_Hilbert_R, float_buffer_R, float_buffer_R, 256);
+          //switch(psk_method) {
+          switch(0) {
+            case 0: // I/Q
+              // generate I and Q
+              arm_copy_f32(float_buffer_L, float_buffer_R, 256);
+              arm_fir_f32(&FIR_Hilbert_L, float_buffer_L, float_buffer_L_EX, 256);
+              arm_fir_f32(&FIR_Hilbert_R, float_buffer_R, float_buffer_R_EX, 256);
+              //arm_fir_f32(&FIR_Hilbert_R, float_buffer_L, float_buffer_R_EX, 256);
 
-          // Prepare psk decoder input buffer
-          // use FFT_buffer (left channel: re, right channel: im)
-          //for (unsigned i = 0; i < 256; i++) {
-          //  FFT_buffer[FFT_length + i * 2] = float_buffer_L[i]; // real
-          //  FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R[i]; // imaginary
-          //}
-
-          // accumulate psk decoder input buffer at 31.25 Hz
-          // 8000 / 31.25 = 256, 256 / 85 = 3
-          // thus we only need to capture 1 sample every three loops
-          if(dataLoop == 0) {
-            FFT_buffer[dataIndex] = float_buffer_R[0]; // real
-            FFT_buffer[dataIndex + 1] = 0; // imaginary
-            dataLoop = 3;
-            dataIndex += 2;
-          }
-          dataLoop--;
-
-          if(dataIndex == 256) {
-            Serial.println("decoding ...");
-            dbpsk_decoder_c_u8(FFT_buffer, psk31Buffer, 256);
-
-            for(int i = 0; i < 256; i++) {
-              //Serial.println(psk31Buffer[i]);
-              char tmp = psk31_varicode_decoder_push(psk31Buffer[i]);
-              if(tmp) {
-                Serial.print(tmp);
+              // Prepare psk decoder input buffer
+              // use FFT_buffer (left channel: re, right channel: im)
+              // we'll decode this in the demod section
+              for (int i = 0; i < 256; i++) {
+                FFT_buffer[FFT_length + i * 2] = float_buffer_L_EX[i]; // real
+                FFT_buffer[FFT_length + i * 2 + 1] = float_buffer_R_EX[i]; // imaginary
               }
-            }
+              break;
 
-            Serial.println("");
-            dataLoop = 3;
-            dataIndex = 0;
+            case 1: // csdr library dbpsk_decoder_c_u8
+              // accumulate psk decoder input buffer at 31.25 Hz
+              // 8000 / 31.25 = 256, 256 / 85 = 3
+              // thus we only need to capture 1 sample every three loops
+              if(dataLoop == 0) {
+                FFT_buffer[dataIndex] = float_buffer_R[0]; // real
+                FFT_buffer[dataIndex + 1] = 0; // imaginary
+                dataLoop = 3;
+                dataIndex += 2;
+              }
+              dataLoop--;
+
+              if(dataIndex == 256) {
+                Serial.println("decoding ...");
+                dbpsk_decoder_c_u8(FFT_buffer, psk31Buffer, 256);
+
+                for(int i = 0; i < 256; i++) {
+                  //Serial.println(psk31Buffer[i]);
+                  char tmp = psk31_varicode_decoder_push(psk31Buffer[i]);
+                  if(tmp) {
+                    Serial.print(tmp);
+                  }
+                }
+
+                Serial.println("");
+                dataLoop = 3;
+                dataIndex = 0;
+              }
+              break;
+
+            default:
+              break;
           }
 
           // we're using the audio input buffers to regulate the pace of the output stream
           // without this we'll play the wave file about 3 times faster than normal
           // *** need to check whether we're clipping any of our output with this
           //      not a big priority unless we want this to be a standard feature ***
-          Q_in_L.clear();
-          Q_in_R.clear();
+          if(Q_in_L.available() > 25) Q_in_L.clear();
+          if(Q_in_R.available() > 25) Q_in_R.clear();
         }
         else {
           bands[currentBand].mode = DEMOD_PSK31;
@@ -730,12 +743,17 @@ void ProcessIQData() {
 
       case DEMOD_PSK31:
         break;
+
+      case DEMOD_PSK31_WAV:
+        // determine the second derivative of the phase angle
+        //Psk31Decoder(&FFT_buffer[FFT_length], float_buffer_L_EX, FFT_length / 2);
+        Psk31PhaseShiftDetector(&FFT_buffer[FFT_length], float_buffer_L_EX, FFT_length / 2);
+        break;
         
       case DEMOD_SAM:
         AMDecodeSAM();
         break;
 
-      case DEMOD_PSK31_WAV:
       case DEMOD_FT8_WAV:
       default:
         break;

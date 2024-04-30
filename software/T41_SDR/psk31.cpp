@@ -236,17 +236,30 @@ char psk31_varicode_decoder_push(unsigned char symbol)
 {
   status_shr = (status_shr << 1) | (!!symbol); //shift new bit in shift register
 
+  Serial.print("\n     At decoder push ... "); Serial.println(status_shr);
+
   if((status_shr & 0xFFF) == 0) {
+    Serial.print("\n     decoder push overflow "); Serial.print(status_shr); Serial.print(" ");
     return 0;
   }
 
   for(int i = 0; i < n_psk31_varicode_items; i++) {
-    if((psk31_varicode_items[i].code << 2) == (status_shr & psk31_varicode_masklen_helper[(psk31_varicode_items[i].bitcount + 4) & 63])) {
+    unsigned long long tmp1 = (psk31_varicode_items[i].code << 2);
+    //unsigned long long tmp1 = (psk31_varicode_items[i].code << 0);
+    unsigned long long tmp2 = (status_shr & psk31_varicode_masklen_helper[(psk31_varicode_items[i].bitcount + 4) & 63]);
+
+    if(status_shr == 13) {
+      Serial.print("          tmp1 = "); Serial.print(tmp1); Serial.print(" tmp2 = "); Serial.println(tmp2);
+    }
+    //if((psk31_varicode_items[i].code << 2) == (status_shr & psk31_varicode_masklen_helper[(psk31_varicode_items[i].bitcount + 4) & 63])) {
+    if(tmp1 == tmp2) {
       status_shr = 0; // reset shift register
+      Serial.print("****** Found a Symbol ******");
       return psk31_varicode_items[i].ascii;
     }
   }
 
+  Serial.print(" ... Didn't find a symbol "); Serial.println(status_shr);
   return 0;
 }
 
@@ -287,8 +300,11 @@ void dbpsk_decoder_c_u8(float32_t* input, uint8_t* output, int input_size) {
 
     while(dphase < -PI) dphase += 2 * PI;
     while(dphase >= PI) dphase -= 2 * PI;
-    if( (dphase >(PI / 2)) || (dphase < (-PI / 2)) ) output[i] = 0;
-    else output[i] = 1;
+    if( (dphase > (PI / 2)) || (dphase < (-PI / 2)) ) {
+      output[i] = 0;
+    } else {
+      output[i] = 1;
+    }
     last_phase = phase;
   }
 }
@@ -369,7 +385,493 @@ void timing_recovery_cc(complexf* input, complexf* output, int input_size, timin
 }
 */
 
+#define PSK_MULT 20.0
+//#define PSK_MULT 7.5
+//#define PSK_MULT 6.0
+//#define PSK_MULT 5.0
+//#define PSK_THRESHOLD 3.0
+//#define PSK_THRESHOLD 2.0
+//#define PSK_THRESHOLD 1.8
+//#define PSK_THRESHOLD 1.75
+//#define PSK_THRESHOLD 1.5
+#define PSK_THRESHOLD 1.0
+#define PSK_TIME 768
+//#define PSK_TIME 765
+//#define PSK_TIME 762
+#define PSK_WIGGLE 60
+//#define PSK_WIGGLE -10
+#define PSK_MIN 0.2
 
+bool IsPhaseShift(float32_t last, float32_t current, float32_t next) {
+  //if((last < 0 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0 && next > -PSK_MIN) || (last > 0 && last < PSK_MIN && current < -PSK_THRESHOLD && next > 0 && next < PSK_MIN)) {
+  //if((last < 0.1 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0.1 && next > -PSK_MIN) || (last > -0.1 && last < PSK_MIN && current < -PSK_THRESHOLD && next > -0.1 && next < PSK_MIN)) {
+  if((last < 0.1 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0.1 && next > -PSK_MIN) || (last > -0.1 && last < PSK_MIN && current < -PSK_THRESHOLD && next > -0.1 && next < PSK_MIN)) {
+  //((last < 0.1 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0.1 && next > -PSK_MIN) || 
+  // (last > -0.1 && last < PSK_MIN && current < -PSK_THRESHOLD && next > -0.1 && next < PSK_MIN)) {
+    return true;
+  }
+  return false;
+}
+
+void PrintPSK(int psk31Count, int symCount, float32_t last, float32_t current, float32_t next) {
+  char buff[10];
+
+  Serial.print("symCount = "); Serial.print(symCount); Serial.print(" ");
+  Serial.print("psk31Count = "); Serial.print(psk31Count); Serial.print(" ");
+  dtostrf(last, 6, 2, buff); Serial.print(buff); Serial.print(", ");
+  dtostrf(current, 6, 2, buff); Serial.print(buff); Serial.print(", ");
+  dtostrf(next, 6, 2, buff); Serial.println(buff);
+}
+
+void PrintPSKBuffer(int count) {
+  Serial.println("");
+  for(int i = 0; i < count; i++) {
+    Serial.print(psk31Buffer[i]);
+  }
+  Serial.println("\n");
+}
+
+// attributes 1s averaged over interval w/o a phase change
+void Psk31PhaseShiftDetector2(float32_t* input, float32_t* output, int size) {
+  static float32_t last = 0;
+  static float32_t current = 0;
+  static float32_t next = 0;
+  static bool idle = false;
+  static bool decoding = false;
+  static int decodeCount = 0;
+  static int psk31Count = 0;
+  static int symCount = -1;
+  static int lastSymbol = -1;
+  static bool waiting = false;
+
+  nfmdemod(input, output, size);
+
+  // take the derivative of output
+  for(int i = 0; i < size - 2; i++) {
+    current = (output[i + 1] - output[i]) * PSK_MULT;
+    next = (output[i + 2] - output[i + 1]) * PSK_MULT;
+
+    if(IsPhaseShift(last, current, next)) {
+      if(!decoding) {
+        decoding = true;
+        psk31Count = 0;
+        symCount++;
+        psk31Buffer[decodeCount++] = 0;
+        lastSymbol = 0;
+      } else if(waiting) {
+        int tmp = psk31Count - PSK_TIME; // one time is due to the 0
+        while(tmp > PSK_TIME) {
+          psk31Buffer[decodeCount++] = 1;
+          symCount++;
+          Serial.print("1  -  from waiting loop, tmp = "); Serial.println(tmp);
+          tmp -= PSK_TIME;
+        }
+        symCount++;
+        Serial.print("0  -  from waiting loop, "); PrintPSK(tmp, symCount, last, current, next);
+        psk31Buffer[decodeCount++] = 0;
+        psk31Count = 0;
+        waiting = false;
+      } else if(psk31Count < PSK_TIME - PSK_WIGGLE) {
+        Serial.print("     *** Spurious phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      } else {
+        symCount++;
+        Serial.print("0  -  Phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+        psk31Buffer[decodeCount++] = 0;
+
+        if(lastSymbol == 0 && !idle) {
+          idle = true;
+          PrintPSKBuffer(decodeCount);
+          decodeCount = 0;
+        }
+        lastSymbol = 0;
+
+        if(decodeCount == 256) {
+          PrintPSKBuffer(256);
+          decodeCount = 0;
+        }
+
+        psk31Count = 0;
+      }
+    } else {
+      if(!decoding) {
+        psk31Count = -1;
+      } else if(psk31Count > PSK_TIME + PSK_WIGGLE) {
+        waiting = true;
+        if(idle) {
+          idle = false;
+        }
+        //psk31Buffer[decodeCount++] = 1;
+        //symCount++;
+        //Serial.print("1  -  No phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+        //if(idle) {
+        //  idle = false;
+        //}
+        //lastSymbol = 1;
+        //psk31Count = 0;
+      }
+    }
+
+    psk31Count++;
+    last = current;
+  }
+}
+
+// only looks for phase changes
+void Psk31PhaseShiftDetector5(float32_t* input, float32_t* output, int size) {
+  static float32_t lastOutput = 0;
+  static float32_t last = 0;
+  static float32_t current = 0;
+  static float32_t next = 0;
+  static int psk31Count = 0;
+  static int symCount = -1;
+  int i = 0;
+
+  nfmdemod(input, output, size);
+
+  // take the derivative of output
+  do {
+    if(IsPhaseShift(last, current, next)) {
+      symCount++;
+      Serial.print("Phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      psk31Count = 0;
+    }
+
+    psk31Count++;
+    last = current;
+    current = next;
+    next = (output[i+1] - output[i]) * PSK_MULT;
+  } while(++i < size);
+  lastOutput = output[255];
+}
+
+// only looks for phase changes
+void Psk31PhaseShiftDetector(float32_t* input, float32_t* output, int size) {
+  static float32_t t0 = 0;
+  static float32_t t1 = 0;
+  static float32_t t2 = 0;
+  static float32_t t3 = 0;
+  static int psk31Count = 0;
+  static int symCount = -1;
+  float32_t last;
+  float32_t current;
+  float32_t next;
+
+  nfmdemod(input, output, size);
+
+  // take the derivative of output
+  //for(int i = 0; i < size; i++) {
+  for(int i = 0; i < size - 2; i++) {
+    t3 = t2;
+    t2 = t1;
+    t1 = t0;
+    t0 = output[i];
+    //last = (t3 - t2) * PSK_MULT;
+    //current = (t2 - t1) * PSK_MULT;
+    //next = (t1 - t0) * PSK_MULT;
+
+    //t3 = output[i];
+    //t2 = output[i];
+    //t1 = output[i+1];
+    //t0 = output[i+2];
+    //last = (t2 - t3) * PSK_MULT;
+    last = current;
+    current = (t1 - t2) * PSK_MULT;
+    next = (t0 - t1) * PSK_MULT;
+
+    if(IsPhaseShift(last, current, next)) {
+      symCount++;
+      Serial.print("Phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      psk31Count = 0;
+    } /*
+    else {
+      //if(psk31Count > 17500 && psk31Count < 23000) {
+      if(psk31Count < 4000) {
+        Serial.print("   no phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      }
+      if(psk31Count % 768 == 0) symCount++;
+    }
+    */
+    psk31Count++;
+  }
+}
+
+// looks for periodic and spurious phase changes
+void Psk31PhaseShiftDetector4(float32_t* input, float32_t* output, int size) {
+  static float32_t last = 0;
+  static float32_t current = 0;
+  static float32_t next = 0;
+  static bool idle = false;
+  static bool decoding = false;
+  static int decodeCount = 0;
+  static int psk31Count = 0;
+  static int symCount = -1;
+  static int lastSymbol = -1;
+
+  nfmdemod(input, output, size);
+
+  last = current;
+  current = next;
+
+  // take the derivative of output
+  for(int i = 0; i < size - 1; i++) {
+    next = (output[i+1] - output[i]) * PSK_MULT;
+
+    if(IsPhaseShift(last, current, next)) {
+      int tmp = abs(psk31Count) % PSK_TIME;
+
+      if(!decoding) {
+        decoding = true;
+        psk31Count = 0;
+        symCount++;
+      } else if(tmp > PSK_WIGGLE) {
+        Serial.print("     *** Spurious phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      } else {
+        symCount++;
+        Serial.print("Phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+        psk31Count = 0;
+      }
+    }
+
+    psk31Count++;
+    last = current;
+    current = next;
+  }
+  next = output[size-1];
+  if(IsPhaseShift(last, current, next)) {
+    int tmp = abs(psk31Count) % PSK_TIME;
+
+    if(tmp > PSK_WIGGLE) {
+      Serial.print("     *** Spurious phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+    } else {
+      symCount++;
+      Serial.print("Phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      psk31Count = 0;
+    }
+  }
+}
+
+// attributes a 1 every PSK_TIME w/o a phase change
+void Psk31PhaseShiftDetector1(float32_t* input, float32_t* output, int size) {
+  static float32_t last = 0;
+  static float32_t current = 0;
+  static float32_t next = 0;
+  static bool idle = false;
+  static bool decoding = false;
+  static int decodeCount = 0;
+  static int psk31Count = 0;
+  static int symCount = -1;
+  static int lastSymbol = -1;
+
+  nfmdemod(input, output, size);
+
+  // take the derivative of output
+  for(int i = 0; i < size - 2; i++) {
+    current = (output[i + 1] - output[i]) * PSK_MULT;
+    next = (output[i + 2] - output[i + 1]) * PSK_MULT;
+
+    if(IsPhaseShift(last, current, next)) {
+      if(!decoding) {
+        decoding = true;
+        psk31Count = 0;
+        symCount++;
+        psk31Buffer[decodeCount++] = 0;
+        lastSymbol = 0;
+      } else if(psk31Count < PSK_TIME - PSK_WIGGLE) {
+        Serial.print("     *** Spurious phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      } else {
+        symCount++;
+        Serial.print("0  -  Phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+        psk31Buffer[decodeCount++] = 0;
+
+        if(lastSymbol == 0 && !idle) {
+          idle = true;
+          PrintPSKBuffer(decodeCount);
+          decodeCount = 0;
+        }
+        lastSymbol = 0;
+
+        if(decodeCount == 256) {
+          PrintPSKBuffer(256);
+          decodeCount = 0;
+        }
+
+        psk31Count = 0;
+      }
+    } else {
+      if(!decoding) {
+        psk31Count = -1;
+      } else if(psk31Count == PSK_TIME) {
+        psk31Buffer[decodeCount++] = 1;
+        symCount++;
+        Serial.print("1  -  No phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+        if(idle) {
+          idle = false;
+        }
+        lastSymbol = 1;
+        psk31Count = 0;
+      }
+    }
+
+    psk31Count++;
+    last = current;
+  }
+}
+
+void Psk31Decoder(float32_t* input, float32_t* output, int size) {
+  static float32_t last = 0;
+  static float32_t current = 0;
+  static float32_t next = 0;
+  static bool idle = false;
+  static bool decoding = false;
+  static int decodeCount = 0;
+  static int psk31Count = 0;
+  static int symCount = -1;
+  static int lastSymbol = -1;
+
+  //Serial.print("Starting Psk31Decoder ... ");
+  nfmdemod(input, output, size);
+
+  // take the derivative of output
+  for(int i = 0; i < size - 2; i++) {
+    current = (output[i + 1] - output[i]) * PSK_MULT;
+    next = (output[i + 2] - output[i + 1]) * PSK_MULT;
+
+    //if(last < 0 && current > PSK_THRESHOLD && next < 0) {
+    //if((last < 0 && current > PSK_THRESHOLD && next < 0) || (last > 0 && current < -PSK_THRESHOLD && next > 0)) {
+    if(IsPhaseShift(last, current, next)) {
+      //if(!idle || lastSymbol == 1)
+      if(!idle) {
+        Serial.print("   Phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      }
+
+      // we had a phase shift, reset psk31Count
+      if(idle) {
+        // we're idle and remain so
+        lastSymbol = 0;
+        psk31Count = 0;
+      } else if(decoding) {
+        if(lastSymbol == 0) {
+          // last two symbols we're zeros, we're now idling
+          idle = true;
+          decoding = false;
+          psk31Buffer[decodeCount++] = 0;
+          Serial.print("0");
+          symCount++;
+          psk31Buffer[decodeCount++] = 0;
+          Serial.print("0");
+          symCount++;
+          if(decodeCount > 0) {
+            Serial.print(" decodeCount = "); Serial.print(decodeCount); Serial.println(" waiting to decode ...");
+          }
+          lastSymbol = 0;
+          psk31Count = 0;
+        } else if(lastSymbol == 1) {
+          // we're decoding so we either have a 0 following a 1 or we're starting a idle sequency
+          // first, fill in 1's for past
+          do {
+            psk31Buffer[decodeCount++] = 1;
+            Serial.print("1");
+            symCount++;
+            psk31Count -= PSK_TIME;
+          } while(psk31Count > 0);
+          lastSymbol = 0;
+          psk31Count = 0;
+        }
+      }
+    } else {//if (psk31Count >= PSK_TIME) {
+      /*
+      if (psk31Count >= PSK_TIME + PSK_WIGGLE) {
+      Serial.print("   No phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
+      // no phase shift, we got a 1, reset psk31Count
+      if(idle) {
+        idle = false;
+        decoding = true;
+        psk31Buffer[decodeCount++] = 1;
+        Serial.print("1");
+      } else if(!decoding && lastSymbol == 0) {
+        idle = false;
+        decoding = true;
+        psk31Buffer[decodeCount++] = 1;
+        Serial.print("1");
+        symCount++;
+      } else if(decoding && lastSymbol == 0) {
+        psk31Buffer[decodeCount++] = 0;
+        Serial.print("0");
+        symCount++;
+        psk31Buffer[decodeCount++] = 1;
+        Serial.print("1");
+        symCount++;
+      } else {
+        psk31Buffer[decodeCount++] = 1;
+        Serial.print("1");
+        symCount++;
+      }
+
+      lastSymbol = 1;
+      psk31Count = 0;
+      */
+    //} else if (psk31Count >= PSK_TIME - 10 && !idle && symCount >= 3 && symCount <= 4) {
+      //Serial.print("else #1 "); PrintPSK(psk31Count, symCount, last, current, next);
+    //} else if (psk31Count > 0 && psk31Count < 10 && !idle && symCount >= 3 && symCount <= 4) {
+      //Serial.print("else #2 "); PrintPSK(psk31Count, symCount, last, current, next);
+
+      if(psk31Count > PSK_TIME) {
+        decoding = true;
+        idle = false;
+        lastSymbol = 1;
+      }
+    }
+
+    psk31Count++;
+    last = current;
+
+    if(!decoding && (decodeCount > 0)) {
+    //if((decodeCount > 0)) {
+      //Serial.print("    starting to decode ---> ");
+      //for(int i = decodeStart; i < decodeCount; i++) {
+      for(int i = 0; i < decodeCount; i++) {
+        //Serial.println(psk31Buffer[i]);
+        if(psk31Buffer[i]) {
+          Serial.print("1");
+        } else {
+          Serial.print("0");
+        }
+
+        char tmp = psk31_varicode_decoder_push(psk31Buffer[i]);
+        if(tmp) {
+          Serial.print(tmp);
+    
+          Serial.println("");
+        }
+      }
+      decodeCount = 0;
+      //Serial.println(" ... finished decoding loop");
+    }
+  }
+  /*
+  if(decodeCount > 0) {
+    Serial.print("    dumping extra ---> ");
+    for(int i = 0; i < decodeCount; i++) {
+      if(psk31Buffer[i]) {
+        Serial.print("1");
+      } else {
+        Serial.print("0");
+      }
+
+      char tmp = psk31_varicode_decoder_push(psk31Buffer[i]);
+      if(tmp) {
+        Serial.print(tmp);
+  
+        Serial.println("");
+      }
+    }
+    decodeCount = 0;
+    Serial.println(" ... finished dump");
+  }
+  */
+
+  //Serial.println("... Exiting Psk31Decoder ");
+}
 
 FLASHMEM bool setupPSK31() {
   // set up message area
@@ -388,6 +890,7 @@ FLASHMEM bool setupPSK31Wav() {
   uint32_t slot_period = 12;
   uint32_t sample_rate = 8000;
   uint32_t num_samples = slot_period * sample_rate;
+  float32_t buf[256];
 
   result = load_wav("psk31.wav", num_samples); // abc_psk31.wav
 
@@ -395,6 +898,9 @@ FLASHMEM bool setupPSK31Wav() {
     Serial.println("Invalid wave file!");
     return false;
   }
+
+  // read 1/2 a buffer in to avoid end of buffer problems
+  //readWave(buf, 128);
 
   return true;
 }

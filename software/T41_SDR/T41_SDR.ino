@@ -775,6 +775,32 @@ FLASHMEM void SoftReset() {
   SetBandRelay(HIGH);
 }
 
+void ARMCorrTest(){
+  float32_t a[5] = {0.58, 0.95, 0.0, -0.95, -0.58};
+  float32_t b[5] = {0.58, 0.95, 0.0, -0.95, -0.58};
+  float32_t c[5] = {-0.58, -0.95, 0.0, 0.95, 0.58};
+  float32_t d[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  char buff[10];
+
+  arm_correlate_f32(a, 5, b, 5, d);
+
+  for(int i = 0; i < 8; i++) {
+    dtostrf(d[i], 6, 2, buff);
+    Serial.print("i: "); Serial.print(i+1); Serial.println(buff);
+    d[i] = 0;
+  }
+  Serial.println("");
+
+  arm_correlate_f32(a, 5, c, 5, d);
+
+  for(int i = 0; i < 8; i++) {
+    dtostrf(d[i], 6, 2, buff);
+    Serial.print("i: "); Serial.print(i+1); Serial.println(buff);
+    //d[i] = 0;
+  }
+  Serial.println("");
+}
+
 /*****
   Purpose: program entry point that sets the environment for program
 
@@ -921,6 +947,8 @@ FLASHMEM void setup() {
 
   char myGrid[] = "CM87";
   set_Station_Coordinates(myGrid);
+
+  //ARMCorrTest();
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
