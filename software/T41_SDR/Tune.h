@@ -17,3 +17,4 @@ void SetFineTune(long tuneChange);
 void ResetTuning();
 void SetFreq();
 void DoSplitVFO();
+void SetTxRxFreq(long freq);

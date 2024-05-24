@@ -20,6 +20,8 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
+#define MAX_FREQ_INDEX              8
+
 bool lowerAudioFilterActive = false; // false - upper, true - lower audio filter active
 int liveNoiseFloorFlag = OFF;
 
@@ -53,7 +55,7 @@ int currentDataMode = DEMOD_PSK31; // preserves data mode between mode and band 
 FLASHMEM void BandChange(int change) {
   // Added if so unused GPOs will not be touched
   if(currentBand < BAND_12M) {
-    digitalWrite(bandswitchPins[currentBand], LOW);  
+    digitalWrite(bandswitchPins[currentBand], LOW);
   }
 
   if(xmtMode == DATA_MODE) {
@@ -121,7 +123,7 @@ FLASHMEM void BandChange(int change) {
 
       case DEMOD_FT8:
       case DEMOD_FT8_WAV:
-        syncFlag = false; 
+        syncFlag = false;
         ft8State = 1;
         UpdateInfoBoxItem(IB_ITEM_FT8);
         break;
@@ -198,7 +200,7 @@ FLASHMEM void ButtonFilter() {
 }
 
 /*****
-  Purpose: Cycle to next demodulation mode
+  Purpose: Change the demodulation mode
           *** TODO: rework this if modes are expanded ***
   Parameter list:
     void
@@ -206,7 +208,8 @@ FLASHMEM void ButtonFilter() {
   Return value:
     void
 *****/
-FLASHMEM void ButtonDemodMode() {
+FLASHMEM void ChangeDemodMode(int mode) {
+  // wrap up current demod mode
   if(xmtMode == DATA_MODE) {
     switch(currentDataMode) {
       case DEMOD_PSK31:
@@ -216,7 +219,7 @@ FLASHMEM void ButtonDemodMode() {
           bands[currentBand].mode = DEMOD_FT8;
           currentDataMode = DEMOD_FT8;
           ShowOperatingStats();
-          syncFlag = false; 
+          syncFlag = false;
           ft8State = 1;
           UpdateInfoBoxItem(IB_ITEM_FT8);
         }
@@ -239,14 +242,20 @@ FLASHMEM void ButtonDemodMode() {
     return;
   }
 
-  bands[currentBand].mode++;
+  bands[currentBand].mode = mode;
   if(bands[currentBand].mode > DEMOD_MAX) {
-    bands[currentBand].mode = DEMOD_MIN;  // cycle thru demod modes
+    bands[currentBand].mode = DEMOD_MIN;
+  }
+  if(bands[currentBand].mode < DEMOD_MIN) {
+    bands[currentBand].mode = DEMOD_MAX;
   }
 
-  // skip FT8 modes
+  // skip Data modes (*** these assume we're cycling through up or down ***)
   if(bands[currentBand].mode == DEMOD_PSK31_WAV) {
     bands[currentBand].mode += 4;
+  }
+  if(bands[currentBand].mode == DEMOD_FT8) {
+    bands[currentBand].mode -= 4;
   }
 
   SetupMode();
@@ -258,7 +267,7 @@ FLASHMEM void ButtonDemodMode() {
 }
 
 /*****
-  Purpose: Toggle operating mode, SSB, CW or Data
+  Purpose: Sets operating mode, SSB, CW or Data
 
   Parameter list:
     void
@@ -266,12 +275,50 @@ FLASHMEM void ButtonDemodMode() {
   Return value:
     void
 *****/
-FLASHMEM void ButtonMode() {
-  // Toggle the current mode: SSB -> CW -> DATA -> SSB
+FLASHMEM void ChangeMode(int mode) {
+  if(mode > 2) {
+    mode = 0;
+  }
+  if(mode < 0) {
+    mode = 2;
+  }
+
+  // wrap up current mode
   switch(xmtMode) {
     case SSB_MODE:
-      xmtMode = CW_MODE;
+      // save demod mode if changing to Data mode
+      if(mode == DATA_MODE) {
+        priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+      }
+      break;
 
+    case CW_MODE:
+      // save demod mode if changing to Data mode
+      if(mode == DATA_MODE) {
+        priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+      }
+      break;
+
+    case DATA_MODE:
+      // return demod mode to previous mode
+      bands[currentBand].mode = priorDemodMode;
+
+      if(bands[currentBand].mode == DEMOD_FT8) {
+        exitFT8();
+        UpdateInfoBoxItem(IB_ITEM_FT8);
+      } else {
+        exitPSK31();
+      }
+      break;
+  }
+
+  // set new mode and update
+  xmtMode = mode;
+  switch(xmtMode) {
+    case SSB_MODE:
+      break;
+
+    case CW_MODE:
       // reduce waterfall height if we're decoding CW
       if(decoderFlag == ON) {
         tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
@@ -282,10 +329,7 @@ FLASHMEM void ButtonMode() {
       }
       break;
 
-    case CW_MODE:
-      xmtMode = DATA_MODE;
-      priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
-
+    case DATA_MODE:
       if(currentDataMode == DEMOD_FT8) {
         // try to set up FT8
         if(setupFT8()) {
@@ -298,20 +342,6 @@ FLASHMEM void ButtonMode() {
       } else {
         setupPSK31();
         bands[currentBand].mode = DEMOD_PSK31;
-      }
-      break;
-
-    case DATA_MODE:
-      xmtMode = SSB_MODE;
-
-      // return demod mode to previous mode
-      bands[currentBand].mode = priorDemodMode;
-
-      if(bands[currentBand].mode == DEMOD_FT8) {
-        exitFT8();
-        UpdateInfoBoxItem(IB_ITEM_FT8);
-      } else {
-        exitPSK31();
       }
       break;
   }
@@ -377,6 +407,56 @@ FLASHMEM void ToggleLiveNoiseFloorFlag() {
 
   liveNoiseFloorFlag = !liveNoiseFloorFlag;
   UpdateInfoBoxItem(IB_ITEM_FLOOR);
+}
+
+/*****
+  Purpose: To process a frequency increment button push
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+FLASHMEM void ChangeFreqIncrement(int change) {
+  long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
+
+  tuneIndex += change;
+  if (tuneIndex < 0) {
+    tuneIndex = MAX_FREQ_INDEX - 1;
+  }
+  if (tuneIndex >= MAX_FREQ_INDEX) {
+    tuneIndex = 0;
+  }
+
+  freqIncrement = incrementValues[tuneIndex];
+
+  UpdateInfoBoxItem(IB_ITEM_TUNE);
+}
+
+/*****
+  Purpose: To process a fine tune frequency increment button push
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+FLASHMEM void ChangeFtIncrement(int change) {
+  long selectFT[] = { 10, 50, 250, 500 };
+
+  ftIndex += change;
+  if (ftIndex > 3) {
+    ftIndex = 0;
+  }
+  if (ftIndex < 0) {
+    ftIndex = 3;
+  }
+
+  ftIncrement = selectFT[ftIndex];
+
+  UpdateInfoBoxItem(IB_ITEM_FINE);
 }
 
 /*****
@@ -479,17 +559,17 @@ FLASHMEM void ButtonFrequencyEntry() {
   tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 190);
   tft.print("S   Save Direct to Last Freq. ");
   tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 240);
-  tft.print("Direct Entry was called from "); 
+  tft.print("Direct Entry was called from ");
   tft.print(DE_Band[currentBand]);
   tft.print(" band");
   tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 270);
-  tft.print("Frequency response limited above "); 
+  tft.print("Frequency response limited above ");
   tft.print(DE_Flimit[currentBand]);
   tft.print("MHz");
   tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 300);
-  tft.print("For widest direct entry frequency range"); 
+  tft.print("For widest direct entry frequency range");
   tft.setCursor(WATERFALL_L + 20, SPECTRUM_TOP_Y + 330);
-  tft.print("call from 12m or 10m band"); 
+  tft.print("call from 12m or 10m band");
 
 #endif
 

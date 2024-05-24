@@ -11,3 +11,4 @@ extern uint8_t kbIndexIn, kbIndexOut;
 
 void UsbSetup();
 void UsbLoop();
+void putc(uint8_t input);

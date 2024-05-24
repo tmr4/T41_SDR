@@ -327,9 +327,9 @@ void timing_recovery_cc(complexf* input, complexf* output, int input_size, timin
   while(true)
   {
     //the MathWorks style algorithm has correction_offset.
-    //correction_offset = 0;            
+    //correction_offset = 0;
     if(current_bitstart_index + num_samples_halfbit * 3 >= input_size) break;
-    
+
     if(correction_offset<=-num_samples_quarterbit*0.9 || correction_offset>=0.9*num_samples_quarterbit) {
       correction_offset = 0;
     }
@@ -352,10 +352,10 @@ void timing_recovery_cc(complexf* input, complexf* output, int input_size, timin
     }
     else break;
 
-    error = ( iof(input, el_point_right_index) - iof(input, el_point_left_index) ) * iof(input, el_point_mid_index); 
+    error = ( iof(input, el_point_right_index) - iof(input, el_point_left_index) ) * iof(input, el_point_mid_index);
 
     if(state->use_q) {
-      error += ( qof(input, el_point_right_index) - qof(input, el_point_left_index)) * qof(input, el_point_mid_index); 
+      error += ( qof(input, el_point_right_index) - qof(input, el_point_left_index)) * qof(input, el_point_mid_index);
       error /= 2;
     }
 
@@ -374,8 +374,8 @@ void timing_recovery_cc(complexf* input, complexf* output, int input_size, timin
     correction_offset = num_samples_halfbit * error_sign * error * state->loop_gain;
     current_bitstart_index += num_samples_bit + correction_offset;
 
-    if(si>=input_size) { 
-      break; 
+    if(si>=input_size) {
+      break;
     }
   }
 
@@ -406,7 +406,7 @@ bool IsPhaseShift(float32_t last, float32_t current, float32_t next) {
   //if((last < 0 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0 && next > -PSK_MIN) || (last > 0 && last < PSK_MIN && current < -PSK_THRESHOLD && next > 0 && next < PSK_MIN)) {
   //if((last < 0.1 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0.1 && next > -PSK_MIN) || (last > -0.1 && last < PSK_MIN && current < -PSK_THRESHOLD && next > -0.1 && next < PSK_MIN)) {
   if((last < 0.1 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0.1 && next > -PSK_MIN) || (last > -0.1 && last < PSK_MIN && current < -PSK_THRESHOLD && next > -0.1 && next < PSK_MIN)) {
-  //((last < 0.1 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0.1 && next > -PSK_MIN) || 
+  //((last < 0.1 && last > -PSK_MIN && current > PSK_THRESHOLD && next < 0.1 && next > -PSK_MIN) ||
   // (last > -0.1 && last < PSK_MIN && current < -PSK_THRESHOLD && next > -0.1 && next < PSK_MIN)) {
     return true;
   }
@@ -518,7 +518,7 @@ void Psk31PhaseShiftDetector2(float32_t* input, float32_t* output, int size) {
 
 // only looks for phase changes
 void Psk31PhaseShiftDetector5(float32_t* input, float32_t* output, int size) {
-  static float32_t lastOutput = 0;
+  //static float32_t lastOutput = 0;
   static float32_t last = 0;
   static float32_t current = 0;
   static float32_t next = 0;
@@ -541,7 +541,7 @@ void Psk31PhaseShiftDetector5(float32_t* input, float32_t* output, int size) {
     current = next;
     next = (output[i+1] - output[i]) * PSK_MULT;
   } while(++i < size);
-  lastOutput = output[255];
+  //lastOutput = output[255];
 }
 
 // only looks for phase changes
@@ -549,7 +549,7 @@ void Psk31PhaseShiftDetector(float32_t* input, float32_t* output, int size) {
   static float32_t t0 = 0;
   static float32_t t1 = 0;
   static float32_t t2 = 0;
-  static float32_t t3 = 0;
+  //static float32_t t3 = 0;
   static int psk31Count = 0;
   static int symCount = -1;
   float32_t last;
@@ -561,7 +561,7 @@ void Psk31PhaseShiftDetector(float32_t* input, float32_t* output, int size) {
   // take the derivative of output
   //for(int i = 0; i < size; i++) {
   for(int i = 0; i < size - 2; i++) {
-    t3 = t2;
+    //t3 = t2;
     t2 = t1;
     t1 = t0;
     t0 = output[i];
@@ -600,12 +600,12 @@ void Psk31PhaseShiftDetector4(float32_t* input, float32_t* output, int size) {
   static float32_t last = 0;
   static float32_t current = 0;
   static float32_t next = 0;
-  static bool idle = false;
+  //static bool idle = false;
   static bool decoding = false;
-  static int decodeCount = 0;
+  //static int decodeCount = 0;
   static int psk31Count = 0;
   static int symCount = -1;
-  static int lastSymbol = -1;
+  //static int lastSymbol = -1;
 
   nfmdemod(input, output, size);
 
@@ -840,7 +840,7 @@ void Psk31Decoder(float32_t* input, float32_t* output, int size) {
         char tmp = psk31_varicode_decoder_push(psk31Buffer[i]);
         if(tmp) {
           Serial.print(tmp);
-    
+
           Serial.println("");
         }
       }
@@ -861,7 +861,7 @@ void Psk31Decoder(float32_t* input, float32_t* output, int size) {
       char tmp = psk31_varicode_decoder_push(psk31Buffer[i]);
       if(tmp) {
         Serial.print(tmp);
-  
+
         Serial.println("");
       }
     }
@@ -890,7 +890,7 @@ FLASHMEM bool setupPSK31Wav() {
   uint32_t slot_period = 12;
   uint32_t sample_rate = 8000;
   uint32_t num_samples = slot_period * sample_rate;
-  float32_t buf[256];
+  //float32_t buf[256];
 
   result = load_wav("psk31.wav", num_samples); // abc_psk31.wav
 

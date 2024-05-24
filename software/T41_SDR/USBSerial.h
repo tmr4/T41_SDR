@@ -3,14 +3,14 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-extern bool buttonInterruptsEnabled;
+extern bool dataFlag;
+extern uint8_t specData[518];
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void EnableButtonInterrupts();
-int ProcessButtonPress(int valPin);
-int ReadSelectedPushButton();
-void ExecuteButtonPress(int val);
-void NoActiveMenu();
+void SerialSetup();
+void SerialLoop();
+void SendData(uint8_t *data, int len);
+void SendSmeter(int16_t smeterPad, float32_t dbm);

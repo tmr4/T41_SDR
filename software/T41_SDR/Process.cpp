@@ -19,6 +19,7 @@
 #include "Process.h"
 #include "psk31.h"
 #include "Tune.h"
+#include "USBSerial.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -30,7 +31,7 @@ int dataIndex = 0;
 
 float32_t audioMaxSquaredAve = 0;
 
-int audioYPixel[1024];
+int audioYPixel[1024]; // *** TODO: this doesn't need to be this big ***
 float32_t audioSpectBuffer[1024]; // This can't be DMAMEM.  It will break the S-Meter.
 //float32_t DMAMEM last_sample_buffer_L[BUFFER_SIZE * N_DEC_B];
 //float32_t DMAMEM last_sample_buffer_R[BUFFER_SIZE * N_DEC_B];
@@ -93,7 +94,7 @@ void ProcessIQData() {
     usec = 0;
 
     // we allow input buffer availability to regulate FT8 wav file decoding
-    // otherwise we'll process the wav file too fast.  This is better than 
+    // otherwise we'll process the wav file too fast.  This is better than
     // using delays
     if(!((bands[currentBand].mode == DEMOD_FT8_WAV) || (bands[currentBand].mode == DEMOD_PSK31_WAV))) {
       // get audio samples from the audio  buffers and convert them to float
@@ -125,8 +126,8 @@ void ProcessIQData() {
       **********************************************************************************/
       arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
       arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
-      
-      /********************************************************************************** 
+
+      /**********************************************************************************
           Scale the data buffers by the RFgain value defined in bands[currentBand] structure
       **********************************************************************************/
       arm_scale_f32 (float_buffer_L, bands[currentBand].RFgain, float_buffer_L, BUFFER_SIZE * N_BLOCKS);
@@ -294,7 +295,7 @@ void ProcessIQData() {
             float_buffer_L[2*i-1] = (float_buffer_R[i-1] + float_buffer_R[i]) / 2;
             float_buffer_L[2*i] = float_buffer_R[i];
           }
-          
+
           // prepare FT8 data
           // convert floats to the q15 required by FT8 routines
           arm_float_to_q15(float_buffer_R, q15_buffer_LTemp, FFT_length / 2 / 2);
@@ -489,12 +490,12 @@ void ProcessIQData() {
         volScaleFactor = 7.0874 * pow(freqKHzFcut, -1.232);
         arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, FFT_length / 2);
         arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, FFT_length / 2);
-        
+
         // Prepare the audio signal buffers
         //  First, Create Complex time signal for CFFT routine.
         //  Fill first block with Zeros
         //  Then interleave RE and IM parts to create signal for FFT
-        if (first_block) { 
+        if (first_block) {
           // fill real & imaginaries with zeros for the first BLOCKSIZE samples
           // ONLY FOR the VERY FIRST FFT: fill first samples with zeros
           for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS / (uint32_t)(DF / 2.0); i++) {
@@ -638,7 +639,7 @@ void ProcessIQData() {
 
                 // transfer audio data to ft8_dsp_buffer
                 // decimate by 3.75 which brings us to a 6.4 ksps rate
-                //ft8_dsp_buffer[2048 + i + dataLoop * 68] = float_buffer_L[(int)(i * 3.75)]; 
+                //ft8_dsp_buffer[2048 + i + dataLoop * 68] = float_buffer_L[(int)(i * 3.75)];
                 ft8_dsp_buffer[2048 + i + dataLoop * 68 + leftover] = q15_buffer_LTemp[(int)(i * 15 / 4)]; // i * 3.75
               }
 
@@ -677,7 +678,7 @@ void ProcessIQData() {
               DisplayMessages();
             }
 
-            ft8_decode_flag = 0;  
+            ft8_decode_flag = 0;
           }
 
           if(ft8_flag == 0 && syncFlag) update_synchronization();
@@ -713,11 +714,11 @@ void ProcessIQData() {
         // the first two have about same performance, the third didn't perform well on my test signal
 
         nfmdemod(&FFT_buffer[FFT_length], float_buffer_L, FFT_length / 2);
-        
+
         // limit the demodulated signal
         for (unsigned i = 1; i < FFT_length / 2; i++) {
           float32_t tmp = float_buffer_L[i];
-        
+
           // limit it to -1 <= tmp <= 1
           // modified from limit_ff in libcsdr.c from https://github.com/ha7ilm/csdr
           tmp = (1 < tmp) ? 1 : tmp;
@@ -749,7 +750,7 @@ void ProcessIQData() {
         //Psk31Decoder(&FFT_buffer[FFT_length], float_buffer_L_EX, FFT_length / 2);
         Psk31PhaseShiftDetector(&FFT_buffer[FFT_length], float_buffer_L_EX, FFT_length / 2);
         break;
-        
+
       case DEMOD_SAM:
         AMDecodeSAM();
         break;
@@ -812,6 +813,15 @@ void ProcessIQData() {
       for (unsigned i = 0; i < FFT_length / 2; i++) {
         float_buffer_L[i] = iFFT_buffer[FFT_length + (i * 2)];
       }
+    }
+
+    // send audio data to control app if applicable
+    if (updateDisplayFlag == 1 && dataFlag) {
+      for (int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
+        // audioYPixel is already >= 0, limit it to 255
+        specData[i] = (uint8_t)(audioYPixel[i] > 255 ? 255 : audioYPixel[i]);
+      }
+      SendData(specData, AUDIO_SPEC_BOX_W - 2);
     }
 
     //============================  Receive EQ  ========================

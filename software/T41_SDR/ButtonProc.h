@@ -20,9 +20,12 @@ extern int currentDataMode;
 
 void BandChange(int change);
 void ButtonFilter();
-void ButtonDemodMode();
-void ButtonMode();
+void ChangeDemodMode(int mode);
+void ChangeMode(int mode);
 void ButtonNR();
 void ButtonNotchFilter();
 void ButtonFrequencyEntry();
 void ToggleLiveNoiseFloorFlag();
+
+void ChangeFreqIncrement(int change);
+void ChangeFtIncrement(int change);

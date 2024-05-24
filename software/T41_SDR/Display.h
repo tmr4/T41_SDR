@@ -138,6 +138,7 @@ typedef struct {
 extern dispSc displayScale[];
 
 extern int newSpectrumFlag;
+extern int currentNF;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -159,7 +160,7 @@ void DrawSmeterBar();
 void DrawBandwidthBar();
 void ShowBandwidthBarValues();
 
-// 
+//
 void ShowSpectrumdBScale();
 void ShowTransmitReceiveStatus();
 void SetZoom(int zoom);

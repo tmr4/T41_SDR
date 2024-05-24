@@ -20,8 +20,6 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-#define MAX_FREQ_INDEX              8
-
 int buttonRead = 0;
 int minPinRead = 1024;
 
@@ -267,7 +265,7 @@ int ProcessButtonPress(int valPin) {
 int ReadSelectedPushButton() {
   minPinRead = 0;
   int buttonReadOld = 1023;
-  
+
   if (buttonInterruptsEnabled) {
     noInterrupts();
     buttonRead = buttonADCOut;
@@ -354,7 +352,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
         SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
         if(mainMenuIndex < TOP_MENU_COUNT - 1) {
           SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
-          functionPtr[mainMenuIndex](); 
+          functionPtr[mainMenuIndex]();
         }
 
         tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
@@ -379,7 +377,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
         SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
         if(mainMenuIndex < TOP_MENU_COUNT - 1) {
           SetSecondaryMenuIndex();              // Use the primary index selection to redraw the secondary menu and set its index
-          functionPtr[mainMenuIndex](); 
+          functionPtr[mainMenuIndex]();
         }
 
         tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
@@ -399,11 +397,13 @@ FLASHMEM void ExecuteButtonPress(int val) {
       break;
 
     case DEMODULATION:  // 7
-      ButtonDemodMode();
+      // change to the next demod mode
+      ChangeDemodMode(bands[currentBand].mode + 1);
       break;
 
     case SET_MODE:  // 8
-      ButtonMode();
+      // change to the next mode: SSB -> CW -> DATA -> SSB
+      ChangeMode(xmtMode + 1);
       break;
 
     case NOISE_REDUCTION:  // 9
@@ -420,7 +420,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
       break;
 
     case FINE_TUNE_INCREMENT:  // 12
-      ChangeFTIncrement(1);
+      ChangeFtIncrement(1);
       break;
 
     case DECODER_TOGGLE:  // 13
@@ -476,7 +476,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
               UpdateInfoBoxItem(IB_ITEM_FT8);
             } else {
               // couldn't load wav file
-              syncFlag = false; 
+              syncFlag = false;
               ft8State = 1;
               UpdateInfoBoxItem(IB_ITEM_FT8);
             }
@@ -492,22 +492,22 @@ FLASHMEM void ExecuteButtonPress(int val) {
     case BEARING:  // 17
       int buttonIndex, doneViewing, valPin;
       float retVal;
-      
+
       tft.clearScreen(RA8875_BLACK);
 
       DrawKeyboard();
       CaptureKeystrokes();
       retVal = BearingHeading(keyboardBuffer);
 
-     
+
       if (retVal != -1.0) {                           // We have valid country
         bmpDraw((char *)myMapFiles[selectedMapIndex].mapNames, IMAGE_CORNER_X, IMAGE_CORNER_Y);
         doneViewing = false;
       } else {
         tft.setTextColor(RA8875_RED);
         tft.setCursor(380 - (17 * tft.getFontWidth(0)) / 2, 240);   // Center message
-        tft.print("Country not found");  
-        tft.setTextColor(RA8875_WHITE);        
+        tft.print("Country not found");
+        tft.setTextColor(RA8875_WHITE);
       }
       while (true) {
         valPin = ReadSelectedPushButton();            // Poll UI push buttons
@@ -536,56 +536,6 @@ FLASHMEM void ExecuteButtonPress(int val) {
       //ShowSpectrumFreqValues();
       break;
   }
-}
-
-/*****
-  Purpose: To process a frequency increment button push
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FLASHMEM void ChangeFreqIncrement(int change) {
-  long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
-
-  tuneIndex += change;
-  if (tuneIndex < 0) {
-    tuneIndex = MAX_FREQ_INDEX - 1;
-  }
-  if (tuneIndex >= MAX_FREQ_INDEX) {
-    tuneIndex = 0;
-  }
-
-  freqIncrement = incrementValues[tuneIndex];
-
-  UpdateInfoBoxItem(IB_ITEM_TUNE);
-}
-
-/*****
-  Purpose: To process a fine tune frequency increment button push
-
-  Parameter list:
-    void
-
-  Return value;
-    void
-*****/
-FLASHMEM void ChangeFTIncrement(int change) {
-  long selectFT[] = { 10, 50, 250, 500 };
-
-  ftIndex += change;
-  if (ftIndex > 3) {
-    ftIndex = 0;
-  }
-  if (ftIndex < 0) {
-    ftIndex = 3;
-  }
-
-  ftIncrement = selectFT[ftIndex];
-
-  UpdateInfoBoxItem(IB_ITEM_FINE);
 }
 
 /*****

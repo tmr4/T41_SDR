@@ -2,7 +2,7 @@
 
 Initial "fork" from T41-EP software version SDTVer049.2K, based on the T41-EP developed by Albert Peter and Jack Purdum.
 
-Ultimately, it would be nice to be able to add or remove features from the T41 simply by adding or removing a file.  The software is far from that goal.  The structure of the original software also makes it difficult to collaborate.  Thus this version.  
+Ultimately, it would be nice to be able to add or remove features from the T41 simply by adding or removing a file.  The software is far from that goal.  The structure of the original software also makes it difficult to collaborate.  Thus this version.
 
 I've focused on a few areas of interest to me:
 
@@ -16,7 +16,8 @@ This is a work in progress.  Some functions from the original version are broken
 
 ## Branches
 
-* main - dev/v0.1
+* main - dev/v0.1 w/o feature/USB
+
 * dev/v0.1 - SDR.1 with:
 
   * feature/menu
@@ -27,7 +28,28 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/keyboard
   * feature/mouse
   * feature/psk31
+  * feature/USB
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
+
+* feature/USB - adds communications with PC control app over SerialUSB1 (must select `Dual` or `Triple` USB Type when compiling).  A separate control app running on your PC is required (I'm still determining the best way to make this app available).  The control app has the following features:
+
+  * Live view of frequency and audio spectrums, S-meter, waterfall, and filter bandwidth
+  * Live updates can be paused or started with the button at the lower left of the waterfall
+  * T41 clock set to PC time upon connection
+  * Change frequency of active VFO by the active increment with the mouse wheel
+  * Change the active increment with a mouse click (center or fine tune indicated by the green highlight in the info box)
+  * Zero out the 1000s portion of the active VFO with a right-mouse click
+  * Reset tuning of the active VFO with a mouse click on the Center Frequency
+  * Switch to the inactive VFO with a mouse click on the inactive VFO
+  * Set the noise floor with a mouse click on NF Set and a mouse wheel in the frequency spectrum (this occurs live unlike the base T41 software which stops operation while the noise floor is adjusted)
+  * Change the following up or down with the mouse wheel (on the corresponding indicator):
+    * Band
+    * Operating mode
+    * Demodulation mode
+    * Transmit power
+    * Volume
+    * AGC
+    * Center and fine tune increment
 
 * feature/psk31 - adds PSK31 data mode. Still a work in progress.
 
@@ -147,7 +169,7 @@ This is a work in progress.  Some functions from the original version are broken
 
   * Added USE_FULL_MENU option to MyConfigurationFile.h to allow user to select whether to use the STDVer049.2K full screen menus or top line menus similar to T41EEE *(this seems to be the original T41 menu system)*.  Need to verify continued functionality of full screen menu option.
   * Modified ExecuteButtonPress():
-  
+
     * Menu up or Menu down buttons select the main menu
     * Restored/enhanced top line menu functionality
   * Renamed ButtonMenuIncrease and ButtonMenuDecrease to ButtonMenuDown and ButtonMenuUp to reflect the actual button names.  Replaced if/else with switch.

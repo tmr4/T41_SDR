@@ -27,7 +27,7 @@
 //#define ITU_REGION                1 //for Europe
 #define ITU_REGION    2   // for USA
 //#define ITU_REGION    3   // Asia/Oceania
-// DB2OO, 29.823:. Analog Signal on this pin will be used for an analog S-Meter (250uA full scale) connected via 10kOhm to this output. 1uF capacitor paralle to the S-Meter. --> Display.cpp. 
+// DB2OO, 29.823:. Analog Signal on this pin will be used for an analog S-Meter (250uA full scale) connected via 10kOhm to this output. 1uF capacitor paralle to the S-Meter. --> Display.cpp.
 // This might conflict with other hardware modifications, that might use Pin 33 for a different purpose --> please check, before defining this
 //#define HW_SMETER              33
 // DB2OO, 30-AUG-23: with TCVSDR_SMETER (TCVSDR=Teensy Convolution SDR) defined the S-Meter bar will be consistent with the dBm value and it will not go over the box for S9+40+
@@ -42,7 +42,7 @@
 #define CURRENT_FREQ_B            7030000                                   // VFO_B
 
                                                                             //            0   1   2     3     4      5       6        7
-#define DEFAULTFREQINDEX          7                                         // Default: (10, 50, 100, 250, 1000, 10000, 100000, 1000000)
+#define DEFAULTFREQINDEX          6                                         // Default: (10, 50, 100, 250, 1000, 10000, 100000, 1000000)
                                                                             //            0   1   2     3
 #define DEFAULT_FT_INDEX          3                                         // Default: (10, 50, 250, 500)
 

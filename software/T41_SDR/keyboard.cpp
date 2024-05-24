@@ -16,6 +16,7 @@
 // *** a new devise so we don't really save that much.  Doing this manually
 // is a possibility if we need to save memory when not using a keyboard.
 USBHost usbHost;
+USBHub usbHub(usbHost);
 USBHIDParser hkbParser(usbHost); // each device needs a parser
 KeyboardController kbController(usbHost);
 

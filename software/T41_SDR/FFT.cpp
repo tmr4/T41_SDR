@@ -1,6 +1,7 @@
 #include "SDT.h"
 #include "Display.h"
 #include "FIR.h"
+#include "USBSerial.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -13,6 +14,7 @@ int zoom_sample_ptr = 0;
 float32_t DMAMEM FFT_buffer[FFT_LENGTH * 2] __attribute__((aligned(4)));
 float32_t DMAMEM buffer_spec_FFT[1024] __attribute__((aligned(4)));
 float32_t DMAMEM FFT_spec[1024];
+float32_t DMAMEM FFT_data[512];
 float32_t DMAMEM FFT_spec_old[1024];
 
 float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
@@ -23,10 +25,10 @@ float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
 
 /*****
   Purpose: change IIR and decimation filters for altered frequency spectrum badwidth.
-  
+
   Parameter list:
     void
-    
+
   Return value;
     void
 *****/
@@ -55,7 +57,7 @@ FLASHMEM void ZoomFFTPrep() {
 /*****
   Purpose: Display FFT routine
            Should only be called when spectrumZoom > 1 and updateDisplayFlag == 1
-  
+
   Parameter list:
     void
 
@@ -90,16 +92,16 @@ void ZoomFFTExe(uint32_t blockSize) {
   // we take all the samples from zoom_sample_ptr to 256 and
   // then all samples from 0 to zoom_sampl_ptr - 1
   // fill into ringbuffer
-  
+
   // interleave real and imaginary input values [real, imag, real, imag . . .]
-  for (int i = 0; i < sample_no; i++) { 
+  for (int i = 0; i < sample_no; i++) {
     FFT_ring_buffer_x[zoom_sample_ptr] = x_buffer[i];
     FFT_ring_buffer_y[zoom_sample_ptr] = y_buffer[i];
     zoom_sample_ptr++;
     if (zoom_sample_ptr >= SPECTRUM_RES)
       zoom_sample_ptr = 0;
   }
-  
+
   multiplier = (float32_t)spectrumZoom;
   if (spectrumZoom > 3) { // SPECTRUM_ZOOM_8
     multiplier = (float32_t)(1 << spectrumZoom);
@@ -117,7 +119,7 @@ void ZoomFFTExe(uint32_t blockSize) {
   // "spectrum display smoothness" is the same across the different sample rates
   // and the same across different magnify modes . . .
   LPFcoeff = 0.7;
-  
+
   //if (LPFcoeff > 1.0) {
   //  LPFcoeff = 1.0;
   //}
@@ -138,18 +140,58 @@ void ZoomFFTExe(uint32_t blockSize) {
 
   // apply low pass filter and scale the magnitude values and convert to int for spectrum display
   // apply spectrum AGC
+  int16_t min = 0;
+  int16_t max = 0;
+  int16_t data[SPECTRUM_RES];
   for (int i = 0; i < SPECTRUM_RES; i++) {
     // save old pixels for lowpass filter This is also used to erase the old spectrum
     //pixelold[i] = pixelnew[i];
+    // *** TODO: check if pixelCurrent is still needed, seems like with single update per loop
+    //            and fixed noise floor (currentNF) pixelCurrent will always equal pixelnew ***
     pixelold[i] = pixelCurrent[i];
 
     FFT_spec[i] = LPFcoeff * FFT_spec[i] + onem_LPFcoeff * FFT_spec_old[i];
     FFT_spec_old[i] = FFT_spec[i];
 
+    // *** TODO: consider doing the limiting in Display.cpp here ***
     pixelnew[i] = displayScale[currentScale].baseOffset + bands[currentBand].pixel_offset + (int16_t)(displayScale[currentScale].dBScale * log10f_fast(FFT_spec[i]));
-    if (pixelnew[i] > 220) {
-      pixelnew[i] = 220;
+    if(dataFlag) {
+      // T41 spectrum equation: spectrumNoiseFloor - pixelnew[i] - currentNF;
+      //data[i] = spectrumNoiseFloor - pixelnew[i] - currentNF;
+      data[i] = pixelnew[i] + currentNF;
+      if (data[i] < min) {
+        min = data[i];
+      }
+      if (data[i] > max) {
+        max = data[i];
+      }
     }
+  }
+
+  // set up specData for frequency spectrum command
+  // FDxxx[512]; where xxx = 255 - max and [512] = 512 bytes spectrum data
+  sprintf((char*)specData, "FD%03d", 255 - max);
+  specData[517] = ';';
+
+  // shift spectrum data and send it to PC if applicable
+  // we have to scale and apply noise floor in the control app
+  if(dataFlag) {
+    int tmp = 0;
+    for (int i = 0; i < SPECTRUM_RES; i++) {
+      // shift data so max = 255
+      // *** TODO: consider scaling here fits data into a 0-255 range ***
+      tmp = data[i] + 255 - max;
+      // though unlikely, data can still be negative, limit it
+      if (tmp < 0) {
+        tmp = 0;
+      }
+      //if (tmp > 255) {
+      //  tmp = 255;
+      //}
+      specData[i + 5] = (uint8_t)tmp;
+    }
+
+    SendData(specData, SPECTRUM_RES + 6);
   }
 }
 

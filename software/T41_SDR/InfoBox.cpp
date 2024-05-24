@@ -20,6 +20,7 @@
 
 void IBDecoderFollowup(int row, int col);
 void IBCompressionFollowup(int row, int col);
+void IBTuneIncFollowup(int row, int col);
 void IBWPMFollowup(int row, int col);
 void IBVolFollowup(int row, int col);
 void IBEQFollowup(int row, int col);
@@ -79,14 +80,14 @@ const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
 
 #define IB_NUM_ITEMS 12
 
-PROGMEM const infoBoxItem infoBox[] = 
+PROGMEM const infoBoxItem infoBox[] =
 { //                                                     font    # chars
   // label         Options      option                   size    to erase  flag  col            row,           follow-up function
   { "Vol:",        NULL,        NULL,                     1,        3,      0,   IB_COL_1_X,    IB_ROW_1_Y,    &IBVolFollowup         }, // Tune Inc
   { "AGC",         agcOpts,     &AGCMode,                 1,        3,      1,   IB_COL_2L_X,   IB_ROW_1_Y,    NULL                   }, // Tune Inc
-  { "Increment:",  tuneValues,  &tuneIndex,               0,        7,      0,   IB_COL_1_X,    IB_ROW_3_Y,    NULL                   }, // Tune Inc
-  { "FT Inc:",     ftValues,    &ftIndex,                 0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    NULL                   }, // FT Inc
-  { "Zoom:",       zoomOptions, (int*)&spectrumZoom,     0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
+  { "Increment:",  tuneValues,  &tuneIndex,               0,        7,      0,   IB_COL_1_X,    IB_ROW_3_Y,    &IBTuneIncFollowup     }, // Tune Inc
+  { "FT Inc:",     ftValues,    &ftIndex,                 0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    &IBTuneIncFollowup     }, // FT Inc
+  { "Zoom:",       zoomOptions, (int*)&spectrumZoom,      0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
   { "Decoder:",    onOff,       &decoderFlag,             0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Decoder
   { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_7_Y,    &IBTempFollowup        }, // Teensy Temp
@@ -135,6 +136,8 @@ void UpdateInfoBoxItem(uint8_t item) {
   int yOffset = infoBox[item].row;
 
   if(item >= IB_NUM_ITEMS) return;
+
+  //if(item == IB_ITEM_TUNE) Serial.println(tuneIndex);
 
   tft.setFontScale((enum RA8875tsize)infoBox[item].fontSize);
   tft.fillRect(xOffset, yOffset, tft.getFontWidth() * infoBox[item].clearWidth, tft.getFontHeight(), RA8875_BLACK);
@@ -190,6 +193,19 @@ void UpdateInfoBox() {
   for(int i = 0; i < IB_NUM_ITEMS; i++) {
     UpdateInfoBoxItem(i);
   }
+}
+
+/*****
+  Purpose: Information box follow up function for the Compression item
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+void IBTuneIncFollowup(int row, int col) {
+  SetFtActive(!mouseCenterTuneActive);
 }
 
 /*****
@@ -526,6 +542,18 @@ void IBHeapFollowup(int row, int col) {
   tft.print("k");
 }
 
+void SetFtActive(int flag) {
+  if(flag == 1) {
+    mouseCenterTuneActive = false;
+    HighlightIBItem(IB_ITEM_FINE, RA8875_GREEN);
+    HighlightIBItem(IB_ITEM_TUNE, RA8875_WHITE);
+  } else {
+    mouseCenterTuneActive = true;
+    HighlightIBItem(IB_ITEM_TUNE, RA8875_GREEN);
+    HighlightIBItem(IB_ITEM_FINE, RA8875_WHITE);
+  }
+}
+
 // mouse actions
 void MouseButtonInfoBox(int button, int x, int y) {
   // *** TODO: this is weak ***
@@ -539,7 +567,7 @@ void MouseButtonInfoBox(int button, int x, int y) {
   //Serial.println(itemChars);
   //Serial.println(itemW);
   //Serial.println(itemH);
-  
+
 
   // *** TODO: rework this after we add full capability
   for(int i = 0; i < 4; i++) {
@@ -570,17 +598,13 @@ void MouseButtonInfoBox(int button, int x, int y) {
       switch(item) {
         case IB_ITEM_TUNE:
           if(button == 1) {
-            mouseCenterTuneActive = true;
-            HighlightIBItem(IB_ITEM_TUNE, RA8875_GREEN);
-            HighlightIBItem(IB_ITEM_FINE, RA8875_WHITE);
+            SetFtActive(0);
           }
           break;
 
         case IB_ITEM_FINE:
           if(button == 1) {
-            mouseCenterTuneActive = false;
-            HighlightIBItem(IB_ITEM_FINE, RA8875_GREEN);
-            HighlightIBItem(IB_ITEM_TUNE, RA8875_WHITE);
+            SetFtActive(1);
           }
           break;
 
@@ -663,7 +687,7 @@ void MouseWheelInfoBox(int wheel, int x, int y) {
           break;
 
         case IB_ITEM_FINE:
-          ChangeFTIncrement(wheel);
+          ChangeFtIncrement(wheel);
           if(!mouseCenterTuneActive) {
             HighlightIBItem(IB_ITEM_FINE, RA8875_GREEN);
           }

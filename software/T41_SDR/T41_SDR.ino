@@ -7,10 +7,10 @@
   "TEENSY CONVOLUTION SDR" substantially modified by Jack Purdum, W8TEE, and Al Peter, AC8GY
 
   This software is made available under the GNU GPLv3 license agreement. If commercial use of this
-  software is planned, we would appreciate it if the interested parties contact Jack Purdum, W8TEE, 
+  software is planned, we would appreciate it if the interested parties contact Jack Purdum, W8TEE,
   and Al Peter, AC8GY.
 
-  Any and all other uses, written or implied, by the GPLv3 license are forbidden without written 
+  Any and all other uses, written or implied, by the GPLv3 license are forbidden without written
   permission from from Jack Purdum, W8TEE, and Al Peter, AC8GY.
 
 *********************************************************************************************/
@@ -43,6 +43,7 @@
 #include "keyboard.h"
 #include "locator.h"
 #include "mouse.h"
+#include "USBSerial.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -104,7 +105,7 @@ long calFreqShift;
 
 // SampleRate
 //   8000, // SAMPLE_RATE_8K    // not OK
-//  11025, // SAMPLE_RATE_11K   // not OK 
+//  11025, // SAMPLE_RATE_11K   // not OK
 //  16000, // SAMPLE_RATE_16K   // OK
 //  22050, // SAMPLE_RATE_22K   // OK
 //  32000, // SAMPLE_RATE_32K   // OK, on
@@ -140,10 +141,10 @@ float knee_dBFS, comp_ratio, attack_sec, release_sec;
 struct band bands[NUMBER_OF_BANDS] = {
 //  freq      band low   band hi   name    mode         Hi   Low     Gain  type         gain     AGC   pixel
 //                                                       filter                         correct        offset
-#if defined(ITU_REGION) && ITU_REGION == 1                                                             
+#if defined(ITU_REGION) && ITU_REGION == 1
     3700000,  3500000,   3800000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
     7150000,  7000000,   7200000,  "40M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-#elif defined(ITU_REGION) && ITU_REGION == 2                                                                    
+#elif defined(ITU_REGION) && ITU_REGION == 2
     3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
     7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
 
@@ -151,10 +152,10 @@ struct band bands[NUMBER_OF_BANDS] = {
     //7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  3000, 200,  1,    HAM_BAND,    -2.0,    20,    20,
     //3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  200, 3000,  1,    HAM_BAND,    -2.0,    20,    20,
     //7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  200, 3000,  1,    HAM_BAND,    -2.0,    20,    20,
-#elif defined(ITU_REGION) && ITU_REGION == 3                                                                    
+#elif defined(ITU_REGION) && ITU_REGION == 3
     3700000,  3500000,   3900000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
     7150000,  7000000,   7200000,  "40M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-#endif                                                                                                        
+#endif
     14200000, 14000000, 14350000,  "20M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    2.0,     20,    20,
     18100000, 18068000, 18168000,  "17M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    2.0,     20,    20,
     21200000, 21000000, 21450000,  "15M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    5.0,     20,    20,
@@ -948,6 +949,7 @@ FLASHMEM void setup() {
   char myGrid[] = "CM87";
   set_Station_Coordinates(myGrid);
 
+  SerialSetup();
   //ARMCorrTest();
 }
 
@@ -1248,6 +1250,7 @@ FASTRUN void loop()
   if (elapsed_micros_idx_t > 200) {
     PrintKeyboardBuffer();
   }
+  SerialLoop();
 #endif
 
   // update memory about every second

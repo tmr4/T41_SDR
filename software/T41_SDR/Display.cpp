@@ -19,6 +19,7 @@
 #include "Noise.h"
 #include "Process.h"
 #include "Tune.h"
+#include "USBSerial.h"
 #include "Utility.h"
 
 #include "keyboard.h"
@@ -59,7 +60,7 @@ unsigned long last_usb_read = 0;
     Some frequency changes resulting from button interaction are updated during the call to ShowSpectrum as well.
     These include:
       ButtonFrequencyEntry - does this now, but this should be changed.
-      
+
     Info box items are updated individually in response to user interaction with the radio.  The entire box only
     needs redrawn when its area has been used for other purposes.
 
@@ -103,9 +104,9 @@ RA8875 tft = RA8875(RA8875_CS, RA8875_RESET);
 dispSc displayScale[] =
 {
   // *dbText,dBScale, pixelsPerDB, baseOffset, offsetIncrement
-  { "20 dB/", 10.0, 2, 24, 1.00 },
-  { "10 dB/", 20.0, 4, 10, 0.50 },
-  { "5 dB/", 40.0, 8, 58, 0.25 },
+  { "20 dB/", 10.0,  2,  24, 1.00 },
+  { "10 dB/", 20.0,  4,  10, 0.50 },
+  { "5 dB/",  40.0,  8,  58, 0.25 },
   { "2 dB/", 100.0, 20, 120, 0.10 },
   { "1 dB/", 200.0, 40, 200, 0.05 }
 };
@@ -196,6 +197,8 @@ FLASHMEM void ShowName() {
   tft.print(VERSION);
 }
 
+int currentNF = 0;
+
 /*****
   Purpose: Show Spectrum display
             This routine calls the Audio process Function during each display cycle,
@@ -218,9 +221,10 @@ FASTRUN void ShowSpectrum() {
   int filterHiPosition;
   int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
   static int oldNF;
-  const int currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
   int filterLoColor;
   int filterHiColor;
+
+  currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
 
   // initialize old noise floor if this is a new spectrum
   if(newSpectrumFlag == 0) {
@@ -242,7 +246,7 @@ FASTRUN void ShowSpectrum() {
     // update filters if changed
     if (posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
       SetBWFilters();
-      
+
       ShowBandwidthBarValues();
       DrawBandwidthBar();
     }
@@ -338,7 +342,7 @@ FASTRUN void ShowSpectrum() {
     // In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum
     // This is the actual "old" spectrum!  This is required due to CW interrupts
     // pixelCurrent gets copied to pixelold by the FFT function
-    pixelCurrent[x1] = pixelnew[x1];  
+    pixelCurrent[x1] = pixelnew[x1];
 
     if (x1 < AUDIO_SPEC_BOX_W - 2) { // don't overwrite right edge of audio spectrum box
       if (keyPressedOn == 1) {
@@ -383,7 +387,7 @@ FASTRUN void ShowSpectrum() {
                 filterLoColor = RA8875_LIGHT_GREY;
                 filterHiColor = RA8875_GREEN;
               }
-            } 
+            }
             break;
 
           case DEMOD_LSB:
@@ -393,7 +397,7 @@ FASTRUN void ShowSpectrum() {
             } else {
               filterLoColor = RA8875_GREEN;
               filterHiColor = RA8875_LIGHT_GREY;
-            } 
+            }
             break;
 
           case DEMOD_NFM:
@@ -407,7 +411,7 @@ FASTRUN void ShowSpectrum() {
               } else {
                 filterLoColor = RA8875_LIGHT_GREY;
                 filterHiColor = RA8875_GREEN;
-              } 
+              }
             }
             break;
 
@@ -432,15 +436,17 @@ FASTRUN void ShowSpectrum() {
     // create data for waterfall
     int test1;
     test1 = -y_new_plot + 230;  // Nudged waterfall towards blue
+    //test1 = (int)(x1 / 50) + currentNF * 10; // test color gradient
     if (test1 < 0) test1 = 0;
-    if (test1 > 117) test1 = 117;
+    //if (test1 > 117) test1 = 117;
+    if (test1 > 116) test1 = 116; // *** above is out of range of gradient
     waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array
   }
 
   // update S-meter once per loop
   DrawSmeterBar();
 
-  pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];  
+  pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];
 
   oldNF = currentNF; // save the noise floor we used for this spectrum
 
@@ -526,7 +532,7 @@ FLASHMEM void ShowBandwidthBarValues() {
           loColor = RA8875_GREEN;
         } else {
           hiColor = RA8875_GREEN;
-        } 
+        }
       }
       break;
 
@@ -535,7 +541,7 @@ FLASHMEM void ShowBandwidthBarValues() {
         hiColor = RA8875_GREEN;
       } else {
         loColor = RA8875_GREEN;
-      } 
+      }
       break;
 
     case DEMOD_NFM:
@@ -923,7 +929,7 @@ const float pixels_per_s = 12.2;
 *****/
 FASTRUN void DrawSmeterBar() {
   char buff[10];
-  const char *unit_label;
+  //const char *unit_label;
   int16_t smeterPad;
   float32_t dbm;
   float32_t dbm_calibration = 22.0;
@@ -941,7 +947,7 @@ FASTRUN void DrawSmeterBar() {
 #ifdef TCVSDR_SMETER
   //DB2OO, 9-OCT_23: dbm_calibration set to -22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
   // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
-  dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) + 
+  dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) +
         cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands; //DB2OO, 08-OCT-23; added rfGainAllBands
 #else
   //DB2OO, 9-OCT-23: audioMaxSquaredAve is proportional to the input power. With rfGainAllBands=0 it is approx. 40 for -73dBm @ 14074kHz with the V010 boards and the pre-Amp fed by 12V
@@ -964,7 +970,7 @@ FASTRUN void DrawSmeterBar() {
 
   tft.setTextColor(RA8875_WHITE);
 
-  //DB2OO, 17-AUG-23: create PWM analog output signal on the "HW_SMETER" output. This is scaled for a 250uA  S-meter full scale, 
+  //DB2OO, 17-AUG-23: create PWM analog output signal on the "HW_SMETER" output. This is scaled for a 250uA  S-meter full scale,
   // connected to HW_SMTER output via a 8.2kOhm resistor and a 4.7kOhm resistor and 10uF capacitor parallel to the S-Meter
 #ifdef HW_SMETER
   { int hw_s;
@@ -974,14 +980,19 @@ FASTRUN void DrawSmeterBar() {
   }
 #endif
 
-  unit_label = "dBm";
+  //unit_label = "dBm";
   tft.setFontScale((enum RA8875tsize)0);
 
-  tft.fillRect(SMETER_X + 185, SMETER_Y, 80, tft.getFontHeight(), RA8875_BLACK);  // The dB figure at end of S 
+  tft.fillRect(SMETER_X + 185, SMETER_Y, 80, tft.getFontHeight(), RA8875_BLACK);  // The dB figure at end of S
   //DB2OO, 29-AUG-23: consider no decimals in the S-meter dBm value as it is very busy with decimals
   MyDrawFloat(dbm, /*0*/ 1, SMETER_X + 184, SMETER_Y, buff);
   tft.setTextColor(RA8875_GREEN);
-  tft.print(unit_label);
+  tft.print("dBm");
+
+  if(dataFlag) {
+    SendSmeter(smeterPad, dbm);
+  }
+
 }
 
 /*****
@@ -1021,7 +1032,7 @@ FLASHMEM void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, in
 FLASHMEM void RedrawDisplayScreen() {
   // clear display
   tft.fillWindow();
-  
+
   DrawStaticDisplayItems();
 
   // update display left to right, top to bottom
@@ -1215,9 +1226,9 @@ FLASHMEM void DrawSMeterContainer() {
 #ifdef TCVSDR_SMETER
     //DB2OO, 30-AUG-23: draw wider tick marks in the style of the Teensy Convolution SDR
     tft.drawRect(SMETER_X + i * pixels_per_s, SMETER_Y - 6-(i%2)*2, 2, 6+(i%2)*2, RA8875_WHITE);
-#else      
+#else
     tft.drawFastVLine(SMETER_X + i * 12.2, SMETER_Y - 6, 7, RA8875_WHITE);
-#endif    
+#endif
   }
 
   // DB2OO, 30-AUG-23: the green line must start at S9
@@ -1228,18 +1239,18 @@ FLASHMEM void DrawSMeterContainer() {
 #ifdef TCVSDR_SMETER
     //DB2OO, 30-AUG-23: draw wider tick marks in the style of the Teensy Convolution SDR
     tft.drawRect(SMETER_X + 9*pixels_per_s + i * pixels_per_s*10.0/6.0, SMETER_Y - 8+(i%2)*2, 2, 8-(i%2)*2, RA8875_GREEN);
-#else      
-    tft.drawFastVLine(SMETER_X + 9*pixels_per_s + i * pixels_per_s*10.0/6.0, SMETER_Y - 6, 7, RA8875_GREEN);  
+#else
+    tft.drawFastVLine(SMETER_X + 9*pixels_per_s + i * pixels_per_s*10.0/6.0, SMETER_Y - 6, 7, RA8875_GREEN);
 #endif
   }
 
-  tft.drawFastVLine(SMETER_X, SMETER_Y - 1, SMETER_BAR_HEIGHT+3, RA8875_WHITE);  
+  tft.drawFastVLine(SMETER_X, SMETER_Y - 1, SMETER_BAR_HEIGHT+3, RA8875_WHITE);
   tft.drawFastVLine(SMETER_X + SMETER_BAR_LENGTH+2, SMETER_Y - 1, SMETER_BAR_HEIGHT+3, RA8875_GREEN);
 
   tft.setFontScale((enum RA8875tsize)0);
 
   tft.setTextColor(RA8875_WHITE);
-  //DB2OO, 30-AUG-23: moved single digits a bit to the right, to align 
+  //DB2OO, 30-AUG-23: moved single digits a bit to the right, to align
   tft.setCursor(SMETER_X - 8, SMETER_Y - 25);
   tft.print("S");
   tft.setCursor(SMETER_X + 8, SMETER_Y - 25);

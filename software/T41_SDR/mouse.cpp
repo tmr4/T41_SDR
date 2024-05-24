@@ -312,9 +312,11 @@ void MouseButtonOpStatsArea(int button) {
       BandChange(-1);
     }
   } else if(button == 1 && cursorX > OPERATION_STATS_MD - 5 && cursorX < OPERATION_STATS_CWF) {
-    ButtonMode();
+    // change to the next mode: SSB -> CW -> DATA -> SSB
+    ChangeMode(xmtMode + 1);
   } else if(button == 1 && cursorX > OPERATION_STATS_DMD - 5 && cursorX < OPERATION_STATS_DMD + 35) {
-    ButtonDemodMode();
+    // change to the next demod mode
+    ChangeDemodMode(bands[currentBand].mode + 1);
   }
 }
 
@@ -482,7 +484,7 @@ void ShowUpdatedDeviceListInfo() {
       } else {
         Serial.printf("*** Device %s %x:%x - connected ***\n", driver_names[i], drivers[i]->idVendor(), drivers[i]->idProduct());
         driver_active[i] = true;
-  
+
         const uint8_t *psz = drivers[i]->manufacturer();
         if (psz && *psz) Serial.printf("  manufacturer: %s\n", psz);
         psz = drivers[i]->product();
