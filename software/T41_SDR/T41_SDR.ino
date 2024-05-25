@@ -44,6 +44,7 @@
 #include "locator.h"
 #include "mouse.h"
 #include "USBSerial.h"
+#include "Beacon.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -951,6 +952,7 @@ FLASHMEM void setup() {
 
   SerialSetup();
   //ARMCorrTest();
+  BeaconInit();
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
@@ -980,6 +982,8 @@ FASTRUN void loop()
       loopCounter = 0;
     }
   }
+
+  BeaconLoop();
 
 #ifdef DEBUG_LOOP
   EnterLoop();

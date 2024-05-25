@@ -31,6 +31,9 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/USB
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
+* feature/beacon - work in progress; this branch will eventually become a T41 beacon monitor
+  * currently just prints the active beacon for each frequency to the T41 display
+
 * feature/USB - adds communications with PC control app over SerialUSB1 (must select `Dual` or `Triple` USB Type when compiling).  A separate control app running on your PC is required (I'm still determining the best way to make this app available).  The control app has the following features:
 
   * Live view of frequency and audio spectrums, S-meter, waterfall, and filter bandwidth
