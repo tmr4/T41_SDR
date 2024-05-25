@@ -103,7 +103,7 @@ void DisplayBeacons(int beacon20m) {
   int columnOffset = 0;
 
   tft.setFontScale(0,1);
-  tft.setTextColor(White);
+  tft.setTextColor(RA8875_WHITE);
 
   // reset message area
   tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
