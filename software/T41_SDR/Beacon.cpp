@@ -13,6 +13,7 @@ const int beaconFreq[5] = { 14100000, 18110000, 21150000, 24930000, 28200000 };
 bool monitorFreq[5] = { true, false, true, false, true };
 bool beaconInit = false;
 bool beaconSyncFlag = false;
+int currentBeacon = 0;
 
 uint32_t beaconStart;
 
@@ -87,8 +88,10 @@ void BeaconInit() {
   Return value
     int - index of beacon transmitting now on the given band
 *****/
-inline int GetBeaconNow(int band) {
-  return (((hour() * 60 * 60 + minute() * 60 + second()) % 180) + band * 10) / 10;
+int GetBeaconNow(int band) {
+  int index = (((hour() * 60 * 60 + minute() * 60 + second()) % 180) - band * 10) / 10;
+
+  return index + (index < 0 ? 18 : 0);
 }
 inline int GetBeacon20mNow() {
   return (((hour() * 60 * 60 + minute() * 60 + second()) % 180)) / 10;
@@ -100,7 +103,7 @@ void DisplayBeacons(int beacon20m) {
   int columnOffset = 0;
 
   tft.setFontScale(0,1);
-  tft.setTextColor(YELLOW);
+  tft.setTextColor(White);
 
   // reset message area
   tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
@@ -135,11 +138,12 @@ void DisplayBeacons(int beacon20m) {
 *****/
 void autoSyncBeacon() {
   // allow process to loop until we're within 1 second of the next transmit cycle
-  if((second())%15 == 14) {
+  if((second())%10 == 9) {
     // now we can sync up without causing a long delay
-    while ((second())%15 != 0){
+    while ((second())%10 != 0){
     }
 
+    currentBeacon = GetBeacon20mNow();
     beaconStart =millis();
     beaconSyncFlag = true;
   }
@@ -156,7 +160,11 @@ void autoSyncBeacon() {
 *****/
 void BeaconLoop() {
   if(beaconSyncFlag) {
-    DisplayBeacons(GetBeacon20mNow());
+    int beacon = GetBeacon20mNow();
+    if(beacon != currentBeacon) {
+      DisplayBeacons(beacon);
+      currentBeacon = beacon;
+    }
   } else {
     autoSyncBeacon();
     beaconSyncFlag = true;
