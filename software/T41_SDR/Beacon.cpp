@@ -89,7 +89,7 @@ void BeaconInit() {
     int - index of beacon transmitting now on the given band
 *****/
 int GetBeaconNow(int band) {
-  int index = (((hour() * 60 * 60 + minute() * 60 + second()) % 180) - band * 10) / 10;
+  int index = (((hour() * 60 * 60 + minute() * 60 + second()) % 180) / 10) - band;
 
   return index + (index < 0 ? 18 : 0);
 }
