@@ -207,8 +207,12 @@ void autoSyncBeacon() {
   Return value
     void
 *****/
+#define NOISE_LO 3
+#define NOISE_HI 28
 void BeaconLoop() {
   static float min = 0.0, max = -1000.0;
+  static double aveNoiseSquared = 0, aveSignalSquared = 0;
+  static int snrCount = 0;
   static int count;
   static bool changeBandFlag = false;
   static int band = 0;
@@ -235,19 +239,44 @@ void BeaconLoop() {
         changeBandFlag = false;
       }
     } else if(count > 0) {
-      if(dbm < min) {
-        min = dbm;
-      }
-      if(dbm > max) {
-        max = dbm;
+      snrCount++;
+
+      // trying out some different SNR routines
+      // 1 - max - min dBm over 10 second cycle
+      //      - can yield some large values for weak signals
+      // 2 - estimate average signal and noise power levels
+      //      - technically inaccurate as these two should be measured at same time
+      //      - can yield negative SNR, must set these to zero
+      //      - still yields some high values in noisy conditions
+      // 3 - simple average of dBm over same intervals as #2
+      //if(dbm < min) {
+      //  min = dbm;
+      //}
+      //if(dbm > max) {
+      //  max = dbm;
+      //}
+
+      // break 10 second beacon cycle into noise and signal segments
+      if((snrCount <= NOISE_LO) || (snrCount >= NOISE_HI)) {
+        //aveNoiseSquared += sq(pow(10, dbm/10.0));
+        min += dbm;
+      } else {
+        //aveSignalSquared += sq(pow(10, dbm/10.0));
+        max += dbm;
       }
 
       beacon = GetBeaconNow(band);
       if(beacon != currentBeacon) {
         // record SNR for current beacon and freq
         // *** TODO: create an aging scheme for SNR ***
-        if(min != 0) {
-          beaconSNR[beacon][band] = max - min;
+        //if(min != 0) {
+        //if(aveNoiseSquared != 0 && (snrCount != (NOISE_HI - NOISE_LO - 2))) {
+        if(snrCount != (NOISE_HI - NOISE_LO - 2)) {
+          //double value = max - min;
+          //double value = 10.0 * log(aveSignalSquared / (NOISE_HI - NOISE_LO - 1) / aveNoiseSquared * (snrCount - NOISE_HI + NOISE_LO + 2));
+          double value = max / (NOISE_HI - NOISE_LO - 1) - min / (snrCount - NOISE_HI + NOISE_LO + 2);
+
+          beaconSNR[beacon][band] = value > 0 ? value : 0;
         } else {
           beaconSNR[beacon][band] = 0;
         }
@@ -259,6 +288,9 @@ void BeaconLoop() {
         // update beacon SNR
         // *** for now just print a sample to the display ***
         DisplayBeaconsSNR(beacon);
+
+        //Serial.println(snrCount);
+        snrCount = 0;
 
         // get ready for next beacon
         currentBeacon = beacon;
