@@ -32,7 +32,12 @@ This is a work in progress.  Some functions from the original version are broken
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
 * feature/beacon - work in progress; this branch will eventually become a T41 beacon monitor
-  * currently just prints the active beacon for each frequency to the T41 display
+  * I've completed the first cut at the monitor portion of this feature.  It currently prints the following to the T41 display:
+    * the active beacon for each frequency (1st column)
+    * a rolling list of beacons showing the calculated SNR for 20m, 15m and 10m (2nd column)
+  * Next up: finding a suitable world bitmap and method for displaying the beacons.  I'm thinking of highlighting the call sign of the currently transmitting beacons and below each showing a colored square indicating the last recorded signal strength.  Ultimately, it would be nice to age these in some way.
+  * Bill has described a fairly minimal beacon receiver.  The addition of a USB host connection would allow mouse input which opens many options for user interaction.
+  * Note: an accurate clock is assumed.
 
 * feature/USB - adds communications with PC control app over SerialUSB1 (must select `Dual` or `Triple` USB Type when compiling).  A separate control app running on your PC is required (I'm still determining the best way to make this app available).  The control app has the following features:
 

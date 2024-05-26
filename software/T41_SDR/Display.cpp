@@ -912,6 +912,8 @@ FASTRUN void ShowFrequency() {
   tft.print(freqBuffer); // Show the other one
 }
 
+// *** TODO: this only needs to be global for the beacon monitor ***
+float32_t dbm;
 //DB2OO, this variable determines the pixels per S step. In the original code it was 12.2 pixels !?
 #ifdef TCVSDR_SMETER
 const float pixels_per_s = 12;
@@ -931,7 +933,6 @@ FASTRUN void DrawSmeterBar() {
   char buff[10];
   //const char *unit_label;
   int16_t smeterPad;
-  float32_t dbm;
   float32_t dbm_calibration = 22.0;
 #ifdef TCVSDR_SMETER
   const float32_t slope = 10.0;

@@ -140,6 +140,9 @@ extern dispSc displayScale[];
 extern int newSpectrumFlag;
 extern int currentNF;
 
+// *** TODO: this only needs to be global for the beacon monitor ***
+extern float32_t dbm;
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
