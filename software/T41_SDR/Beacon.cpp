@@ -235,7 +235,6 @@ void BeaconLoop() {
         changeBandFlag = false;
       }
     } else if(count > 0) {
-      // *** TODO: probably need abs here ***
       if(dbm < min) {
         min = dbm;
       }
@@ -248,7 +247,7 @@ void BeaconLoop() {
         // record SNR for current beacon and freq
         // *** TODO: create an aging scheme for SNR ***
         if(min != 0) {
-          beaconSNR[beacon][band] = max / min;
+          beaconSNR[beacon][band] = max - min;
         } else {
           beaconSNR[beacon][band] = 0;
         }
