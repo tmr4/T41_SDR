@@ -353,10 +353,12 @@ void BeaconLoop() {
       }
     }
 
-    // change bands one more time, it doesn't matter where
-    // this is required by the T41 code to lock in the frequency for
+    // Change bands one more time, it doesn't matter where.
+    // This is required by to lock in the frequency for
     // the last band change above.  We could use custom code to do
     // this but why bother when this simple addition does what we need.
+    // *** TODO: figure out why the next band change during the monitoring
+    //           process doesn't do this ***
     BandChange(1);
 
     // make sure mode and demod mode are set appropriately
