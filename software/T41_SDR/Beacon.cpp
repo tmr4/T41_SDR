@@ -353,6 +353,12 @@ void BeaconLoop() {
       }
     }
 
+    // change bands one more time, it doesn't matter where
+    // this is required by the T41 code to lock in the frequency for
+    // the last band change above.  We could use custom code to do
+    // this but why bother when this simple addition does what we need.
+    BandChange(1);
+
     // make sure mode and demod mode are set appropriately
     ChangeMode(CW_MODE);
     ChangeDemodMode(DEMOD_USB); // all beacons are on USB
