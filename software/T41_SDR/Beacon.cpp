@@ -16,6 +16,8 @@ long priorBeaconBandFreq[5];
 int priorBand;
 int priorMode;
 int priorDemod;
+int priorFilterHi;
+int priorFilterLo;
 
 const int beaconBand[5] = { BAND_20M, BAND_17M, BAND_15M, BAND_12M, BAND_10M };
 const int beaconFreq[5] = { 14100000, 18110000, 21150000, 24930000, 28200000 };
@@ -241,7 +243,7 @@ void BeaconLoop() {
     } else if(count > 0) {
       snrCount++;
 
-      // trying out some different SNR routines
+      // trying out some different SNR routines. Code uses #1 currently.
       // 1 - max - min dBm over 10 second cycle
       //      - can yield some large values for weak signals
       // 2 - estimate average signal and noise power levels
@@ -249,32 +251,42 @@ void BeaconLoop() {
       //      - can yield negative SNR, must set these to zero
       //      - still yields some high values in noisy conditions
       // 3 - simple average of dBm over same intervals as #2
-      //if(dbm < min) {
-      //  min = dbm;
-      //}
-      //if(dbm > max) {
-      //  max = dbm;
-      //}
-
-      // break 10 second beacon cycle into noise and signal segments
-      if((snrCount <= NOISE_LO) || (snrCount >= NOISE_HI)) {
-        //aveNoiseSquared += sq(pow(10, dbm/10.0));
-        min += dbm;
-      } else {
-        //aveSignalSquared += sq(pow(10, dbm/10.0));
-        max += dbm;
+      //      - technically inaccurate as these two should be measured at same time
+      //      - doesn't seem any better
+      // I'm now doing some statistical analysis on actual signals to see if what we're
+      // getting here. Perhaps relying on dbm, which is an average over the loop, hides
+      // some detail we need.  Perhaps we need to get our data from ProcessIQData() in
+      // Process.cpp.
+      // #1
+      if(dbm < min) {
+        min = dbm;
+      }
+      if(dbm > max) {
+        max = dbm;
       }
 
+      // #2 and #3
+      // break 10 second beacon cycle into noise and signal segments
+      //if((snrCount <= NOISE_LO) || (snrCount >= NOISE_HI)) {
+      //  //aveNoiseSquared += sq(pow(10, dbm/10.0));
+      //  min += dbm;
+      //} else {
+      //  //aveSignalSquared += sq(pow(10, dbm/10.0));
+      //  max += dbm;
+      //}
+
       beacon = GetBeaconNow(band);
+      //Serial.print(snrCount); Serial.print(","); Serial.print(beacons[beacon].callSign); Serial.print(","); Serial.println(dbm);
+      //Serial.print(snrCount); Serial.print(","); Serial.println(dbm);
       if(beacon != currentBeacon) {
         // record SNR for current beacon and freq
         // *** TODO: create an aging scheme for SNR ***
         //if(min != 0) {
         //if(aveNoiseSquared != 0 && (snrCount != (NOISE_HI - NOISE_LO - 2))) {
         if(snrCount != (NOISE_HI - NOISE_LO - 2)) {
-          //double value = max - min;
+          double value = max - min;
           //double value = 10.0 * log(aveSignalSquared / (NOISE_HI - NOISE_LO - 1) / aveNoiseSquared * (snrCount - NOISE_HI + NOISE_LO + 2));
-          double value = max / (NOISE_HI - NOISE_LO - 1) - min / (snrCount - NOISE_HI + NOISE_LO + 2);
+          //double value = max / (NOISE_HI - NOISE_LO - 1) - min / (snrCount - NOISE_HI + NOISE_LO + 2);
 
           beaconSNR[beacon][band] = value > 0 ? value : 0;
         } else {
@@ -289,8 +301,9 @@ void BeaconLoop() {
         // *** for now just print a sample to the display ***
         DisplayBeaconsSNR(beacon);
 
-        //Serial.println(snrCount);
+        //Serial.print(snrCount); Serial.print(","); Serial.print(beacons[beacon].callSign); Serial.print(","); Serial.println(dbm);
         snrCount = 0;
+        //Serial.print(beacons[beacon].callSign); //Serial.print(",");
 
         // get ready for next beacon
         currentBeacon = beacon;
@@ -329,6 +342,13 @@ void BeaconLoop() {
         // save band frequency and set it to the beacon's frequency for this band
         priorBeaconBandFreq[i] = TxRxFreq;
         SetTxRxFreq(beaconFreq[i]);
+
+        // save and set filters for the beacon bands as well
+        priorFilterHi = bands[currentBand].FHiCut;
+        priorFilterLo = bands[currentBand].FLoCut;
+        bands[currentBand].FHiCut = 1500;
+        bands[currentBand].FLoCut = 500;
+
         band = i; // remember the last band
       }
     }
