@@ -135,32 +135,35 @@ void UpdateInfoBoxItem(uint8_t item) {
   int xOffset = infoBox[item].col;
   int yOffset = infoBox[item].row;
 
-  if(item >= IB_NUM_ITEMS) return;
+  // *** TODO: warning the following could be breaking for displays other than the T41 operating display ***
+  if(displayScreen == DISPLAY_T41) {
+    if(item >= IB_NUM_ITEMS) return;
 
-  //if(item == IB_ITEM_TUNE) Serial.println(tuneIndex);
+    //if(item == IB_ITEM_TUNE) Serial.println(tuneIndex);
 
-  tft.setFontScale((enum RA8875tsize)infoBox[item].fontSize);
-  tft.fillRect(xOffset, yOffset, tft.getFontWidth() * infoBox[item].clearWidth, tft.getFontHeight(), RA8875_BLACK);
-  tft.setTextColor(RA8875_WHITE);
-  label_x = xOffset - 5 - strlen(infoBox[item].label) * tft.getFontWidth();
-  tft.setCursor(label_x, yOffset);
-  tft.print(infoBox[item].label);
+    tft.setFontScale((enum RA8875tsize)infoBox[item].fontSize);
+    tft.fillRect(xOffset, yOffset, tft.getFontWidth() * infoBox[item].clearWidth, tft.getFontHeight(), RA8875_BLACK);
+    tft.setTextColor(RA8875_WHITE);
+    label_x = xOffset - 5 - strlen(infoBox[item].label) * tft.getFontWidth();
+    tft.setCursor(label_x, yOffset);
+    tft.print(infoBox[item].label);
 
-  if(infoBox[item].Options != NULL) {
-    if((infoBox[item].highlightFlag > 0) && (*infoBox[item].option == 0)) {
-      tft.setTextColor(RA8875_WHITE);
-    } else if((infoBox[item].highlightFlag == 2) && (*infoBox[item].option == 1)) {
-      tft.setTextColor(RA8875_RED);
-    } else {
-      tft.setTextColor(RA8875_GREEN);
+    if(infoBox[item].Options != NULL) {
+      if((infoBox[item].highlightFlag > 0) && (*infoBox[item].option == 0)) {
+        tft.setTextColor(RA8875_WHITE);
+      } else if((infoBox[item].highlightFlag == 2) && (*infoBox[item].option == 1)) {
+        tft.setTextColor(RA8875_RED);
+      } else {
+        tft.setTextColor(RA8875_GREEN);
+      }
+
+      tft.setCursor(xOffset, yOffset);
+      tft.print(infoBox[item].Options[*infoBox[item].option]);
     }
 
-    tft.setCursor(xOffset, yOffset);
-    tft.print(infoBox[item].Options[*infoBox[item].option]);
-  }
-
-  if(infoBox[item].followFnPtr != NULL) {
-    infoBox[item].followFnPtr(infoBox[item].row, infoBox[item].col);
+    if(infoBox[item].followFnPtr != NULL) {
+      infoBox[item].followFnPtr(infoBox[item].row, infoBox[item].col);
+    }
   }
 }
 

@@ -261,9 +261,20 @@ FLASHMEM void ChangeDemodMode(int mode) {
   SetupMode();
   //UpdateBWFilters();
 
-  ShowOperatingStats();
-  ShowBandwidthBarValues();
-  DrawBandwidthBar();
+  switch(displayScreen) {
+    case DISPLAY_T41:
+      ShowOperatingStats();
+      ShowBandwidthBarValues();
+      DrawBandwidthBar();
+      break;
+
+    case DISPLAY_BEACON_MONITOR:
+      break;
+
+    default:
+    // no screen updates at all
+    break;
+  }
 }
 
 /*****
@@ -348,9 +359,21 @@ FLASHMEM void ChangeMode(int mode) {
 
   SetupMode();
   UpdateCWFilter();
-  ShowOperatingStats();
-  ShowBandwidthBarValues();
-  DrawBandwidthBar();
+
+  switch(displayScreen) {
+    case DISPLAY_T41:
+      ShowOperatingStats();
+      ShowBandwidthBarValues();
+      DrawBandwidthBar();
+      break;
+
+    case DISPLAY_BEACON_MONITOR:
+      break;
+
+    default:
+    // no screen updates at all
+    break;
+  }
 }
 
 /*****

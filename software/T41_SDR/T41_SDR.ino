@@ -1052,7 +1052,19 @@ FASTRUN void loop()
         }
         ShowTransmitReceiveStatus();
       }
-      ShowSpectrum();
+      switch(displayScreen) {
+        case DISPLAY_T41:
+          ShowSpectrum();
+          break;
+
+        case DISPLAY_BEACON_MONITOR:
+          ShowBeacon();
+          break;
+
+        default:
+        // no screen updates at all
+        break;
+      }
       //delay(150);
       break;
     case SSB_TRANSMIT_STATE:
@@ -1119,7 +1131,19 @@ FASTRUN void loop()
         modeSelectOutExR.gain(0, 0);
         keyPressedOn = 0;
       }
-      ShowSpectrum();  // if removed CW signal on is 2 mS
+      switch(displayScreen) {
+        case DISPLAY_T41:
+          ShowSpectrum();  // if removed CW signal on is 2 mS
+          break;
+
+        case DISPLAY_BEACON_MONITOR:
+          ShowBeacon();
+          break;
+
+        default:
+        // no screen updates at all
+        break;
+      }
       //delay(150);
       break;
     case CW_TRANSMIT_STRAIGHT_STATE:

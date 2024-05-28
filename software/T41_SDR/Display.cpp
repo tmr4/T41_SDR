@@ -64,6 +64,27 @@ unsigned long last_usb_read = 0;
     Info box items are updated individually in response to user interaction with the radio.  The entire box only
     needs redrawn when its area has been used for other purposes.
 
+  The original T41 software writes to the display automatically during operation.  This prevents having
+  alternate displays, like a beacon monitor, while the radio is operating.  The following items are the issue
+  during normal operation (other items, like the menus, might also have to be considered):
+    VFO frequencies, op stats, freq spectrum, bandwidth bar and values, spectrum values, waterfall,
+    clock, xmit indicator, s-meter, audio spectrum, filter lines, infobox items
+  The wrinkle is that T41 radio operation is driven by a key element of the display update process,
+  ShowSpectrum() and the timing of the operating loop is determined in part based on updates to
+  the display happening in ShowSpectrum().  This function is only called in two places in the main
+  operating loop so one method to operate without the normal display is to create a separete ShowXXX() function
+  to drive radio operations for each display, keeping the needed elements of ShowSpectrum() and discarding those
+  not needed.  Doing this we find that the display is updated for other actions, changing bands for example.
+  Here's a list of additional functions for the beacon monitor (ignoring for now changes caused by user interaction
+  with the T41 buttons or encoders): SetBand, SetTxRxFreq, ChangeDemodMode, ChangeMode, DrawSmeterBar (tricky as we
+  need the dBm calc) and UpdateInfoBoxItem (could be breaking for any followup items that do more than update the
+  display, mouse routines perhaps?). And of course layer 2 needs cleared.
+
+  We can clear these as follows:
+  For all of these items, I've added switch statements to allow for alernate screens while the radio
+  is operating. The switch statement with on the "displayScreen" variable.
+
+  With this, the transmit indicator is the only remaining normal operating element on the display.  I've left that for now.
 */
 //-------------------------------------------------------------------------------------------------------------
 
@@ -76,6 +97,8 @@ unsigned long last_usb_read = 0;
 #define RIGNAME_X_OFFSET      570             // Pixel count to rig name field
 
 //------------------------- Global Variables ----------
+
+int displayScreen = DISPLAY_T41;
 
 int centerLine = SPECTRUM_RES / 2 + SPECTRUM_LEFT_X;
 
@@ -200,7 +223,7 @@ FLASHMEM void ShowName() {
 int currentNF = 0;
 
 /*****
-  Purpose: Show Spectrum display
+  Purpose: Update normal T41 operating display
             This routine calls the Audio process Function during each display cycle,
             for each of the 512 display frequency bins.  This means that the audio is
             refreshed at the maximum rate and does not have to wait for the display to
@@ -941,10 +964,16 @@ FASTRUN void DrawSmeterBar() {
   float32_t audioLogAveSq;
 #endif
 
+  // *** it's easiest for now to handle multiple display "pages" by limiting S-meter display
+  // updates here to when displayScreen is set to DISPLAY_T41, messy, but it works.
+  // Refinesments are possible. ***
+
   //DB2OO, 30-AUG-23: the S-Meter bar and the dBm value were inconsistent, as they were using different base values.
   // Moreover the bar could go over the limits of the S-meter box, as the map() function, does not constrain the values
   // with TCVSDR_SMETER defined the S-Meter bar will be consistent with the dBm value and the S-Meter bar will always be restricted to the box
-  tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
+  if(displayScreen == DISPLAY_T41) {
+    tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
+  }
 #ifdef TCVSDR_SMETER
   //DB2OO, 9-OCT_23: dbm_calibration set to -22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
   // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
@@ -967,9 +996,11 @@ FASTRUN void DrawSmeterBar() {
   //DB2OO; make sure, that it does not extend beyond the field
   smeterPad = max(0, smeterPad);
   smeterPad = min(SMETER_BAR_LENGTH, smeterPad);
-  tft.fillRect(SMETER_X + 1, SMETER_Y + 2, smeterPad, SMETER_BAR_HEIGHT-2, RA8875_RED); //DB2OO: bar 2*1 pixel smaller than the field
+  if(displayScreen == DISPLAY_T41) {
+    tft.fillRect(SMETER_X + 1, SMETER_Y + 2, smeterPad, SMETER_BAR_HEIGHT-2, RA8875_RED); //DB2OO: bar 2*1 pixel smaller than the field
 
-  tft.setTextColor(RA8875_WHITE);
+    tft.setTextColor(RA8875_WHITE);
+  }
 
   //DB2OO, 17-AUG-23: create PWM analog output signal on the "HW_SMETER" output. This is scaled for a 250uA  S-meter full scale,
   // connected to HW_SMTER output via a 8.2kOhm resistor and a 4.7kOhm resistor and 10uF capacitor parallel to the S-Meter
@@ -981,14 +1012,16 @@ FASTRUN void DrawSmeterBar() {
   }
 #endif
 
-  //unit_label = "dBm";
-  tft.setFontScale((enum RA8875tsize)0);
+  if(displayScreen == DISPLAY_T41) {
+    //unit_label = "dBm";
+    tft.setFontScale((enum RA8875tsize)0);
 
-  tft.fillRect(SMETER_X + 185, SMETER_Y, 80, tft.getFontHeight(), RA8875_BLACK);  // The dB figure at end of S
-  //DB2OO, 29-AUG-23: consider no decimals in the S-meter dBm value as it is very busy with decimals
-  MyDrawFloat(dbm, /*0*/ 1, SMETER_X + 184, SMETER_Y, buff);
-  tft.setTextColor(RA8875_GREEN);
-  tft.print("dBm");
+    tft.fillRect(SMETER_X + 185, SMETER_Y, 80, tft.getFontHeight(), RA8875_BLACK);  // The dB figure at end of S
+    //DB2OO, 29-AUG-23: consider no decimals in the S-meter dBm value as it is very busy with decimals
+    MyDrawFloat(dbm, /*0*/ 1, SMETER_X + 184, SMETER_Y, buff);
+    tft.setTextColor(RA8875_GREEN);
+    tft.print("dBm");
+  }
 
   if(dataFlag) {
     SendSmeter(smeterPad, dbm);
@@ -1411,3 +1444,280 @@ FLASHMEM void PrintKeyboardBuffer() {
   tft.print((char *)kbBuffer);
 }
 #endif
+
+/*****
+  Purpose: Update Beacon display
+            See notes for ShowSpectrum()
+            Currently this is just a copy of ShowSpectrum() with anything that updates the diplay commented out
+
+  Parameter list:
+    void
+
+  Return value;
+    void
+*****/
+FASTRUN void ShowBeacon() {
+  int filterLoPositionMarker;
+  int filterHiPositionMarker;
+  int filterLoPosition;
+  int filterHiPosition;
+  int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
+  static int oldNF;
+  int filterLoColor;
+  int filterHiColor;
+
+  currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
+
+  // initialize old noise floor if this is a new spectrum
+  if(newSpectrumFlag == 0) {
+    oldNF = currentNF;
+    newSpectrumFlag = 1;
+  }
+
+  // Draw the main Spectrum, Waterfall and Audio displays
+  for (int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
+    // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
+    if (x1 == 0) {
+      // Set flag so the display FFTs are calculated only once during each display refresh cycle
+      updateDisplayFlag = 1;
+    } else {
+      // Do not save the the display data for the remainder of the display update
+      updateDisplayFlag = 0;
+    }
+
+    // update filters if changed
+    if (posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
+      SetBWFilters();
+
+      //ShowBandwidthBarValues();
+      //DrawBandwidthBar();
+    }
+
+  // handle USB keyboard
+#ifdef KEYBOARD_SUPPORT
+  // poll keyboard at about 125 Hz
+  int now = millis();
+  if (now - last_usb_read > 8) {
+    UsbLoop();
+    last_usb_read = now;
+    MouseLoop();
+  }
+#endif
+
+    // Handle tuning changes
+    // Done here to minimize interruption to signal stream during tuning.  There
+    // may seem some duplication of display updates here, but these tuning events
+    // shouldn't occur on the same loop so little efficiency to be gained by changing
+    EncoderCenterTune();
+    if(fineTuneFlag) {
+      //ShowFrequency();
+      //DrawBandwidthBar();
+      fineTuneFlag = false;
+    }
+    if(resetTuningFlag) {
+      resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
+      ResetTuning();
+    }
+
+    // handle any live menu items
+    if(getMenuValueActive) {
+      if(getMenuSelected) {
+        ptrMenuFollowup();
+
+        // wrap up menu
+        getMenuSelected = false;
+        getMenuValueActive = false;
+        ptrMenuLoop = NULL;
+        ptrMenuFollowup = NULL;
+
+        EraseMenus();
+        menuStatus = NO_MENUS_ACTIVE;
+      } else {
+        GetMenuValueLoop();
+      }
+    }
+    if(getMenuOptionActive) {
+      if(getMenuSelected) {
+        ptrMenuFollowup();
+
+        // wrap up menu
+        getMenuSelected = false;
+        getMenuOptionActive = false;
+        ptrMenuLoop = NULL;
+        ptrMenuFollowup = NULL;
+
+        EraseMenus();
+        menuStatus = NO_MENUS_ACTIVE;
+      } else {
+        GetMenuOptionLoop();
+      }
+    }
+
+    if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
+      // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
+      ProcessIQData();
+    }
+
+    // pixelold spectrum is saved by the FFT function prior to a new FFT which generates the pixelnew spectrum
+    y_new_plot = spectrumNoiseFloor - pixelnew[x1] - currentNF;
+    y1_new_plot = spectrumNoiseFloor - pixelnew[x1 + 1] - currentNF;
+    y_old_plot = spectrumNoiseFloor - pixelold[x1] - oldNF;
+    y1_old_plot = spectrumNoiseFloor - pixelold[x1 + 1] - oldNF;
+
+    // Prevent spectrum from going below the bottom of the spectrum area
+    if (y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
+    if (y1_new_plot > SPECTRUM_BOTTOM) y1_new_plot = SPECTRUM_BOTTOM;
+    if (y_old_plot > SPECTRUM_BOTTOM) y_old_plot = SPECTRUM_BOTTOM;
+    if (y1_old_plot > SPECTRUM_BOTTOM) y1_old_plot = SPECTRUM_BOTTOM;
+
+    // Prevent spectrum from going above the top of the spectrum area
+    if (y_new_plot < SPECTRUM_TOP_Y) y_new_plot = SPECTRUM_TOP_Y;
+    if (y1_new_plot < SPECTRUM_TOP_Y) y1_new_plot = SPECTRUM_TOP_Y;
+    if (y_old_plot < SPECTRUM_TOP_Y) y_old_plot = SPECTRUM_TOP_Y;
+    if (y1_old_plot < SPECTRUM_TOP_Y) y1_old_plot = SPECTRUM_TOP_Y;
+
+    // Erase the old spectrum, and draw the new spectrum.
+    //tft.drawLine(SPECTRUM_LEFT_X + x1, y1_old_plot, SPECTRUM_LEFT_X + x1, y_old_plot, RA8875_BLACK);
+    //tft.drawLine(SPECTRUM_LEFT_X + x1, y1_new_plot, SPECTRUM_LEFT_X + x1, y_new_plot, RA8875_YELLOW);
+
+    // What is the actual spectrum at this time?  It's a combination of the old and new spectrums
+    // In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum
+    // This is the actual "old" spectrum!  This is required due to CW interrupts
+    // pixelCurrent gets copied to pixelold by the FFT function
+    pixelCurrent[x1] = pixelnew[x1];
+
+    if (x1 < AUDIO_SPEC_BOX_W - 2) { // don't overwrite right edge of audio spectrum box
+      if (keyPressedOn == 1) {
+        return;
+      } else {
+        // erase old audio spectrum line at this position (including filter lines)
+        //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
+
+        // draw current audio spectrum line at this position
+        if (audioYPixel[x1] != 0) {
+          // maintain spectrum within box
+          if (audioYPixel[x1] > CLIP_AUDIO_PEAK)
+          {
+            audioYPixel[x1] = CLIP_AUDIO_PEAK;
+          }
+          //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
+        }
+
+        // draw fiter indicator lines on the audio spectrum (have to do this here or the filter lines will "blink")
+        // abs prevents these from going below the bottom of the audio spectrum display but that the
+        // resulting filter value isn't meaningful, should fix at the encoder
+        filterLoPositionMarker = map(bands[currentBand].FLoCut, 0, 6400, 0, AUDIO_SPEC_BOX_W);
+        filterHiPositionMarker = map(bands[currentBand].FHiCut, 0, 6400, 0, AUDIO_SPEC_BOX_W);
+        filterLoPosition = abs(filterLoPositionMarker);
+        filterHiPosition = abs(filterHiPositionMarker);
+
+        // set color of active filter bar to green
+        switch (bands[currentBand].mode) {
+          case DEMOD_USB:
+          case DEMOD_PSK31_WAV:
+          case DEMOD_PSK31:
+          case DEMOD_FT8_WAV:
+          case DEMOD_FT8:
+            if (lowerAudioFilterActive) {
+              filterLoColor = RA8875_GREEN;
+              filterHiColor = RA8875_LIGHT_GREY;
+            } else {
+              if(ft8MsgSelectActive) {
+                filterLoColor = RA8875_LIGHT_GREY;
+                filterHiColor = RA8875_LIGHT_GREY;
+              } else {
+                filterLoColor = RA8875_LIGHT_GREY;
+                filterHiColor = RA8875_GREEN;
+              }
+            }
+            break;
+
+          case DEMOD_LSB:
+            if (lowerAudioFilterActive) {
+              filterLoColor = RA8875_LIGHT_GREY;
+              filterHiColor = RA8875_GREEN;
+            } else {
+              filterLoColor = RA8875_GREEN;
+              filterHiColor = RA8875_LIGHT_GREY;
+            }
+            break;
+
+          case DEMOD_NFM:
+            if (nfmBWFilterActive) {
+              filterLoColor = RA8875_LIGHT_GREY;
+              filterHiColor = RA8875_LIGHT_GREY;
+            } else {
+              if (lowerAudioFilterActive) {
+                filterLoColor = RA8875_GREEN;
+                filterHiColor = RA8875_LIGHT_GREY;
+              } else {
+                filterLoColor = RA8875_LIGHT_GREY;
+                filterHiColor = RA8875_GREEN;
+              }
+            }
+            break;
+
+          case DEMOD_AM:
+          case DEMOD_SAM:
+          default:
+            filterLoColor = RA8875_LIGHT_GREY;
+            filterHiColor = RA8875_GREEN;
+            break;
+        }
+
+        // limit the filter line from going out of the spectrum box to the right
+        if(filterLoPosition > 0 && filterLoPosition < (AUDIO_SPEC_BOX_W - 1)) {
+          //tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterLoPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterLoColor);
+        }
+        if(filterHiPosition > 0 && filterHiPosition < (AUDIO_SPEC_BOX_W - 1)) {
+          //tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterHiPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterHiColor);
+        }
+      }
+    }
+
+    // create data for waterfall
+    int test1;
+    test1 = -y_new_plot + 230;  // Nudged waterfall towards blue
+    //test1 = (int)(x1 / 50) + currentNF * 10; // test color gradient
+    if (test1 < 0) test1 = 0;
+    //if (test1 > 117) test1 = 117;
+    if (test1 > 116) test1 = 116; // *** above is out of range of gradient
+    waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array
+  }
+
+  // update S-meter once per loop
+  DrawSmeterBar(); // can't get rid of this yet, need dbm calc
+
+  pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];
+
+  oldNF = currentNF; // save the noise floor we used for this spectrum
+
+  // scroll the waterfall display
+  // Use the Block Transfer Engine (BTE) to move waterfall down a line
+  if (keyPressedOn == 1) {
+    return;
+  } else {
+    // copy the waterfall to layer 2, moving it down to row 2
+    //tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
+    //while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+    //  ;
+    //// copy the waterfall back to layer 1, row 2
+    //tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
+    //while (tft.readStatus())  // Make sure it's done.
+    //  ;
+  }
+
+  // write new row of data into the top row to finish the scrolling effect
+  //tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);
+
+  // update FT8 msg if appropriate
+  //if(ft8MsgSelectActive) {
+  if(ft8MsgSelectActive) {
+    DisplayMessages();
+  }
+
+  // update clock
+  if (ms_500.check() == 1) {
+    //DisplayClock();
+  }
+}

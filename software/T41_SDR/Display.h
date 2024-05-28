@@ -113,6 +113,11 @@
 #define TFT_SCLK                    13
 #define TFT_RST                     255
 
+#define DISPLAY_T41                 0
+#define DISPLAY_BEACON_MONITOR      1
+
+extern int displayScreen;
+
 extern int centerLine;
 
 extern int16_t pixelCurrent[SPECTRUM_RES];
@@ -170,6 +175,8 @@ void SetZoom(int zoom);
 void ShowCurrentPowerSetting();
 
 void ShowSpectrum();
+void ShowBeacon();
+
 void UpdateCWFilter();
 
 void RedrawDisplayScreen();

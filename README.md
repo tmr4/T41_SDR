@@ -32,11 +32,14 @@ This is a work in progress.  Some functions from the original version are broken
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
 * feature/beacon - work in progress; this branch will eventually become a T41 beacon monitor
-  * I've completed the first cut at the monitor portion of this feature.  It currently prints the following to the T41 display:
-    * the active beacon for each frequency (1st column)
-    * a rolling list of beacons showing the calculated SNR for 20m, 15m and 10m (2nd column)
-  * Next up: finding a suitable world bitmap and method for displaying the beacons.  I'm thinking of highlighting the call sign of the currently transmitting beacons and below each showing a colored square indicating the last recorded signal strength.  Ultimately, it would be nice to age these in some way.
+  * I've completed a first cut of the Beacon Monitor.  It currently has the following display options:
+    * prints the following to the T41 display:
+      * the active beacon for each frequency (1st column)
+      * a rolling list of beacons showing the calculated SNR for 20m, 15m and 10m (2nd column)
+    * An azimuthal map showing the bearing to the currently active beacons
+  * Next up: a world map view with the call sign highlighted according to signal strength.  Another possibility is highlighting the call sign of the currently transmitting beacons and below each showing a colored square indicating the last recorded signal strength.  Ultimately, it would be nice to age these in some way.  And I have to see how crowded the screen gets.
   * Bill has described a fairly minimal beacon receiver.  The addition of a USB host connection would allow mouse input which opens many options for user interaction.
+  * This version *completes(?)* the transition to an operating T41 radio without normal screen updates. It's still a work in progress as there might be other areas of code that I need to *discover* still updating the screen.
   * Note: an accurate clock is assumed.
 
 * feature/USB - adds communications with PC control app over SerialUSB1 (must select `Dual` or `Triple` USB Type when compiling).  A separate control app running on your PC is required (I'm still determining the best way to make this app available).  The control app has the following features:

@@ -91,13 +91,6 @@ char letters[] = { '\0',  // Make a 1's-based array
 
 int spacing[] = { 0, 70, 140, 210, 280, 350, 420, 490, 560, 630 };
 
-struct cities {
-  char callPrefix[12];
-  char country[30];
-  double lat;
-  double lon;
-};
-
 //float homeLat = MY_LAT;  // your QTH latitude
 //float homeLon = MY_LON;  // your QTH longitude
 float homeLat = myMapFiles[0].lat;
@@ -105,7 +98,7 @@ float homeLon = myMapFiles[0].lon;  // your QTH longitude
 float dxLat;
 float dxLon;
 
-PROGMEM struct cities dxCities[] = {
+PROGMEM cities dxCities[] = {
   // From John G0ORX.  Increases stack size.
   // callPrefix country  lat lon
   "1A", "MALTA ORDER", 45, 12.5,
@@ -560,8 +553,8 @@ PROGMEM struct cities dxCities[] = {
 
 void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight);
 void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight);
-int FindCountry(char *prefix);
-float HaversineDistance(float lat2, float lon2);
+//int FindCountry(char *prefix);
+//float HaversineDistance(float lat2, float lon2);
 uint16_t read16(File &f);
 uint32_t read32(File &f);
 int CreateMapList(char ptrMaps[][50], int *count);

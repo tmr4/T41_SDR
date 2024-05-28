@@ -67,7 +67,7 @@ FLASHMEM void sineTone(int numCycles) {
   float theta;
   float freqSideTone2;
   float freqSideTone3 = 3000;         // Refactored 32 * 24000 / 256; //AFP 2-7-23
-  float freqSideTone4 = 375;   
+  float freqSideTone4 = 375;
   freqSideTone2 = numCycles * 24000 / 256;
   for (int kf = 0; kf < 256; kf++) { //Calc: numCycles=8, 750 hz sine wave.
     theta = kf * 0.19634950849362;    // Simplify terms: theta = kf * 2 * PI * freqSideTone / 24000  JJP 6/28/23
@@ -447,11 +447,22 @@ FLASHMEM void SetBand() {
 
   CalcFilters();
 
-  ShowFrequency();
-  ShowOperatingStats();
-  DrawBandwidthBar();
-  ShowBandwidthBarValues();
-  ShowSpectrumFreqValues();
+  switch(displayScreen) {
+    case DISPLAY_T41:
+      ShowFrequency();
+      ShowOperatingStats();
+      DrawBandwidthBar();
+      ShowBandwidthBarValues();
+      ShowSpectrumFreqValues();
+      break;
+
+    case DISPLAY_BEACON_MONITOR:
+      break;
+
+    default:
+    // no screen updates at all
+    break;
+  }
 }
 
 /*****
@@ -546,7 +557,7 @@ void ShowTempAndLoad() {
 
 uint32_t roomCount;      // !< The value of TEMPMON_TEMPSENSE0[TEMP_VALUE] at the hot temperature
 uint32_t s_roomC_hotC;   // !< The value of s_roomCount minus s_hotCount
-uint32_t s_hotTemp;      // !< The value of TEMPMON_TEMPSENSE0[TEMP_VALUE] at room temperature 
+uint32_t s_hotTemp;      // !< The value of TEMPMON_TEMPSENSE0[TEMP_VALUE] at room temperature
 uint32_t s_hotCount;     // !< The value of TEMPMON_TEMPSENSE0[TEMP_VALUE] at the hot temperature
 float s_hotT_ROOM;       // !< The value of s_hotTemp minus room temperature(25¡æ)
 
@@ -810,7 +821,7 @@ int load_wav(const char* inputFile, uint32_t num_samples) {
   audioFormat = readUint16();
   numChannels = readUint16();
   sampleRate = readUint32();
-  
+
   byteRate = readUint32();
   blockAlign = readUint16();
   bitsPerSample = readUint16();
@@ -875,4 +886,3 @@ bool readWave(float32_t *buf, int sizeBuf) {
   }
   return true;
 }
-
