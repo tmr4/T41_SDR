@@ -6,11 +6,16 @@
 #include "EEPROM.h"
 #include "Tune.h"
 
+//#include "font_ArialBold.h"
+
 // International beacon transmission schedule, see https://www.ncdxf.org/beacon/
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
+
+// *** temporary for now ***
+#define BEACON_DISPLAY_OPTION 2 // 0-List only, 1-List plus azimuthal map, 2-World map
 
 long priorFreq;
 long priorBeaconBandFreq[5];
@@ -35,6 +40,8 @@ typedef struct {
   const char *site;
   const char *grid;
   const char *beaconPrefix; // *** TODO: check if this can be replaced with grid square ***
+  bool visible;
+  int x, y;
   int status; // 0-active, >0 see status message at https://www.ncdxf.org/beacon/
   bool active;
   bool monitor; // true-monitor, false-don't monitor
@@ -44,25 +51,25 @@ typedef struct {
 // updated 5/25/2024 from https://www.ncdxf.org/beacon/beaconlocations.html
 // Prefixes generally from Bearing.cpp and need updated in some cases
 Beacon beacons[18] = {
-  // #   Region         Call sign    Site            Grid     prefix status,active,monitor
-  {  1, "United Nations", "4U1UN ", "New York    ", "FN30as", "W2N", 0, true, true },
-  {  1, "Canada        ", "VE8AT ", "Inuvik, NT  ", "CP38gh", "BC",  0, true, true },
-  {  1, "California    ", "W6WX  ", "Mt Umunhum  ", "CM97bd", "W6F", 0, true, true }, // region listed as "United States"
-  {  1, "Hawaii        ", "KH6RS ", "Maui        ", "BL10ts", "KH6", 0, true, true },
-  {  1, "New Zealand   ", "ZL6B  ", "Masterton   ", "RE78tw", "ZL",  0, true, true },
-  {  1, "Australia     ", "VK6RBP", "Rolystone   ", "OF87av", "VK6", 0, true, true },
-  {  1, "Japan         ", "JA2IGY", "Mt Asama    ", "PM84jk", "JA",  0, true, true },
-  {  1, "Russia        ", "RR9O  ", "Novosibirsk ", "NO14kx", "UA",  0, true, true },
-  {  1, "Hong Kong     ", "VR2B  ", "Hong Kong   ", "OL72bg", "VS6", 0, true, true },
-  {  1, "Sri Lanka     ", "4S7B  ", "Colombo     ", "MJ96wv", "4S",  0, true, true },
-  {  1, "South Africa  ", "ZS6DN ", "Pretoria    ", "KG33xi", "ZS",  0, true, true },
-  {  1, "Kenya         ", "5Z4B  ", "Kikuyu      ", "KI88hr", "5Z",  0, true, true },
-  {  1, "Israel        ", "4X6TU ", "Tel Aviv    ", "KM72jb", "4X",  0, true, true },
-  {  1, "Finland       ", "OH2B  ", "Lohja       ", "KP20eh", "OH",  0, true, true },
-  {  1, "Madeira       ", "CS3B  ", "Sao Jorge   ", "IM12jt", "CT3", 0, true, true },
-  {  1, "Argentina     ", "LU4AA ", "Buenos Aires", "GF05tj", "LU",  0, true, true },
-  {  1, "Peru          ", "OA4B  ", "Lima        ", "FH17mw", "OA",  0, true, true },
-  { 18, "Venezuela     ", "YV5B  ", "Caracas     ", "FJ69cc", "YV",  0, true, true }
+  // #   Region         Call sign    Site            Grid     prefix visible   x    y status,active,monitor
+  {  1, "United Nations", " 4U1UN ",  "New York    ", "FN30as", "W2N", true,   227, 170, 0, true, true },
+  {  1, "Canada        ", " VE8AT ",  "Inuvik, NT  ", "CP38gh", "BC",  true,    68,  87, 0, true, true },
+  {  1, "California    ", " W6WX ",   "Mt Umunhum  ", "CM97bd", "W6F", true,   112, 184, 0, true, true }, // region listed as "United States"
+  {  1, "Hawaii        ", " KH6RS ",  "Maui        ", "BL10ts", "KH6", true,    36, 220, 0, true, true },
+  {  1, "New Zealand   ", " ZL6B ",   "Masterton   ", "RE78tw", "ZL",  true,   738, 379, 0, true, true }, // x was 768, put it off screen
+  {  1, "Australia     ", " VK6RBP ", "Rolystone   ", "OF87av", "VK6", true,   656, 354, 0, true, true },
+  {  1, "Japan         ", " JA2IGY ", "Mt Asama    ", "PM84jk", "JA",  true,   695, 184, 0, true, true },
+  {  1, "Russia        ", " RR9O ",   "Novosibirsk ", "NO14kx", "UA",  true,   577, 137, 0, true, true },
+  {  1, "Hong Kong     ", " VR2B ",   "Hong Kong   ", "OL72bg", "VS6", true,   645, 217, 0, true, true },
+  {  1, "Sri Lanka     ", " 4S7B ",   "Colombo     ", "MJ96wv", "4S",  true,   566, 260, 0, true, true },
+  {  1, "South Africa  ", " ZS6DN ",  "Pretoria    ", "KG33xi", "ZS",  true,   454, 339, 0, true, true },
+  {  1, "Kenya         ", " 5Z4B ",   "Kikuyu      ", "KI88hr", "5Z",  true,   486, 289, 0, true, true },
+  {  1, "Israel        ", " 4X6TU ",  "Tel Aviv    ", "KM72jb", "4X",  true,   468, 195, 0, true, true },
+  {  1, "Finland       ", " OH2B ",   "Lohja       ", "KP20eh", "OH",  true,   443, 123, 0, true, true },
+  {  1, "Madeira       ", " CS3B ",   "Sao Jorge   ", "IM12jt", "CT3", true,   350, 195, 0, true, true },
+  {  1, "Argentina     ", " LU4AA ",  "Buenos Aires", "GF05tj", "LU",  true,   263, 365, 0, true, true },
+  {  1, "Peru          ", " OA4B ",   "Lima        ", "FH17mw", "OA",  true,   209, 307, 0, true, true },
+  { 18, "Venezuela     ", " YV5B ",   "Caracas     ", "FJ69cc", "YV",  true,   238, 253, 0, true, true }
 };
 
 float beaconSNR[18][5];
@@ -117,8 +124,12 @@ void BeaconInit() {
   }
 
   // draw beacon map
-  BeaconMapDraw((char *)myMapFiles[1].mapNames, IMAGE_CORNER_X, IMAGE_CORNER_Y);
-
+  if((BEACON_DISPLAY_OPTION == 0 || (BEACON_DISPLAY_OPTION == 1))) {
+    BeaconMapDraw((char *)myMapFiles[BEACON_DISPLAY_OPTION + 1].mapNames, IMAGE_CORNER_X, IMAGE_CORNER_Y);
+  }
+  if((BEACON_DISPLAY_OPTION == 2)) {
+    BeaconMapDraw((char *)myMapFiles[BEACON_DISPLAY_OPTION + 1].mapNames, 0, 0);
+  }
   beaconInit = true;
 }
 
@@ -142,6 +153,7 @@ inline int GetBeacon20mNow() {
   return (((hour() * 60 * 60 + minute() * 60 + second()) % 180)) / 10;
 }
 
+// *** this is all just temporary for now ***
 int beaconColor[5] = { RA8875_GREEN, MAGENTA, DARKGREY, ORANGE, RA8875_RED };
 void DisplayBeacons(int beacon20m) {
   char message[48];
@@ -158,73 +170,118 @@ void DisplayBeacons(int beacon20m) {
   tft.layerEffect(LAYER1);
 
   // reset message area
-  tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
+  if((BEACON_DISPLAY_OPTION == 0 || (BEACON_DISPLAY_OPTION == 1))) {
+    tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
+  }
 
   // clear beacon traces on layer 1 by copying map on layer 2
-  //tft.writeTo(L2);
-  //tft.fillWindow();
-  //tft.writeTo(L1);
-  tft.BTE_move(0, 0, 800, 480, 0, 0, 2);
-  while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
-    ;
+  if((BEACON_DISPLAY_OPTION == 1)) {
+    tft.BTE_move(0, 0, 800, 480, 0, 0, 2);
+    while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+      ;
+  }
 
-  // print messages in 2 columns
+  // work with currently transmitting beacons
   for (int i = 0; i < 5; i++){
     int index = beacon20m - i + (beacon20m - i < 0 ? 18 : 0);
-    sprintf(message,"%8d: %.14s", beaconFreq[i], beacons[index].region);
-    tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
-    tft.setTextColor(beaconColor[i]);
 
-    tft.print(message);
+    if((BEACON_DISPLAY_OPTION == 0 || (BEACON_DISPLAY_OPTION == 1))) {
+      // print messages in 2 columns
+      sprintf(message,"%8d: %.14s", beaconFreq[i], beacons[index].region);
+      tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
+      tft.setTextColor(beaconColor[i]);
+      tft.print(message);
 
-    //Serial.print(i); Serial.print(" : ");
-    //Serial.println(message);
+      --rowCount;
+      if(i == 4) {
+        // start in column 2
+        rowCount = 5;
+        columnOffset = 256;
+      }
+    }
 
-    // draw bearing for beacon on layer 1 (doesn't work on layer 2)
-    //tft.writeTo(L2);
-    DrawBeaconBearing(beacons[index].beaconPrefix, beaconColor[i]);
-    //tft.writeTo(L1);
+    if((BEACON_DISPLAY_OPTION == 1)) {
+      // draw bearing for beacon
+      // *** doesn't work on layer 2 ***
+      //tft.writeTo(L2);
+      DrawBeaconBearing((char *)beacons[index].beaconPrefix, beaconColor[i]);
+      //tft.writeTo(L1);
+    }
 
-    --rowCount;
-    if(i == 4) {
-      // start in column 2
-      rowCount = 5;
-      columnOffset = 256;
+    if((BEACON_DISPLAY_OPTION == 2)) {
+      // highlight beacon
+      tft.setTextColor(beaconColor[i]);
+      tft.setCursor(beacons[index].x, beacons[index].y);
+      tft.print(beacons[index].callSign);
     }
   }
 }
 
+//                        S0            S1        S2      S3        S4    S5          S6            S7      S8      S9
+//int beaconSNRColor[10] = { RA8875_BLACK, DARKGREY, PURPLE, DARKCYAN, CYAN, DARK_GREEN, RA8875_GREEN, YELLOW, ORANGE, RA8875_RED };
+// orange is the same as yellow
+int beaconSNRColor[10] = { RA8875_BLACK, RA8875_LIGHT_GREY, RA8875_PURPLE, RA8875_BLUE, RA8875_CYAN, DARK_GREEN, RA8875_GREEN, RA8875_YELLOW, RA8875_DARK_ORANGE, RA8875_RED };
 void DisplayBeaconsSNR(int beacon) {
   char message[48];
   int rowCount = 5;
   int columnOffset = 256;
+  static int beaconFreqCount = 0;
 
-  tft.setFontScale(0,1);
-  tft.setTextColor(RA8875_WHITE);
+  if((BEACON_DISPLAY_OPTION == 1)) {
+    tft.setFontScale(0,1);
+    tft.setTextColor(RA8875_WHITE);
 
-  // reset message area
-  //tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
+    // reset message area
+    //tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
 
-  // print messages in 2 columns
-  for (int i = 0; i < 5; i++){
-    char f1[5], f2[5], f3[5];
-    int index = beacon - i + (beacon - i < 0 ? 18 : 0);
-    dtostrf(beaconSNR[index][0], 4, 1, f1);
-    dtostrf(beaconSNR[index][2], 4, 1, f2);
-    dtostrf(beaconSNR[index][4], 4, 1, f3);
-    sprintf(message,"%.6s: %.4s %.4s %.4s", beacons[index].callSign, f1, f2, f3);
-    tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
-    tft.print(message);
+    // print messages in 2 columns
+    for (int i = 0; i < 5; i++){
+      char f1[5], f2[5], f3[5];
+      int index = beacon - i + (beacon - i < 0 ? 18 : 0);
+      dtostrf(beaconSNR[index][0], 4, 1, f1);
+      dtostrf(beaconSNR[index][2], 4, 1, f2);
+      dtostrf(beaconSNR[index][4], 4, 1, f3);
+      sprintf(message,"%.6s: %.4s %.4s %.4s", beacons[index].callSign, f1, f2, f3);
+      tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
+      tft.print(message);
 
-    //Serial.print(i); Serial.print(" : ");
-    //Serial.println(message);
+      //Serial.print(i); Serial.print(" : ");
+      //Serial.println(message);
 
-    --rowCount;
-    //if(i == 4) {
-    //  // start in column 2
-    //  rowCount = 5;
-    //  columnOffset = 256;
-    //}
+      --rowCount;
+      //if(i == 4) {
+      //  // start in column 2
+      //  rowCount = 5;
+      //  columnOffset = 256;
+      //}
+    }
+  }
+
+  if((BEACON_DISPLAY_OPTION == 2)) {
+    //tft.setFontScale(0,1);
+    //tft.setFont(&FreeMonoBold18pt7b); // too big
+    //tft.setFont(Arial_14_Bold);
+    //tft.useLayers(false); // doesn't help colors
+    for (int i = 0; i < 18; i++){
+      //tft.fillRect(beacons[i].x - 10, beacons[i].y, 60, 35, beaconSNRColor[i < 10 ? i : i - 10]);
+			//tft.setForegroundColor(_RA8875_DEFAULTTXTFRGRND);
+			//tft.setBackgroundColor(beaconSNRColor[i < 10 ? i : i - 10]);
+      tft.setCursor(beacons[i].x, beacons[i].y);
+      if(i == 0 || i == 10) {
+  			//tft.setForegroundColor(RA8875_WHITE);
+        tft.setTextColor(RA8875_WHITE, beaconSNRColor[i < 10 ? i : i - 10]);
+      } else {
+        tft.setTextColor(RA8875_BLACK, beaconSNRColor[i < 10 ? i : i - 10]);
+  			//tft.setForegroundColor(RA8875_WHITE);
+      }
+      tft.print(beacons[i].callSign);
+    }
+    tft.setFontScale(2);
+    tft.setTextColor(RA8875_BLACK, RA8875_DARK_ORANGE);
+    tft.setCursor(310,430);
+    beaconFreqCount++;
+    if(beaconFreqCount > 4) beaconFreqCount = 0;
+    tft.print(beaconFreq[beaconFreqCount]);
   }
 }
 
