@@ -41,7 +41,7 @@ This is a work in progress.  Some functions from the original version are broken
       * a rolling list of beacons showing the calculated SNR for 20m, 15m and 10m (2nd column)
     * an azimuthal map showing the bearing to the currently active beacons
     * a world map view with the call sign highlighted according to the SNR for the frequency shown (cycles through the five bands, one every 10 seconds)
-    * a world map view with the SNR for each frequency located in a small colored square below the call sign for each beacon location (image above with random SNR values to show effect).  I've only show three bands above but all five bands could be displayed with a bit of fiddling.
+    * a world map view with the SNR for each frequency located in a small colored square below the call sign for each beacon location (image above with random SNR values to show effect).  I've only show three bands above but all five bands could be displayed with a bit of fiddling.  This view includes some monitor info at the bottom left of the display (band and beacon currently being monitored and the audio volume).
   * Next up: adding the beacon monitor to the T41 menus to make it easy to switch display options and switch back to normal T41 operation.
   * Aging SNRs in some way could be an option.
   * Bill has described a fairly minimal beacon receiver.  The addition of a USB host connection would allow mouse input which opens many options for user interaction.

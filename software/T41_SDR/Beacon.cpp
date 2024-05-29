@@ -32,6 +32,7 @@ int priorDemod;
 int priorFilterHi;
 int priorFilterLo;
 
+int band = 0;
 const int beaconBand[5] = { BAND_20M, BAND_17M, BAND_15M, BAND_12M, BAND_10M };
 const char *beaconBandName[5] = { "20", "17", "15", "12", "10" };
 const int beaconFreq[5] = { 14100000, 18110000, 21150000, 24930000, 28200000 };
@@ -334,6 +335,24 @@ void DisplayBeaconsSNR(int beacon) {
         }
       }
     }
+
+    // *** TODO: move fixed items to init function and adjust what is erased ***
+    tft.fillRect(10, 410, 170, 60, RA8875_BLACK);
+    tft.setFontScale(0);
+    tft.setTextColor(RA8875_WHITE);
+    tft.setCursor(10, 410);
+    tft.print("Monitoring: ");
+    //tft.print(beaconFreq[band]); // *** TODO: consider just using band name here instead ***
+    tft.print(beaconBandName[band]);
+    tft.print("m");
+    tft.setCursor(10, 430);
+    //tft.print("Beacon: ");
+    tft.print(beacons[beacon].callSign);
+    //tft.print(" ");
+    tft.print(beacons[beacon].region);
+    tft.setCursor(10, 450);
+    tft.print("Volume: ");
+    tft.print(audioVolume);
   }
 }
 
@@ -372,7 +391,6 @@ void BeaconLoop() {
   static int snrCount = 0;
   static int count;
   static bool changeBandFlag = false;
-  static int band = 0;
   static int currentBeacon = 0;
   int beacon;
 
