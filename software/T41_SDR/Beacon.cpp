@@ -15,7 +15,14 @@
 //-------------------------------------------------------------------------------------------------------------
 
 // *** temporary for now ***
-#define BEACON_DISPLAY_OPTION 2 // 0-List only, 1-List plus azimuthal map, 2-World map
+// *** currently all displays are beacon monitor only (no normal T41 operating info shown) ***
+// *** TODO: consider BEACON_DISPLAY_LIST as becon monitor option with normal T41 display as in the first comment to https://new.reddit.com/r/T41_EP/comments/1d0kvxx/t41_international_beacon_monitor/ ***
+#define BEACON_DISPLAY_LIST       0 // List of currently transmitting beacons and rolling list of beacon SNR
+#define BEACON_DISPLAY_AZIMUTH    1 // BEACON_DISPLAY_LIST plus azimuthal map with bearing to 5 active beacons
+#define BEACON_DISPLAY_WORLD1     2 // World map with beacon call sign highlighted with latest SNR for displayed frequency.  Frequency rolls every 10 seconds.
+#define BEACON_DISPLAY_WORLD2     3 // World map with SNR for each frequency noted in a colored squares below each beacon's call sign.  SNRs updated every 10 seconds.
+
+#define BEACON_DISPLAY_OPTION     BEACON_DISPLAY_WORLD2
 
 long priorFreq;
 long priorBeaconBandFreq[5];
@@ -26,6 +33,7 @@ int priorFilterHi;
 int priorFilterLo;
 
 const int beaconBand[5] = { BAND_20M, BAND_17M, BAND_15M, BAND_12M, BAND_10M };
+const char *beaconBandName[5] = { "20", "17", "15", "12", "10" };
 const int beaconFreq[5] = { 14100000, 18110000, 21150000, 24930000, 28200000 };
 bool monitorFreq[5] = { true, false, true, false, true };
 bool beaconInit = false;
@@ -124,11 +132,11 @@ void BeaconInit() {
   }
 
   // draw beacon map
-  if((BEACON_DISPLAY_OPTION == 0 || (BEACON_DISPLAY_OPTION == 1))) {
-    BeaconMapDraw((char *)myMapFiles[BEACON_DISPLAY_OPTION + 1].mapNames, IMAGE_CORNER_X, IMAGE_CORNER_Y);
+  if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_LIST || (BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH))) {
+    BeaconMapDraw((char *)myMapFiles[BEACON_DISPLAY_AZIMUTH + 1].mapNames, IMAGE_CORNER_X, IMAGE_CORNER_Y);
   }
-  if((BEACON_DISPLAY_OPTION == 2)) {
-    BeaconMapDraw((char *)myMapFiles[BEACON_DISPLAY_OPTION + 1].mapNames, 0, 0);
+  if((BEACON_DISPLAY_OPTION > BEACON_DISPLAY_AZIMUTH)) {
+    BeaconMapDraw((char *)myMapFiles[BEACON_DISPLAY_WORLD2].mapNames, 0, 0);
   }
   beaconInit = true;
 }
@@ -170,12 +178,12 @@ void DisplayBeacons(int beacon20m) {
   tft.layerEffect(LAYER1);
 
   // reset message area
-  if((BEACON_DISPLAY_OPTION == 0 || (BEACON_DISPLAY_OPTION == 1))) {
+  if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_LIST || (BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH))) {
     tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
   }
 
   // clear beacon traces on layer 1 by copying map on layer 2
-  if((BEACON_DISPLAY_OPTION == 1)) {
+  if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH)) {
     tft.BTE_move(0, 0, 800, 480, 0, 0, 2);
     while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
       ;
@@ -185,7 +193,7 @@ void DisplayBeacons(int beacon20m) {
   for (int i = 0; i < 5; i++){
     int index = beacon20m - i + (beacon20m - i < 0 ? 18 : 0);
 
-    if((BEACON_DISPLAY_OPTION == 0 || (BEACON_DISPLAY_OPTION == 1))) {
+    if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_LIST || (BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH))) {
       // print messages in 2 columns
       sprintf(message,"%8d: %.14s", beaconFreq[i], beacons[index].region);
       tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
@@ -200,7 +208,7 @@ void DisplayBeacons(int beacon20m) {
       }
     }
 
-    if((BEACON_DISPLAY_OPTION == 1)) {
+    if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH)) {
       // draw bearing for beacon
       // *** doesn't work on layer 2 ***
       //tft.writeTo(L2);
@@ -208,7 +216,7 @@ void DisplayBeacons(int beacon20m) {
       //tft.writeTo(L1);
     }
 
-    if((BEACON_DISPLAY_OPTION == 2)) {
+    if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_WORLD1)) {
       // highlight beacon
       tft.setTextColor(beaconColor[i]);
       tft.setCursor(beacons[index].x, beacons[index].y);
@@ -221,13 +229,32 @@ void DisplayBeacons(int beacon20m) {
 //int beaconSNRColor[10] = { RA8875_BLACK, DARKGREY, PURPLE, DARKCYAN, CYAN, DARK_GREEN, RA8875_GREEN, YELLOW, ORANGE, RA8875_RED };
 // orange is the same as yellow
 int beaconSNRColor[10] = { RA8875_BLACK, RA8875_LIGHT_GREY, RA8875_PURPLE, RA8875_BLUE, RA8875_CYAN, DARK_GREEN, RA8875_GREEN, RA8875_YELLOW, RA8875_DARK_ORANGE, RA8875_RED };
+
+int GetSNRColor(int snr) {
+  int color = RA8875_BLACK;
+  int index;
+
+  if(snr > 0) {
+    index = (snr / 6);
+    if(index < 10) {
+      color = beaconSNRColor[index];
+    } else {
+      color = RA8875_RED;
+    }
+  }
+
+  return color;
+}
+
 void DisplayBeaconsSNR(int beacon) {
   char message[48];
   int rowCount = 5;
   int columnOffset = 256;
   static int beaconFreqCount = 0;
 
-  if((BEACON_DISPLAY_OPTION == 1)) {
+  tft.layerEffect(LAYER1);
+  if((BEACON_DISPLAY_OPTION < BEACON_DISPLAY_WORLD1)) {
+    // *** TODO: these need reformated for BEACON_DISPLAY_AZIMUTH and without normal T41 operation display can be expanded ***
     tft.setFontScale(0,1);
     tft.setTextColor(RA8875_WHITE);
 
@@ -245,9 +272,6 @@ void DisplayBeaconsSNR(int beacon) {
       tft.setCursor(WATERFALL_L + columnOffset, YPIXELS - 25 * rowCount - 3);
       tft.print(message);
 
-      //Serial.print(i); Serial.print(" : ");
-      //Serial.println(message);
-
       --rowCount;
       //if(i == 4) {
       //  // start in column 2
@@ -257,31 +281,59 @@ void DisplayBeaconsSNR(int beacon) {
     }
   }
 
-  if((BEACON_DISPLAY_OPTION == 2)) {
-    //tft.setFontScale(0,1);
-    //tft.setFont(&FreeMonoBold18pt7b); // too big
-    //tft.setFont(Arial_14_Bold);
-    //tft.useLayers(false); // doesn't help colors
-    for (int i = 0; i < 18; i++){
-      //tft.fillRect(beacons[i].x - 10, beacons[i].y, 60, 35, beaconSNRColor[i < 10 ? i : i - 10]);
-			//tft.setForegroundColor(_RA8875_DEFAULTTXTFRGRND);
-			//tft.setBackgroundColor(beaconSNRColor[i < 10 ? i : i - 10]);
-      tft.setCursor(beacons[i].x, beacons[i].y);
-      if(i == 0 || i == 10) {
-  			//tft.setForegroundColor(RA8875_WHITE);
-        tft.setTextColor(RA8875_WHITE, beaconSNRColor[i < 10 ? i : i - 10]);
-      } else {
-        tft.setTextColor(RA8875_BLACK, beaconSNRColor[i < 10 ? i : i - 10]);
-  			//tft.setForegroundColor(RA8875_WHITE);
-      }
-      tft.print(beacons[i].callSign);
-    }
-    tft.setFontScale(2);
-    tft.setTextColor(RA8875_BLACK, RA8875_DARK_ORANGE);
-    tft.setCursor(310,430);
-    beaconFreqCount++;
+  if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_WORLD1)) {
+    // show snr results with a call sign highlight for a rolling frequency
     if(beaconFreqCount > 4) beaconFreqCount = 0;
-    tft.print(beaconFreq[beaconFreqCount]);
+    if(monitorFreq[beaconFreqCount]) {
+      for (int i = 0; i < 18; i++){
+        // *** following line gives a sample SNR highlight ***
+        //int color = GetSNRColor(i - (i > 10 ? 10 : 0));
+        int color = GetSNRColor(beaconSNR[i][beaconFreqCount]);
+
+        tft.setCursor(beacons[i].x, beacons[i].y);
+        if(color == RA8875_BLACK) {
+          tft.setTextColor(RA8875_WHITE, color);
+        } else {
+          tft.setTextColor(RA8875_BLACK, color);
+        }
+        tft.print(beacons[i].callSign);
+      }
+
+      tft.setFontScale(2);
+      tft.setTextColor(RA8875_BLACK, RA8875_DARK_ORANGE);
+      tft.setCursor(310,430);
+      tft.print(beaconFreq[beaconFreqCount]);
+      beaconFreqCount++; // roll to next frequency
+    }
+  }
+
+  if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_WORLD2)) {
+    for (int i = 0; i < 18; i++){
+      tft.setFontScale(0,1);
+      // print beacon call sign
+      tft.setCursor(beacons[i].x, beacons[i].y);
+      tft.setTextColor(RA8875_BLACK, RA8875_RED);
+      tft.print(beacons[i].callSign);
+
+      // print SNR square for each monitored band
+      for(int j = 0; j < 5; j++) {
+        // *** following line gives a sample SNR patch ***
+        //int color = GetSNRColor((i + j ) - (i + j > 10 ? 10 : 0));
+        int color = GetSNRColor(beaconSNR[i][j]);
+        tft.setFontScale(0);
+        tft.setCursor(beacons[i].x + j * 10, beacons[i].y + 33);
+
+        if(monitorFreq[j]) {
+          if(color == RA8875_BLACK) {
+            tft.setTextColor(RA8875_WHITE, color);
+          } else {
+            tft.setTextColor(RA8875_BLACK, color);
+          }
+
+          tft.print(beaconBandName[j]);
+        }
+      }
+    }
   }
 }
 
@@ -316,7 +368,7 @@ void autoSyncBeacon() {
 #define NOISE_HI 28
 void BeaconLoop() {
   static float min = 0.0, max = -1000.0;
-  static double aveNoiseSquared = 0, aveSignalSquared = 0;
+  //static double aveNoiseSquared = 0, aveSignalSquared = 0;
   static int snrCount = 0;
   static int count;
   static bool changeBandFlag = false;
@@ -397,11 +449,11 @@ void BeaconLoop() {
         }
 
         // highlight currently transmitting beacons
-        // *** for now just print them to the display ***
-        DisplayBeacons(GetBeacon20mNow());
+        if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_LIST || (BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH))) {
+          DisplayBeacons(GetBeacon20mNow());
+        }
 
         // update beacon SNR
-        // *** for now just print a sample to the display ***
         DisplayBeaconsSNR(beacon);
 
         //Serial.print(snrCount); Serial.print(","); Serial.print(beacons[beacon].callSign); Serial.print(","); Serial.println(dbm);
