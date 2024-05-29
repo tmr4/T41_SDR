@@ -1718,6 +1718,6 @@ FASTRUN void ShowBeacon() {
 
   // update clock
   if (ms_500.check() == 1) {
-    //DisplayClock();
+    DisplayClock();
   }
 }
