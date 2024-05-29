@@ -31,7 +31,7 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/USB
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
-![Beacon Monitor](https://preview.redd.it/dwtnbrr3de3d1.jpeg?width=320&crop=smart&auto=webp&s=30362acd121f8487d6a10c7390bf44e329ae191f)
+![Beacon Monitor](https://preview.redd.it/4a61tsux3f3d1.jpeg?width=320&crop=smart&auto=webp&s=3c01bd5ed080fac83b1057bf148a54dd6dc04a94)
 
 * feature/beacon - work in progress; this branch will eventually become a T41 beacon monitor
 
@@ -41,13 +41,15 @@ This is a work in progress.  Some functions from the original version are broken
       * a rolling list of beacons showing the calculated SNR for 20m, 15m and 10m (2nd column)
     * an azimuthal map showing the bearing to the currently active beacons
     * a world map view with the call sign highlighted according to the SNR for the frequency shown (cycles through the five bands, one every 10 seconds)
-    * a world map view with the SNR for each frequency located in a small colored square below the call sign for each beacon location (image above with random SNR values to show effect).  I've only show three bands above but all five bands could be displayed with a bit of fiddling.  This view includes some monitor info at the bottom left of the display (band and beacon currently being monitored and the audio volume).
+    * a world map view with the SNR for each frequency located in a small colored square below the call sign for each beacon location (image below with random SNR values to show effect).  I've only show three bands above but all five bands could be displayed with a bit of fiddling.  This view includes some monitor info at the bottom left of the display (band and beacon currently being monitored and the audio volume).
   * Next up: adding the beacon monitor to the T41 menus to make it easy to switch display options and switch back to normal T41 operation.
   * Aging SNRs in some way could be an option.
   * Bill has described a fairly minimal beacon receiver.  The addition of a USB host connection would allow mouse input which opens many options for user interaction.
   * This version *completes(?)* the transition to an operating T41 radio without normal screen updates. It's still a work in progress as there might be other areas of code that I need to *discover* still updating the screen.
   * Note: an accurate clock is assumed.
   * Currently you have to recompile this to select different views.
+
+![Beacon Monitor with random SNR](https://preview.redd.it/dwtnbrr3de3d1.jpeg?width=320&crop=smart&auto=webp&s=30362acd121f8487d6a10c7390bf44e329ae191f)
 
 * feature/USB - adds communications with PC control app over SerialUSB1 (must select `Dual` or `Triple` USB Type when compiling).  A separate control app running on your PC is required (I'm still determining the best way to make this app available).  The control app has the following features:
 
