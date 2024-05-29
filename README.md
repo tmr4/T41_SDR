@@ -31,7 +31,7 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/USB
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
-![Beacon Monitor](https://preview.redd.it/4a61tsux3f3d1.jpeg?width=320&crop=smart&auto=webp&s=3c01bd5ed080fac83b1057bf148a54dd6dc04a94)
+![Beacon Monitor](https://github.com/tmr4/T41_SDR/blob/feature/beacon/images/beacon_monitor.jpg)
 
 * feature/beacon - work in progress; this branch will eventually become a T41 beacon monitor
 
@@ -49,7 +49,7 @@ This is a work in progress.  Some functions from the original version are broken
   * Note: an accurate clock is assumed.
   * Currently you have to recompile this to select different views.
 
-![Beacon Monitor with random SNR](https://preview.redd.it/dwtnbrr3de3d1.jpeg?width=320&crop=smart&auto=webp&s=30362acd121f8487d6a10c7390bf44e329ae191f)
+![Beacon Monitor with random SNR](https://github.com/tmr4/T41_SDR/blob/feature/beacon/images/bm_random_snr.jpg)
 
 * feature/USB - adds communications with PC control app over SerialUSB1 (must select `Dual` or `Triple` USB Type when compiling).  A separate control app running on your PC is required (I'm still determining the best way to make this app available).  The control app has the following features:
 
