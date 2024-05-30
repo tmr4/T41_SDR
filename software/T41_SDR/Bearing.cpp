@@ -1490,8 +1490,8 @@ FLASHMEM void BearingMaps() {
   strcpy(mapFileName, (const char *)myMapFiles[selectedMapIndex].mapNames);
 
   RedrawDisplayScreen();
-  //ShowFrequency();
-  //ShowSpectrumFreqValues();
+  ShowFrequency();
+  ShowSpectrumFreqValues();
 }
 
 

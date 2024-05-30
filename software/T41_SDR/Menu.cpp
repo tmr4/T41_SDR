@@ -31,11 +31,11 @@ int8_t menuStatus = NO_MENUS_ACTIVE;
 
 const char * topMenus[] = { "CW Options", "RF Set", "VFO Select",
                            "EEPROM", "AGC", "Spectrum Options", "Mic Gain", "Mic Comp",
-                           "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing", "Cancel" };
+                           "EQ Rec Set", "EQ Xmt Set", "Calibrate", "Bearing", "Beacon Monitor", "Cancel" };
 
 void (*functionPtr[])() = { &CWOptions, &RFOptions, &VFOSelect,
                            &EEPROMOptions, &AGCOptions, &SpectrumOptions, &MicGainSet, &MicOptions,
-                           &EqualizerRecOptions, &EqualizerXmtOptions, &CalibrateOptions, &BearingMaps, &Cancel };
+                           &EqualizerRecOptions, &EqualizerXmtOptions, &CalibrateOptions, &BearingOptions, &BeaconOptions, &Cancel };
 
 const char * secondaryChoices[][8] = {
   /* CW Options */ { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Vol", "Xmit Delay", "Cancel" },
@@ -50,10 +50,11 @@ const char * secondaryChoices[][8] = {
   /* EQ Rec Set */ { "On", "Off", "EQSet", "Cancel" },
   /* EQ Xmt Set */ { "On", "Off", "EQSet", "Cancel" },
   /* Calibrate */ { "Freq Cal", "CW PA Cal", "Rec Cal", "Xmit Cal", "SSB PA Cal", "Cancel" },
-  /* Bearing */ { "Set Prefix", "Cancel" },
+  /* Bearing */ { "Show Map", "Set Prefix", "Cancel" },
+  /* Beacon */ { "On", "Off", "Cancel" },
   /* Cancel */ { "" }
 };
-const int secondaryMenuCount[] = {7, 3, 4, 8, 6, 6, 2, 7, 4, 4, 6, 2, 1};
+const int secondaryMenuCount[] = {7, 3, 4, 8, 6, 6, 2, 7, 4, 4, 6, 2, 3, 1};
 
 const char * menuOptions[][6] = {
   /* keyChoice */ { "Straight Key", "Keyer", "Cancel" },

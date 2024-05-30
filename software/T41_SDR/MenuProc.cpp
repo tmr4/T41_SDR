@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "Beacon.h"
 #include "Bearing.h"
 #include "Button.h"
 #include "ButtonProc.h"
@@ -188,7 +189,7 @@ FLASHMEM void VFOSelect(int32_t index) {
       case DEMOD_FT8:
       case DEMOD_FT8_WAV:
         bands[currentBand].mode = DEMOD_FT8;
-        syncFlag = false; 
+        syncFlag = false;
         ft8State = 1;
         UpdateInfoBoxItem(IB_ITEM_FT8);
         break;
@@ -223,7 +224,7 @@ FLASHMEM void VFOSelect() {
 FLASHMEM void EEPROMOptions() {
   //  const char *EEPROMOpts[] = { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite",
   //                               "Copy EEPROM-->SD", "Copy SD-->EEPROM", "SD EEPROM Dump", "Cancel" };
-  switch (secondaryMenuIndex) {   
+  switch (secondaryMenuIndex) {
     case 0:  // Save current values
       EEPROMWrite();
       break;
@@ -315,7 +316,7 @@ FLASHMEM void SpectrumOptions() {
     void
 *****/
 FLASHMEM void EqualizerRecOptions() {
-  //  const char *RecEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
+  //  const char *RecEQChoices[] = { "On", "Off", "EQSet", "Cancel" };
  switch (secondaryMenuIndex) {
      case 0:
       receiveEQFlag = ON;
@@ -345,7 +346,7 @@ FLASHMEM void EqualizerRecOptions() {
     void
 *****/
 FLASHMEM void EqualizerXmtOptions() {
-  //  const char *XmtEQChoices[] = { "On", "Off", "EQSet", "Cancel" };  // Add code practice oscillator
+  //  const char *XmtEQChoices[] = { "On", "Off", "EQSet", "Cancel" };
  switch (secondaryMenuIndex) {
     case 0:
       xmitEQFlag = ON;
@@ -740,4 +741,52 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
   }
 
   EEPROMWrite();
+}
+
+/*****
+  Purpose: Process bearing map options
+
+  Parameter list:
+    void
+
+  Return value
+    void
+*****/
+FLASHMEM void BearingOptions() {
+  //  const char *BearingChoices[] = { "Show Map", "Set Prefix", "Cancel" };
+  switch (secondaryMenuIndex) {
+     case 0:
+      ButtonBearing();
+      break;
+    case 1:
+      BearingMaps();
+      break;
+    case 2:
+      break;
+  }
+}
+
+/*****
+  Purpose: Turn beacon monitor on or off
+
+  Parameter list:
+    void
+
+  Return value
+    void
+*****/
+FLASHMEM void BeaconOptions() {
+  //  const char *BeaconChoices[] = { "On", "Off", "Cancel" };
+  switch (secondaryMenuIndex) {
+     case 0: // on
+      BeaconInit();
+      beaconFlag = true;
+      break;
+    case 1: // off
+      BeaconExit();
+      beaconFlag = false;
+      break;
+    case 2:
+      break;
+  }
 }

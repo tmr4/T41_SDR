@@ -1,5 +1,5 @@
 #include "SDT.h"
-#include "Bearing.h"
+#include "Beacon.h"
 #include "Button.h"
 #include "ButtonProc.h"
 #include "Display.h"
@@ -489,51 +489,16 @@ FLASHMEM void ExecuteButtonPress(int val) {
       }
       break;
 
-    case BEARING:  // 17
-      int buttonIndex, doneViewing, valPin;
-      float retVal;
-
-      tft.clearScreen(RA8875_BLACK);
-
-      DrawKeyboard();
-      CaptureKeystrokes();
-      retVal = BearingHeading(keyboardBuffer);
-
-
-      if (retVal != -1.0) {                           // We have valid country
-        bmpDraw((char *)myMapFiles[selectedMapIndex].mapNames, IMAGE_CORNER_X, IMAGE_CORNER_Y);
-        doneViewing = false;
+    //case BEARING:  // 17
+    case BEACON:     // 17
+      //ButtonBearing();
+      if(beaconFlag) {
+        BeaconExit();
+        beaconFlag = false;
       } else {
-        tft.setTextColor(RA8875_RED);
-        tft.setCursor(380 - (17 * tft.getFontWidth(0)) / 2, 240);   // Center message
-        tft.print("Country not found");
-        tft.setTextColor(RA8875_WHITE);
+        BeaconInit();
+        beaconFlag = true;
       }
-      while (true) {
-        valPin = ReadSelectedPushButton();            // Poll UI push buttons
-        delay(100L);
-        if (valPin != BOGUS_PIN_READ) {               // If a button was pushed...
-          buttonIndex = ProcessButtonPress(valPin);   // Winner, winner...chicken dinner!
-          switch (buttonIndex) {
-            case BEARING:                             // Pressed puchbutton 18
-              doneViewing = true;
-              break;
-            default:
-              break;
-          }
-        }
-
-        if (doneViewing == true) {
-            //tft.clearMemory();          // Need to clear overlay too
-            //tft.writeTo(L2);
-            //tft.fillWindow();
-          break;
-        }
-      }
-
-      //RedrawDisplayScreen();
-      //ShowFrequency();
-      //ShowSpectrumFreqValues();
       break;
   }
 }

@@ -21,4 +21,5 @@ void EqualizerXmtOptions();
 void MicGainSet();
 void MicOptions();
 void CalibrateOptions();
-
+void BearingOptions();
+void BeaconOptions();

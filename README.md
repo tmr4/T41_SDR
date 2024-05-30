@@ -33,21 +33,22 @@ This is a work in progress.  Some functions from the original version are broken
 
 ![Beacon Monitor](https://github.com/tmr4/T41_SDR/blob/feature/beacon/images/beacon_monitor.jpg)
 
-* feature/beacon - work in progress; this branch will eventually become a T41 beacon monitor
+* feature/beacon - T41 beacon monitor
 
-  * I've completed a first cut of the Beacon Monitor.  It currently has the following display options:
+  * a world map view with the SNR for each frequency located in a small colored square below the call sign for each beacon location (image below with random SNR values to show effect).  I've only show three bands above but all five bands could be displayed with a bit of fiddling.  This view includes some monitor info at the bottom left of the display (band and beacon currently being monitored and the audio volume).  There is room for other information.
+  * the beacon monitor can be accessed via button 18 (sorry Bearing map!) or the *Beacon Monitor* menu item.  You can exit the Beacon Monitor by pressing button 18 again or via the menu.
+  * Notes:
+    * world view bitmap for beacon monitor is in the images folder.
+    * an accurate clock is assumed.  More work could be done in this area.
+    * The SNR calculation needs work.  Aging SNRs in some way could be an option.
+    * Bill has described a fairly minimal beacon receiver.  The addition of a USB host connection would allow mouse input which opens many options for user interaction.
+    * This version *completes(?)* the transition to an operating T41 radio without normal screen updates. It's still a work in progress as there might be other areas of code that I need to *discover* still updating the screen.
+  * The following alternate display options are coded but not fully developed or exposed:
     * prints the following to the T41 display:
       * the active beacon for each frequency (1st column)
       * a rolling list of beacons showing the calculated SNR for 20m, 15m and 10m (2nd column)
     * an azimuthal map showing the bearing to the currently active beacons
     * a world map view with the call sign highlighted according to the SNR for the frequency shown (cycles through the five bands, one every 10 seconds)
-    * a world map view with the SNR for each frequency located in a small colored square below the call sign for each beacon location (image below with random SNR values to show effect).  I've only show three bands above but all five bands could be displayed with a bit of fiddling.  This view includes some monitor info at the bottom left of the display (band and beacon currently being monitored and the audio volume).
-  * Next up: adding the beacon monitor to the T41 menus to make it easy to switch display options and switch back to normal T41 operation.
-  * Aging SNRs in some way could be an option.
-  * Bill has described a fairly minimal beacon receiver.  The addition of a USB host connection would allow mouse input which opens many options for user interaction.
-  * This version *completes(?)* the transition to an operating T41 radio without normal screen updates. It's still a work in progress as there might be other areas of code that I need to *discover* still updating the screen.
-  * Note: an accurate clock is assumed.
-  * Currently you have to recompile this to select different views.
 
 ![Beacon Monitor with random SNR](https://github.com/tmr4/T41_SDR/blob/feature/beacon/images/bm_random_snr.jpg)
 

@@ -30,12 +30,13 @@
 #define RESET_TUNING                15
 #define UNUSED_1                    16
 #define BEARING                     17
+#define BEACON                      17
 
-#define NO_MENUS_ACTIVE             0      // No menus displayed 
+#define NO_MENUS_ACTIVE             0      // No menus displayed
 #define PRIMARY_MENU_ACTIVE         1      // A primary menu is active
 #define SECONDARY_MENU_ACTIVE       2      // Both primary and secondary menus active
 
-#define TOP_MENU_COUNT              13     // Menus to process
+#define TOP_MENU_COUNT              14     // Menus to process
 #define START_MENU                  0
 
 extern int32_t mainMenuIndex;

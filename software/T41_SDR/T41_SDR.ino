@@ -952,7 +952,6 @@ FLASHMEM void setup() {
 
   SerialSetup();
   //ARMCorrTest();
-  BeaconInit();
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
@@ -983,7 +982,9 @@ FASTRUN void loop()
     }
   }
 
-  BeaconLoop();
+  if(beaconFlag) {
+    BeaconLoop();
+  }
 
 #ifdef DEBUG_LOOP
   EnterLoop();

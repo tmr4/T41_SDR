@@ -24,13 +24,15 @@
 
 #define BEACON_DISPLAY_OPTION     BEACON_DISPLAY_WORLD2
 
+bool beaconFlag = false;
+
 long priorFreq;
 long priorBeaconBandFreq[5];
 int priorBand;
 int priorMode;
 int priorDemod;
-int priorFilterHi;
-int priorFilterLo;
+int priorFilterHi[5];
+int priorFilterLo[5];
 
 int band = 0;
 const int beaconBand[5] = { BAND_20M, BAND_17M, BAND_15M, BAND_12M, BAND_10M };
@@ -123,7 +125,7 @@ void BeaconInit() {
   //tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
   //tft.writeTo(L1);
   // set waterfall to one less row
-  wfRows = WATERFALL_H - 25 * 5 - 3;
+  //wfRows = WATERFALL_H - 25 * 5 - 3;
 
   // initialize beacon SNR
   for(int j = 0; j < 18; j++) {
@@ -140,6 +142,51 @@ void BeaconInit() {
     BeaconMapDraw((char *)myMapFiles[BEACON_DISPLAY_WORLD2].mapNames, 0, 0);
   }
   beaconInit = true;
+}
+
+/*****
+  Purpose: Restore T41 operating state
+
+  Parameter list:
+    void
+
+  Return value
+    void
+*****/
+void BeaconExit() {
+  // set display screen
+  displayScreen = DISPLAY_T41;
+
+  // clear layer 2
+  tft.writeTo(L2);
+  tft.fillWindow();
+  tft.writeTo(L1);
+  tft.useLayers(true); // mainly used to turn on layers
+  tft.layerEffect(OR); // overlay layers
+
+  // restore T41 state in reverse order (probably overkill)
+  // cycle back through monitored bands, restoring prior values
+  for(int i = 0; i < 5; i++) {
+    if(monitorFreq[i]) {
+      BandChange(beaconBand[i] - currentBand);
+
+      // save band frequency and set it to the beacon's frequency for this band
+      TxRxFreq = priorBeaconBandFreq[i];
+      SetTxRxFreq(TxRxFreq);
+
+      // save and set filters for the beacon bands as well
+      bands[currentBand].FHiCut = priorFilterHi[i];
+      bands[currentBand].FLoCut = priorFilterLo[i];
+    }
+  }
+  BandChange(1);
+  ChangeDemodMode(priorDemod);
+  ChangeMode(priorMode);
+  BandChange(priorBand - currentBand);
+  TxRxFreq = priorFreq;
+
+  RedrawDisplayScreen();
+  beaconInit = false;
 }
 
 /*****
@@ -517,8 +564,8 @@ void BeaconLoop() {
         SetTxRxFreq(beaconFreq[i]);
 
         // save and set filters for the beacon bands as well
-        priorFilterHi = bands[currentBand].FHiCut;
-        priorFilterLo = bands[currentBand].FLoCut;
+        priorFilterHi[i] = bands[currentBand].FHiCut;
+        priorFilterLo[i] = bands[currentBand].FLoCut;
         bands[currentBand].FHiCut = 1500;
         bands[currentBand].FLoCut = 500;
 
