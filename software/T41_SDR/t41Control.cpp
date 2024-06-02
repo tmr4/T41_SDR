@@ -17,23 +17,21 @@
 //-------------------------------------------------------------------------------------------------------------
 
 bool useKenwoodIF = false;
-bool dataFlag = false;
+bool controlDataFlag = false;
 uint8_t specData[518]; // xDyyy[up to 512 bytes of data];   x=A or F, yyy = 255 - max
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void SerialSetup()
-{
-  //Serial.println("\n\nUSB Host Testing - Serial");
-  //Serial1.begin(115200);
-  //userial.begin(baud);
+// the three usb serial objects in the teensy (Serial, SerialUSB1 and SerialUSB2) are all different classes (usb_serial_class, usb_serial2_class, and usb_serial3_class)
+// I suppose to prevent naming conflict somewhere, but this prevents having serial commands with a common argument specifying the serial channel to use, such as
+// void T41ControlSetup(Stream& serial) { serial.begin(); }.  As such might as well duplicate these functions for both the T41 control app and Beacon monitor
+void T41ControlSetup() {
   SerialUSB1.begin(19200);
-  //SerialUSB2.begin(19200);
 }
 
-void SendData(uint8_t *data, int len) {
+void T41ControlSendData(uint8_t *data, int len) {
   //int len = strlen(cmd);
   //int sizeBuf = SerialUSB1.availableForWrite();
   //Serial.print("Sending spectrum data, length: "); Serial.print(len); Serial.print(", buffer size: "); Serial.println(sizeBuf);
@@ -46,10 +44,10 @@ void SendData(uint8_t *data, int len) {
     //SerialUSB1.write(data, SPECTRUM_RES);
     //SerialUSB1.send_now(); // we'll have a delay without this *** TODO: try with and without ***
   }
-  //dataFlag = false;
+  //controlDataFlag = false;
 }
 
-void SendCmd(char *cmd) {
+void T41ControlSendCmd(char *cmd) {
   //SerialUSB1.print(cmd);
   int sizeBuf = SerialUSB1.availableForWrite();
   if(cmd[0] != 0 && sizeBuf > 0) {
@@ -69,16 +67,16 @@ void SendCmd(char *cmd) {
           //SerialUSB1.print(cmd[i++]);
         } else {
           SerialUSB1.flush(); // *** TODO: this will cause a freeze if PC stops receiving ***
-          dataFlag = false;
+          controlDataFlag = false;
         }
       }
     }
   } else {
-    dataFlag = false;
+    controlDataFlag = false;
   }
 }
 
-void GetCommand(char * cmd, int max) {
+void T41ControlGetCommand(char * cmd, int max) {
   int i = 0;
 
   while(SerialUSB1.available() > 0) {
@@ -100,11 +98,11 @@ void SendSmeter(int16_t smeterPad, float32_t dbm) {
   // we can send these separately or together
   // send dBm
   //sprintf(cmd, "SM0%+05d;", (int)(dbm * 10));
-  //SendCmd(cmd);
+  //T41ControlSendCmd(cmd);
 
   // send s-meter
   //sprintf(cmd, "SM20%04d;", smeterPad);
-  //SendCmd(cmd);
+  //T41ControlSendCmd(cmd);
 
   // send dBm and s-meter together
   // it's more efficient to send these together, though it's more work on the
@@ -113,7 +111,7 @@ void SendSmeter(int16_t smeterPad, float32_t dbm) {
   // being read from the buffer.  Thus the two messages are in essence
   // combined.
   sprintf(cmd, "SM0%+05d;SM20%04d;", (int)(dbm * 10), smeterPad);
-  SendCmd(cmd);
+  T41ControlSendCmd(cmd);
 }
 
 void SendAS() {
@@ -125,7 +123,7 @@ void SendAS() {
     xmtMode,                        // transmission mode (%d) at index 14
     bands[currentBand].mode         // demodulation mode (%d)  at index 15
   );
-  SendCmd(cmd);
+  T41ControlSendCmd(cmd);
 }
 
 void SendIF() {
@@ -153,7 +151,7 @@ void SendIF() {
     activeVFO == 0 ? currentFreqB : currentFreqA // inactive VFO freq in Hz (%011d) at index 37
     //splitVFO ? 1 : 0,               // VFO split status (%d) at index xx
   );
-  SendCmd(cmd);
+  T41ControlSendCmd(cmd);
 }
 
 // Kenwood modes
@@ -185,13 +183,13 @@ int GetMode() {
   return mode;
 }
 
-void SerialLoop()
+void T41ControlLoop()
 {
   if(SerialUSB1.available()) {
     char cmd[256];
     int mode = GetMode();
 
-    GetCommand(cmd, 256);
+    T41ControlGetCommand(cmd, 256);
     //Serial.print("Received ");  Serial.println(cmd);
     //int sizeBuf = SerialUSB1.availableForWrite();
     //Serial.println(sizeBuf);
@@ -212,10 +210,10 @@ void SerialLoop()
       case 'D':
         if(cmd[1] == 'S' && cmd[2] == ';') {
           // start sending spectrum data
-          dataFlag = true;
+          controlDataFlag = true;
         } else if(cmd[1] == 'P' && cmd[2] == ';') {
           // stop sending spectrum data
-          dataFlag = false;
+          controlDataFlag = false;
         }
         return; // *** TODO: or we can set cmd[0] to null
         break;
@@ -399,7 +397,7 @@ void SerialLoop()
       case 'T':
         if(cmd[1] == 'M' && cmd[13] == ';') {
           // set Teensy RTC
-          //Serial.println(atol(&cmd[2]));
+          //Serial.print("TM cmd from SerialUSB1: "); Serial.println(atol(&cmd[2]));
           //Serial.println(Teensy3Clock.get());
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));
@@ -422,7 +420,7 @@ void SerialLoop()
         break;
     }
 
-    SendCmd(cmd);
+    T41ControlSendCmd(cmd);
     //Serial.print("Responded with: "); Serial.println(cmd);
   }
 }

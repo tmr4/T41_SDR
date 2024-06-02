@@ -4,6 +4,7 @@
 #include "ButtonProc.h"
 #include "Display.h"
 #include "EEPROM.h"
+#include "t41Beacon.h"
 #include "Tune.h"
 
 //#include "font_ArialBold.h"
@@ -278,14 +279,13 @@ void DisplayBeacons(int beacon20m) {
 // orange is the same as yellow
 int beaconSNRColor[10] = { RA8875_BLACK, RA8875_LIGHT_GREY, RA8875_PURPLE, RA8875_BLUE, RA8875_CYAN, DARK_GREEN, RA8875_GREEN, RA8875_YELLOW, RA8875_DARK_ORANGE, RA8875_RED };
 
-int GetSNRColor(int snr) {
+int GetSNRColor(int snr, int *index) {
   int color = RA8875_BLACK;
-  int index;
 
   if(snr > 0) {
-    index = (snr / 6);
-    if(index < 10) {
-      color = beaconSNRColor[index];
+    *index = (snr / 6);
+    if(*index < 10) {
+      color = beaconSNRColor[*index];
     } else {
       color = RA8875_RED;
     }
@@ -298,6 +298,7 @@ void DisplayBeaconsSNR(int beacon) {
   char message[48];
   int rowCount = 5;
   int columnOffset = 256;
+  int index = 0;
   static int beaconFreqCount = 0;
 
   tft.layerEffect(LAYER1);
@@ -336,7 +337,7 @@ void DisplayBeaconsSNR(int beacon) {
       for (int i = 0; i < 18; i++){
         // *** following line gives a sample SNR highlight ***
         //int color = GetSNRColor(i - (i > 10 ? 10 : 0));
-        int color = GetSNRColor(beaconSNR[i][beaconFreqCount]);
+        int color = GetSNRColor(beaconSNR[i][beaconFreqCount], &index);
 
         tft.setCursor(beacons[i].x, beacons[i].y);
         if(color == RA8875_BLACK) {
@@ -365,9 +366,11 @@ void DisplayBeaconsSNR(int beacon) {
 
       // print SNR square for each monitored band
       for(int j = 0; j < 5; j++) {
-        // *** following line gives a sample SNR patch ***
-        //int color = GetSNRColor((i + j ) - (i + j > 10 ? 10 : 0));
-        int color = GetSNRColor(beaconSNR[i][j]);
+        // *** following 2 lines gives a sample SNR patch ***
+        //index = i+j - ((i+j) >= 10 ? 10 + ((i+j) >= 20 ? 10 : 0) : 0);
+        //int color = beaconSNRColor[index];
+        int color = GetSNRColor(beaconSNR[i][j], &index);
+
         tft.setFontScale(0);
         tft.setCursor(beacons[i].x + j * 10, beacons[i].y + 33);
 
@@ -379,6 +382,14 @@ void DisplayBeaconsSNR(int beacon) {
           }
 
           tft.print(beaconBandName[j]);
+        }
+
+        if(beaconDataFlag) {
+          if(monitorFreq[j]) {
+            beaconData[i * 5 + j + 5] = index < 10 ? index : 9;
+          } else {
+            beaconData[i * 5 + j + 5] = 0;
+          }
         }
       }
     }
@@ -400,6 +411,17 @@ void DisplayBeaconsSNR(int beacon) {
     tft.setCursor(10, 450);
     tft.print("Volume: ");
     tft.print(audioVolume);
+
+    if(beaconDataFlag) {
+      beaconData[0] = 'B';
+      beaconData[1] = 'M';
+      beaconData[2] = (uint8_t)band;
+      beaconData[3] = (uint8_t)beacon;
+      beaconData[4] = (uint8_t)audioVolume;
+      beaconData[95] = ';';
+
+      T41BeaconSendData(beaconData, 96);
+    }
   }
 }
 

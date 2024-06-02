@@ -43,7 +43,8 @@
 #include "keyboard.h"
 #include "locator.h"
 #include "mouse.h"
-#include "USBSerial.h"
+#include "t41Control.h"
+#include "t41Beacon.h"
 #include "Beacon.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -950,7 +951,8 @@ FLASHMEM void setup() {
   char myGrid[] = "CM87";
   set_Station_Coordinates(myGrid);
 
-  SerialSetup();
+  T41ControlSetup();
+  T41BeaconSetup();
   //ARMCorrTest();
 }
 
@@ -1279,7 +1281,8 @@ FASTRUN void loop()
   if (elapsed_micros_idx_t > 200) {
     PrintKeyboardBuffer();
   }
-  SerialLoop();
+  T41ControlLoop();
+  T41BeaconLoop();
 #endif
 
   // update memory about every second

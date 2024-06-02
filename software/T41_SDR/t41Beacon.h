@@ -3,14 +3,13 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-extern bool dataFlag;
-extern uint8_t specData[518];
+extern bool beaconDataFlag;
+extern uint8_t beaconData[96];
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void SerialSetup();
-void SerialLoop();
-void SendData(uint8_t *data, int len);
-void SendSmeter(int16_t smeterPad, float32_t dbm);
+void T41BeaconSetup();
+void T41BeaconLoop();
+void T41BeaconSendData(uint8_t *data, int len);

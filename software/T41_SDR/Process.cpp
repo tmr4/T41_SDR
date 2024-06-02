@@ -19,7 +19,7 @@
 #include "Process.h"
 #include "psk31.h"
 #include "Tune.h"
-#include "USBSerial.h"
+#include "t41Control.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -816,12 +816,12 @@ void ProcessIQData() {
     }
 
     // send audio data to control app if applicable
-    if (updateDisplayFlag == 1 && dataFlag) {
+    if (updateDisplayFlag == 1 && controlDataFlag) {
       for (int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
         // audioYPixel is already >= 0, limit it to 255
         specData[i] = (uint8_t)(audioYPixel[i] > 255 ? 255 : audioYPixel[i]);
       }
-      SendData(specData, AUDIO_SPEC_BOX_W - 2);
+      T41ControlSendData(specData, AUDIO_SPEC_BOX_W - 2);
     }
 
     //============================  Receive EQ  ========================

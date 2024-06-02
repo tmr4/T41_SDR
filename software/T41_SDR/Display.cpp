@@ -19,7 +19,7 @@
 #include "Noise.h"
 #include "Process.h"
 #include "Tune.h"
-#include "USBSerial.h"
+#include "t41Control.h"
 #include "Utility.h"
 
 #include "keyboard.h"
@@ -1023,7 +1023,7 @@ FASTRUN void DrawSmeterBar() {
     tft.print("dBm");
   }
 
-  if(dataFlag) {
+  if(controlDataFlag) {
     SendSmeter(smeterPad, dbm);
   }
 

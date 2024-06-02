@@ -1,7 +1,7 @@
 #include "SDT.h"
 #include "Display.h"
 #include "FIR.h"
-#include "USBSerial.h"
+#include "t41Control.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -155,7 +155,7 @@ void ZoomFFTExe(uint32_t blockSize) {
 
     // *** TODO: consider doing the limiting in Display.cpp here ***
     pixelnew[i] = displayScale[currentScale].baseOffset + bands[currentBand].pixel_offset + (int16_t)(displayScale[currentScale].dBScale * log10f_fast(FFT_spec[i]));
-    if(dataFlag) {
+    if(controlDataFlag) {
       // T41 spectrum equation: spectrumNoiseFloor - pixelnew[i] - currentNF;
       //data[i] = spectrumNoiseFloor - pixelnew[i] - currentNF;
       data[i] = pixelnew[i] + currentNF;
@@ -175,7 +175,7 @@ void ZoomFFTExe(uint32_t blockSize) {
 
   // shift spectrum data and send it to PC if applicable
   // we have to scale and apply noise floor in the control app
-  if(dataFlag) {
+  if(controlDataFlag) {
     int tmp = 0;
     for (int i = 0; i < SPECTRUM_RES; i++) {
       // shift data so max = 255
@@ -191,7 +191,7 @@ void ZoomFFTExe(uint32_t blockSize) {
       specData[i + 5] = (uint8_t)tmp;
     }
 
-    SendData(specData, SPECTRUM_RES + 6);
+    T41ControlSendData(specData, SPECTRUM_RES + 6);
   }
 }
 
