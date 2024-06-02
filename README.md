@@ -29,6 +29,7 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/mouse
   * feature/psk31
   * feature/USB
+  * feature/beacon
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
 
 ![Beacon Monitor](https://github.com/tmr4/T41_SDR/blob/feature/beacon/images/beacon_monitor.jpg)
