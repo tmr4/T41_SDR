@@ -73,6 +73,9 @@
 #define KEYBOARD_SUPPORT
 #define BEACON_FILE_NAME          "beacon.bmp"
 
+#define controlSerial Serial // SerailUSB1
+#define beaconSerial Serial // SerailUSB2
+
 struct maps {
   char mapNames[50];
   float lat;

@@ -25,21 +25,21 @@ uint8_t beaconData[96]; // format bytes "BM" + band index, beacon index, volume,
 // I suppose to prevent naming conflict somewhere, but this prevents having serial commands with a common argument specifying the serial channel to use, such as
 // void T41BeaconSetup(Stream& serial) { serial.begin(); }.  As such might as well duplicate these functions for both the T41 control app and Beacon monitor
 void T41BeaconSetup() {
-  SerialUSB2.begin(19200);
+  beaconSerial.begin(19200);
 }
 
 void T41BeaconSendData(uint8_t *data, int len) {
   // *** TODO: work up alternative if USB buffer is sufficient ***
-  if(SerialUSB2.availableForWrite() > len) {
-    SerialUSB2.write(data, len);
+  if(beaconSerial.availableForWrite() > len) {
+    beaconSerial.write(data, len);
   }
 }
 
 void T41BeaconGetCommand(char * cmd, int max) {
   int i = 0;
 
-  while(SerialUSB2.available() > 0) {
-    cmd[i] = (char) SerialUSB2.read();
+  while(beaconSerial.available() > 0) {
+    cmd[i] = (char) beaconSerial.read();
 
     //Serial.print("cmd from SerialUSB2: "); Serial.println(cmd[i]);
     // there might be multiple commands in the serial buffer
@@ -54,7 +54,7 @@ void T41BeaconGetCommand(char * cmd, int max) {
 
 void T41BeaconLoop()
 {
-  if(SerialUSB2.available()) {
+  if(beaconSerial.available()) {
     char cmd[256];
 
     T41BeaconGetCommand(cmd, 256);
@@ -73,7 +73,7 @@ void T41BeaconLoop()
       case 'T':
         if(cmd[1] == 'M' && cmd[13] == ';') {
           // set Teensy RTC
-          //Serial.print("TM cmd from SerialUSB2: "); Serial.println(atol(&cmd[2]));
+          //Serial.print("TM cmd from beaconSerial: "); Serial.println(atol(&cmd[2]));
           //Serial.println(Teensy3Clock.get());
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));

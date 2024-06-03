@@ -28,7 +28,7 @@ uint8_t specData[518]; // xDyyy[up to 512 bytes of data];   x=A or F, yyy = 255 
 // I suppose to prevent naming conflict somewhere, but this prevents having serial commands with a common argument specifying the serial channel to use, such as
 // void T41ControlSetup(Stream& serial) { serial.begin(); }.  As such might as well duplicate these functions for both the T41 control app and Beacon monitor
 void T41ControlSetup() {
-  SerialUSB1.begin(19200);
+  controlSerial.begin(19200);
 }
 
 void T41ControlSendData(uint8_t *data, int len) {
@@ -39,8 +39,8 @@ void T41ControlSendData(uint8_t *data, int len) {
   //  Serial.write(data[i]); Serial.print(" "); Serial.println(data[i]);
   //}
   // *** TODO: work up alternative if USB buffer is sufficient ***
-  if(SerialUSB1.availableForWrite() > len) {
-    SerialUSB1.write(data, len);
+  if(controlSerial.availableForWrite() > len) {
+    controlSerial.write(data, len);
     //SerialUSB1.write(data, SPECTRUM_RES);
     //SerialUSB1.send_now(); // we'll have a delay without this *** TODO: try with and without ***
   }
@@ -49,24 +49,24 @@ void T41ControlSendData(uint8_t *data, int len) {
 
 void T41ControlSendCmd(char *cmd) {
   //SerialUSB1.print(cmd);
-  int sizeBuf = SerialUSB1.availableForWrite();
+  int sizeBuf = controlSerial.availableForWrite();
   if(cmd[0] != 0 && sizeBuf > 0) {
     // the size of Teensy 4.1 serial transmit buffer is 8k and is used in 4 2k parts.
     // I've seen about 6k available at this point.
     // (https://forum.pjrc.com/index.php?threads/usb-serial-on-teensy-4-0-buffer-size-limitation.67826/)
     int len = strlen(cmd);
     //Serial.println(sizeBuf);
-    if(SerialUSB1.availableForWrite() > len) {
-      SerialUSB1.write(cmd, len);
-      SerialUSB1.send_now(); // we'll have a delay without this
+    if(controlSerial.availableForWrite() > len) {
+      controlSerial.write(cmd, len);
+      controlSerial.send_now(); // we'll have a delay without this
     } else {
       int i=0;
       //Serial.println(sizeBuf);
       while(cmd[i] != 0) {
-        if(SerialUSB1.availableForWrite() > 0) {
+        if(controlSerial.availableForWrite() > 0) {
           //SerialUSB1.print(cmd[i++]);
         } else {
-          SerialUSB1.flush(); // *** TODO: this will cause a freeze if PC stops receiving ***
+          controlSerial.flush(); // *** TODO: this will cause a freeze if PC stops receiving ***
           controlDataFlag = false;
         }
       }
@@ -79,8 +79,8 @@ void T41ControlSendCmd(char *cmd) {
 void T41ControlGetCommand(char * cmd, int max) {
   int i = 0;
 
-  while(SerialUSB1.available() > 0) {
-    cmd[i] = (char) SerialUSB1.read();
+  while(controlSerial.available() > 0) {
+    cmd[i] = (char) controlSerial.read();
 
     // there might be multiple commands in the serial buffer
     // read only the first one or up to the specified limit
@@ -185,7 +185,7 @@ int GetMode() {
 
 void T41ControlLoop()
 {
-  if(SerialUSB1.available()) {
+  if(controlSerial.available()) {
     char cmd[256];
     int mode = GetMode();
 
@@ -397,7 +397,7 @@ void T41ControlLoop()
       case 'T':
         if(cmd[1] == 'M' && cmd[13] == ';') {
           // set Teensy RTC
-          //Serial.print("TM cmd from SerialUSB1: "); Serial.println(atol(&cmd[2]));
+          //Serial.print("TM cmd from controlSerial: "); Serial.println(atol(&cmd[2]));
           //Serial.println(Teensy3Clock.get());
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));
