@@ -30,7 +30,14 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/psk31
   * feature/USB
   * feature/beacon
+  * feature/wsjtx
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
+
+* feature/wsjtx - Communicate with WSJT-X over USB using `TS-890S` as the *Rig* on the WSJT-X *Radio* tab.  Must compile with one of the USB Types that includes both `Serial` and `Audio` (`Audio` isn't required if you connect the audio from the T41 to your PC in another way).
+
+  * Note that WSJT-X doesn't use `TS-890S` commands, but rather `TS-2000` commands.  However, selecting the latter rig results in errors.
+  * Communicating with Audio over USB exposes at most one Serial port.  Check out my (T41 Server)[https://github.com/tmr4/T41Server] app to allow communications with multiple apps over a single serial connection to the T41.
+  * Due to the above, the WSJT-X feature is incompatible with the USB and Beacon features.  I'm adapting the T41 Server app to make these apps work at the same time.
 
 ![Beacon Monitor](https://github.com/tmr4/T41_SDR/blob/feature/beacon/images/beacon_monitor.jpg)
 
