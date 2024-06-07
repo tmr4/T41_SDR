@@ -53,7 +53,7 @@ int currentDataMode = DEMOD_PSK31; // preserves data mode between mode and band 
   Return value:
     void
 *****/
-FLASHMEM void BandChange(int change) {
+FLASHMEM void ChangeBand(int change) {
   // Added if so unused GPOs will not be touched
   if(currentBand < BAND_12M) {
     digitalWrite(bandswitchPins[currentBand], LOW);
@@ -137,6 +137,31 @@ FLASHMEM void BandChange(int change) {
 
   if(currentBand < BAND_12M) {
     digitalWrite(bandswitchPins[currentBand], HIGH);
+  }
+}
+
+/*****
+  Purpose: Make a band change if needed due to a frequency change
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+FLASHMEM void ChangeBand(long newFreq) {
+  int newBand = BAND_80M;
+
+  // determine appropriate band for newFreq
+  for(; newBand < NUMBER_OF_BANDS; newBand++) {
+    if(newFreq <= bands[newBand].fBandHigh) {
+      break;
+    }
+  }
+
+  // change bands if newBand is valid and different than current band
+  if((newBand < NUMBER_OF_BANDS) && (newBand != currentBand)) {
+    ChangeBand(newBand - currentBand);
   }
 }
 

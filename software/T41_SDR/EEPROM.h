@@ -3,15 +3,6 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-#define NUMBER_OF_BANDS           7
-#define BAND_80M                  0
-#define BAND_40M                  1
-#define BAND_20M                  2
-#define BAND_17M                  3
-#define BAND_15M                  4
-#define BAND_12M                  5
-#define BAND_10M                  6
-
 #define EQUALIZER_CELL_COUNT     14
 #define NUMBER_OF_SWITCHES       18 // Number of push button switches
 

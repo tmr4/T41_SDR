@@ -364,7 +364,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
       break;
 
     case BAND_UP:  // 2
-      BandChange(1);
+      ChangeBand(1);
       break;
 
     case ZOOM:  // 3
@@ -389,7 +389,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
       break;
 
     case BAND_DN:  // 5
-      BandChange(-1);
+      ChangeBand(-1);
       break;
 
     case FILTER:  // 6

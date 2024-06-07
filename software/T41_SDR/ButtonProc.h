@@ -18,7 +18,8 @@ extern int currentDataMode;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void BandChange(int change);
+void ChangeBand(int change);
+void ChangeBand(long newFreq);
 void ButtonFilter();
 void ChangeDemodMode(int mode);
 void ChangeMode(int mode);

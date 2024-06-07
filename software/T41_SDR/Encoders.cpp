@@ -3,7 +3,7 @@
 #include "ButtonProc.h"
 #include "CWProcessing.h"
 #include "Display.h"
-#include "EEPROM.h"
+//#include "EEPROM.h"
 #include "Encoders.h"
 #include "Filter.h"
 #include "ft8.h"

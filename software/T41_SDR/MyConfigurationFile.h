@@ -73,8 +73,10 @@
 #define KEYBOARD_SUPPORT
 #define BEACON_FILE_NAME          "beacon.bmp"
 
-#define controlSerial Serial // SerailUSB1
-#define beaconSerial Serial // SerailUSB2
+#define T41_USB_AUDIO
+#define controlSerial Serial // SerialUSB1
+#define beaconSerial Serial // SerialUSB2
+#define wsjtSerial Serial // SerialUSB1 // Serial // SerialUSB2
 
 struct maps {
   char mapNames[50];

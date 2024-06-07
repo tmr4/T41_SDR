@@ -307,9 +307,9 @@ void MouseButtonOpStatsArea(int button) {
     ResetTuning();
   } else if(cursorX > OPERATION_STATS_BD - 5 && cursorX < OPERATION_STATS_MD - 20) {
     if(button == 1) {
-      BandChange(1);
+      ChangeBand(1);
     } else {
-      BandChange(-1);
+      ChangeBand(-1);
     }
   } else if(button == 1 && cursorX > OPERATION_STATS_MD - 5 && cursorX < OPERATION_STATS_CWF) {
     // change to the next mode: SSB -> CW -> DATA -> SSB

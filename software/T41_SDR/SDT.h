@@ -29,7 +29,7 @@
 #include <string.h>
 #include <util/crc16.h>                // mdrhere
 #include <utility/imxrt_hw.h>          // for setting I2S freq
-#include <EEPROM.h>
+#include <EEPROM.h> // ???
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -37,6 +37,15 @@
 
 #define BOGUS_PIN_READ             -1 // If no push button read
 #define FFT_LENGTH                512
+
+#define NUMBER_OF_BANDS           7
+#define BAND_80M                  0
+#define BAND_40M                  1
+#define BAND_20M                  2
+#define BAND_17M                  3
+#define BAND_15M                  4
+#define BAND_12M                  5
+#define BAND_10M                  6
 
 #define SSB_MODE                    0
 #define CW_MODE                     1

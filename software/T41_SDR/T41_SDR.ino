@@ -47,6 +47,7 @@
 #include "t41Control.h"
 #include "t41Beacon.h"
 #include "Beacon.h"
+#include "wsjt.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -196,9 +197,11 @@ AudioPlayQueue Q_out_R;
 AudioPlayQueue Q_out_L_Ex;
 AudioPlayQueue Q_out_R_Ex;
 
+#ifdef T41_USB_AUDIO
 AudioOutputUSB usb1;
 AudioAmplifier amp1, amp2;
 AudioFilterBiquad biquad1;
+#endif
 
 AudioConnection patchCord1(i2s_quadIn, 0, int2Float1, 0);  //connect the Left input to the Left Int->Float converter
 AudioConnection patchCord2(i2s_quadIn, 1, int2Float2, 0);  //connect the Right input to the Right Int->Float converter
@@ -236,12 +239,14 @@ AudioConnection patchCord22(modeSelectOutR, 0, i2s_quadOut, 3);
 AudioConnection patchCord23(Q_out_L_Ex, 0, modeSelectOutL, 1);  //Rec out Queue for sidetone
 AudioConnection patchCord24(Q_out_R_Ex, 0, modeSelectOutR, 1);
 
+#ifdef T41_USB_AUDIO
 AudioConnection patchCord25(Q_out_L, biquad1);
 //AudioConnection patchCord25(Q_out_L, amp1);
 AudioConnection patchCord26(biquad1, amp1);
 AudioConnection patchCord27(amp1, 0, usb1, 0);
 AudioConnection patchCord28(Q_out_L, 0, amp2, 0);
 AudioConnection patchCord29(amp2, 0, usb1, 1);
+#endif
 
 AudioControlSGTL5000 sgtl5000_2;
 
@@ -963,16 +968,19 @@ FLASHMEM void setup() {
   char myGrid[] = "CM87";
   set_Station_Coordinates(myGrid);
 
-  T41ControlSetup();
-  T41BeaconSetup();
+  //T41ControlSetup();
+  //T41BeaconSetup();
+  WSJTControlSetup();
   //ARMCorrTest();
 
+#ifdef T41_USB_AUDIO
   amp1.gain(100);
   amp2.gain(200);
   //amp2.gain(100);
   //amp2.gain(1);
   //biquad1.setBandpass(0, 1000, 0.5);
   biquad1.setLowpass(0, 3000, 0.5);
+#endif
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
@@ -1300,8 +1308,9 @@ FASTRUN void loop()
   if (elapsed_micros_idx_t > 200) {
     PrintKeyboardBuffer();
   }
-  T41ControlLoop();
-  T41BeaconLoop();
+  //T41ControlLoop();
+  //T41BeaconLoop();
+  WSJTLoop();
 #endif
 
   // update memory about every second

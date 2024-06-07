@@ -197,11 +197,11 @@ void T41ControlLoop()
       case 'B':
         if(cmd[1] == 'U' && cmd[2] == ';') {
           // band up
-          BandChange(1);
+          ChangeBand(1);
           SendAS();
         } else if(cmd[1] == 'D' && cmd[2] == ';') {
           // band up
-          BandChange(-1);
+          ChangeBand(-1);
           SendAS();
         }
         return; // *** TODO: or we can set cmd[0] to null

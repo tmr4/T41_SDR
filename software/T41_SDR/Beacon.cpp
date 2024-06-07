@@ -3,7 +3,7 @@
 #include "Bearing.h"
 #include "ButtonProc.h"
 #include "Display.h"
-#include "EEPROM.h"
+//#include "EEPROM.h"
 #include "t41Beacon.h"
 #include "Tune.h"
 
@@ -169,7 +169,7 @@ void BeaconExit() {
   // cycle back through monitored bands, restoring prior values
   for(int i = 0; i < 5; i++) {
     if(monitorFreq[i]) {
-      BandChange(beaconBand[i] - currentBand);
+      ChangeBand(beaconBand[i] - currentBand);
 
       // save band frequency and set it to the beacon's frequency for this band
       TxRxFreq = priorBeaconBandFreq[i];
@@ -180,10 +180,10 @@ void BeaconExit() {
       bands[currentBand].FLoCut = priorFilterLo[i];
     }
   }
-  BandChange(1);
+  ChangeBand(1);
   ChangeDemodMode(priorDemod);
   ChangeMode(priorMode);
-  BandChange(priorBand - currentBand);
+  ChangeBand(priorBand - currentBand);
   TxRxFreq = priorFreq;
 
   RedrawDisplayScreen();
@@ -476,7 +476,7 @@ void BeaconLoop() {
       if(monitorFreq[band]) {
         // change band if needed
         if(beaconBand[band] != currentBand) {
-          BandChange(beaconBand[band] - currentBand);
+          ChangeBand(beaconBand[band] - currentBand);
         }
 
         // allow radio to stablize during the rest of this 10 second cycle
@@ -579,7 +579,7 @@ void BeaconLoop() {
     // so we don't have to do it again
     for(int i = 0; i < 5; i++) {
       if(monitorFreq[i]) {
-        BandChange(beaconBand[i] - currentBand);
+        ChangeBand(beaconBand[i] - currentBand);
 
         // save band frequency and set it to the beacon's frequency for this band
         priorBeaconBandFreq[i] = TxRxFreq;
@@ -601,7 +601,7 @@ void BeaconLoop() {
     // this but why bother when this simple addition does what we need.
     // *** TODO: figure out why the next band change during the monitoring
     //           process doesn't do this ***
-    BandChange(1);
+    ChangeBand(1);
 
     // make sure mode and demod mode are set appropriately
     ChangeMode(CW_MODE);

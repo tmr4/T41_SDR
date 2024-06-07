@@ -7,7 +7,7 @@
 #include "Display.h"
 #include "DSP_Fn.h"
 #include "Encoders.h"
-#include "EEPROM.h"
+//#include "EEPROM.h"
 #include "Exciter.h"
 #include "FFT.h"
 #include "Filter.h"
