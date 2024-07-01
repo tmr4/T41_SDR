@@ -3,6 +3,7 @@
 //#include <USBHost_t36.h>
 
 #include "ButtonProc.h"
+#include "debugSerial.h"
 #include "Display.h"
 #include "Encoders.h"
 #include "EEPROM.h"
@@ -24,37 +25,30 @@
 // I suppose to prevent naming conflict somewhere, but this prevents having serial commands with a common argument specifying the serial channel to use, such as
 // void WSJTControlSetup(Stream& serial) { serial.begin(); }.  As such might as well duplicate these functions for both the T41 control app and Beacon monitor
 void WSJTControlSetup() {
-  wsjtSerial.begin(19200);
+  //wsjtSerial.begin(19200); // this is unneeded for Teensy (https://www.pjrc.com/teensy/td_serial.html) meaning the setup call is unneeded as well
 }
 
 void WSJTControlSendCmd(char *cmd) {
   int sizeBuf = wsjtSerial.availableForWrite();
+  //DEBUG(1)
+
   if(cmd[0] != 0 && sizeBuf > 0) {
-    //Serial.print("    Sending ... "); Serial.println(cmd);
+    DEBUG_SERIAL2("    T41 sending " + String(cmd))
+
     // the size of Teensy 4.1 serial transmit buffer is 8k and is used in 4 2k parts.
     // I've seen about 6k available at this point.
     // (https://forum.pjrc.com/index.php?threads/usb-serial-on-teensy-4-0-buffer-size-limitation.67826/)
     int len = strlen(cmd);
-    //Serial.println(sizeBuf);
     if(wsjtSerial.availableForWrite() > len) {
       //int i=0;
       wsjtSerial.write(cmd, len);
-      //wsjtSerial.print(cmd);
       wsjtSerial.send_now(); // we'll have a delay without this
-      //wsjtSerial.flush(); // *** TODO: this will cause a freeze if PC stops receiving ***
-      //while(cmd[i] != 0) {
-      //  if(wsjtSerial.availableForWrite() > 0) {
-      //    wsjtSerial.print(cmd[i++]);
-      //  } else {
-      //    wsjtSerial.flush(); // *** TODO: this will cause a freeze if PC stops receiving ***
-      //  }
-      //}
     } else {
+      // send it byte by byte
       int i=0;
-      //Serial.println(sizeBuf);
       while(cmd[i] != 0) {
         if(wsjtSerial.availableForWrite() > 0) {
-          //wsjtSerial.print(cmd[i++]);
+          wsjtSerial.print(cmd[i++]);
         } else {
           wsjtSerial.flush(); // *** TODO: this will cause a freeze if PC stops receiving ***
         }
@@ -165,8 +159,9 @@ int GetT41Demod(int mode) {
   return demod;
 }
 
-// Kenwood TS-890S computer control commands
-// WSJT-X had trouble with this
+// WSJT-X had trouble with Kenwood TS-2000 use the TS-890S instead
+// WSJT-X doesn't model Kenwood TS-890S computer control commands, but
+// rather uses a subset of TS-2000 commands.
 void WSJTLoop()
 {
   if(wsjtSerial.available()) {
@@ -174,9 +169,12 @@ void WSJTLoop()
     int mode = GetKenwoodMode();
 
     WSJTControlGetCommand(cmd, 256);
-    //Serial.print("Received ");  Serial.println(cmd);
-    //int sizeBuf = wsjtSerial.availableForWrite();
-    //Serial.println(sizeBuf);
+    if(cmd[0] == 0 || cmd[0] == ';') {
+      return;
+    }
+
+    DEBUG_SERIAL("    T41 received " + String(cmd))
+
     // *** TODO: some of these need changed from the T41 control app settings ***
     switch(cmd[0]) {
       case 'A':
@@ -224,7 +222,6 @@ void WSJTLoop()
               ChangeBand(f);
               SetCenterTune(f - centerFreq);
               currentFreqA = f;
-              //Serial.print("Set VFO A to "); Serial.println(f);
               return;
             } else if(cmd[2] == ';') {
               // read VFO A frequency
@@ -239,7 +236,6 @@ void WSJTLoop()
               ChangeBand(f);
               SetCenterTune(f - centerFreq);
               currentFreqB = f;
-             // Serial.print("Set VFO B to "); Serial.println(f);
               return;
             } else if(cmd[2] == ';') {
               // read VFO B frequency
@@ -255,7 +251,6 @@ void WSJTLoop()
               NCOFreq = 0L;
               SetTxRxFreq(f);
               DrawBandwidthBar();
-              //Serial.print("Center freq set to "); Serial.println(f);
               return;
             } else if(cmd[2] == ';') {
               // read center frequency
@@ -354,7 +349,6 @@ void WSJTLoop()
         } else if(cmd[1] == 'D' && cmd[3] == ';') {
           // set demod mode status
           int demod = GetT41Demod(atoi(&cmd[2]));
-          //Serial.print("Changing demod mode to: "); Serial.println(demod);
           ChangeDemodMode(demod);
           return;
           //sprintf(cmd,"?;");
@@ -395,7 +389,7 @@ void WSJTLoop()
         } else if(cmd[1] == 'M' && cmd[4] == ';') {
           // set demod mode status
           char val[2] = { cmd[2], 0 };
-          int item = atoi(val);
+          //int item = atoi(val);
           val[0] = cmd[3];
           int mode = atoi(val);
           int demod = GetT41Demod(mode);
@@ -438,8 +432,6 @@ void WSJTLoop()
       case 'T':
         if(cmd[1] == 'M' && cmd[13] == ';') {
           // set Teensy RTC
-          //Serial.print("TM cmd from controlSerial: "); Serial.println(atol(&cmd[2]));
-          //Serial.println(Teensy3Clock.get());
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));
         } else if(cmd[1] == 'X' && cmd[2] == ';') {
@@ -456,10 +448,10 @@ void WSJTLoop()
     }
 
     WSJTControlSendCmd(cmd);
-    //Serial.print("Responded with: "); Serial.println(cmd);
   }
 }
 
+/*
 // Kenwood TS-2000 modes
 int GetKenwoodTS2000Mode() {
   // 1: LSB, 2: USB, 3: CW, 4: FM, 5: AM
@@ -488,7 +480,7 @@ int GetKenwoodTS2000Mode() {
   }
   return mode;
 }
-/*
+
 // Kenwood TS-2000 computer control commands
 // WSJT-X had trouble with this
 void WSJTLoopTS2000()

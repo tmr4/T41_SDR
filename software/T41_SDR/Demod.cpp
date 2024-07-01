@@ -30,7 +30,7 @@ float32_t omega2 = 0.0;
   Purpose: AMDecodeSAM()
   Parameter list:
     void
-  Return value;
+  Return value:
     void
   Notes:  Synchronous AM detection.  Determines the carrier frequency, adjusts freq and replaces the received carrier with a steady signal to prevent fading.
   This alogorithm works best of those implimented
@@ -142,7 +142,7 @@ void AMDecodeSAM() {
   Purpose: ApproxAtan2
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 float ApproxAtan2(float y, float x) {

@@ -127,7 +127,7 @@ void Dit();
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SetWPMFollowup() {
@@ -260,7 +260,7 @@ FLASHMEM void DoPaddleFlip() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SetSideToneVolumeSetup() {
@@ -301,7 +301,7 @@ FLASHMEM void SetSideToneVolumeFollowup() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SetTransmitDelayFollowup() {
@@ -531,7 +531,7 @@ FLASHMEM void ResetHistograms() {
   Parameter list:
     float audioValue        the strength of audio signal
 
-  Return value;
+  Return value:
     void
 *****/
 // charProcessFlag means a character is being decoded.  blankFlag indicates a blank has already been printed.
@@ -648,7 +648,7 @@ void DoCWDecoding(int audioValue) {
   Parameter list:
     long val        the duration of the signal gap (ms)
 
-  Return value;
+  Return value:
     void
 
 *****/
@@ -713,7 +713,7 @@ void DoGapHistogram(long gapLen) {
     int32_t clusterSpread  tells how far previous and ahead elements are to be included in the measure.
                             Must be an odd integer > 1.
 
-  Return value;
+  Return value:
     void
 *****/
 void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, int32_t *maxIndex, int32_t *firstNonZero, int32_t spread) {
@@ -752,7 +752,7 @@ void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, 
   Parameter list:
   long val        the strength of audio signal
 
-  Return value;
+  Return value:
   void
 
 *****/
@@ -823,7 +823,7 @@ void DoSignalHistogram(long val) {
     int SAMPLING_RATE,      // Sampling rate in our case 24ksps
     float* data             // pointer to input data array
 
-  Return value;
+  Return value:
     float magnitude     //magnitude of the transform at the target frequency
 
 *****/

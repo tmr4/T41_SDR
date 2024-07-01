@@ -902,7 +902,7 @@ PROGMEM float32_t* mag_coeffs[11] =
     float dfc
     float Fsamprate
 
-  Return value;
+  Return value:
     void
 *****/
 void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop, int type, float dfc, float Fsamprate) {
@@ -1002,7 +1002,7 @@ void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop
     float32_t FHiCut
     float SampleRate
 
-  Return value;
+  Return value:
     void
 *****/
 void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float32_t FLoCut, float32_t FHiCut, float SampleRate) {
@@ -1070,7 +1070,7 @@ void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float3
   Parameter list:
     void
     
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SetIIRCoeffs(float32_t f0, float32_t Q, float32_t sample_rate, uint8_t filter_type) {

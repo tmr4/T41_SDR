@@ -44,7 +44,7 @@ bool getEncoderValueFlag = false;
   Parameter list:
     int FW - filter width
 
-  Return value;
+  Return value:
     void
 *****/
 void SetBWFilters() {
@@ -105,7 +105,7 @@ void SetBWFilters() {
   Parameter list:
     void
     
-  Return value;
+  Return value:
     void
 *****/
 void EncoderCenterTune() {
@@ -142,7 +142,7 @@ void EncoderCenterTune() {
     int startValue              the numeric value to begin the count
     int increment               the amount by which each increment changes the value
     char prompt[]               the input prompt
-  Return value;
+  Return value:
     int                         the new value
 *****/
 float GetEncoderValueLive(float minValue, float maxValue, float startValue, float increment, char prompt[]) {
@@ -188,7 +188,7 @@ float GetEncoderValueLive(float minValue, float maxValue, float startValue, floa
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 // why not FASTRUN
@@ -240,7 +240,7 @@ void EncoderVolumeISR() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FASTRUN void EncoderFineTuneISR() {
@@ -269,7 +269,7 @@ FASTRUN void EncoderFineTuneISR() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FASTRUN void EncoderMenuChangeFilterISR() {

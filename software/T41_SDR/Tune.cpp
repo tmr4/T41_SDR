@@ -31,7 +31,7 @@ bool splitVFO = false;
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 
   CAUTION: SI5351_FREQ_MULT is set in the si5253.h header file and is 100UL
@@ -70,7 +70,7 @@ void SetFreqCal(void) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void SetTxRxFreq(long freq) {
@@ -101,7 +101,7 @@ void SetTxRxFreq(long freq) {
   Parameter list:
   void
 
-  Return value;
+  Return value:
   void
 *****/
 void ResetTuning() {
@@ -120,7 +120,7 @@ void ResetTuning() {
   Parameter list:
     long tuneChange - amound to change center freq
 
-  Return value;
+  Return value:
     void
 *****/
 void SetCenterTune(long tuneChange) {
@@ -135,7 +135,7 @@ void SetCenterTune(long tuneChange) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void SetNCOFreq(long newNCOFreq) {
@@ -177,7 +177,7 @@ void SetNCOFreq(long newNCOFreq) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void SetFineTune(long tuneChange) {
@@ -190,7 +190,7 @@ void SetFineTune(long tuneChange) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 
   CAUTION: SI5351_FREQ_MULT is set in the si5253.h header file and is 100UL
@@ -245,7 +245,7 @@ FLASHMEM void SplitVFOFollowup() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void DoSplitVFO() {

@@ -60,7 +60,7 @@ PROGMEM const float32_t volumeLog[] = { 0.000010, 0.000011, 0.000013, 0.000014, 
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void sineTone(int numCycles) {
@@ -157,7 +157,7 @@ PROGMEM const float32_t atanTable[68] = {
   Purpose: Generate Array with variable sinewave frequency tone
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 /*void SinTone(long freqSideTone) { // AFP 10-25-22
@@ -172,7 +172,7 @@ PROGMEM const float32_t atanTable[68] = {
   Purpose: Correct Phase angle between I andQ channels
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t factor, uint32_t blocksize) {
@@ -191,7 +191,7 @@ void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t facto
 
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 float MSinc(int m, float fc) {
@@ -207,7 +207,7 @@ float MSinc(int m, float fc) {
 
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 float32_t Izero(float32_t x) {
@@ -239,7 +239,7 @@ float32_t Izero(float32_t x) {
   Parameter list:
     float32_t X       number for conversion
 
-  Return value;
+  Return value:
     void
 *****/
 float32_t log10f_fast(float32_t X) {
@@ -263,7 +263,7 @@ float32_t log10f_fast(float32_t X) {
     float32_t inphase
     float32_t quadrature
 
-  Return value;
+  Return value:
     float32_t
 *****/
 float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature) {
@@ -292,7 +292,7 @@ float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature) {
   Parameter list:
     float z         value to approximate
 
-  Return value;
+  Return value:
     float           atan vakye
 *****/
 float ApproxAtan(float z) {
@@ -307,7 +307,7 @@ float ApproxAtan(float z) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SaveAnalogSwitchValues() {
@@ -390,7 +390,7 @@ FLASHMEM void SaveAnalogSwitchValues() {
   Purpose: DisplayClock()
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 void DisplayClock() {
@@ -439,7 +439,7 @@ void DisplayClock() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SetBand() {
@@ -471,7 +471,7 @@ FLASHMEM void SetBand() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     int               0 = SD not initialized, 1 = has data
 *****/
 FLASHMEM int SDPresentCheck() {
@@ -508,7 +508,7 @@ double elapsed_micros_sum;
     int notchF        the notch to use
     int MODE          the current MODE
 
-  Return value;
+  Return value:
     void
 *****/
 void ShowTempAndLoad() {
@@ -587,7 +587,7 @@ float TGetTemp() {
 
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp) {
@@ -612,7 +612,7 @@ FLASHMEM void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAla
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void FormatFrequency(long freq, char *freqBuffer) {
@@ -719,7 +719,7 @@ FLASHMEM int SetI2SFreq(int freq) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void PrimeMallInfo() {

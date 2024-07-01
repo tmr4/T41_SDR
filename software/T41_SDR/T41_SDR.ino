@@ -970,7 +970,7 @@ FLASHMEM void setup() {
 
   //T41ControlSetup();
   //T41BeaconSetup();
-  WSJTControlSetup();
+  //WSJTControlSetup();
   //ARMCorrTest();
 
 #ifdef T41_USB_AUDIO

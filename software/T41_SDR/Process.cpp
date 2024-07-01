@@ -949,7 +949,7 @@ void ProcessIQData() {
   Parameter list:
     int volume        the current reading
 
-  Return value;
+  Return value:
     void
 *****/
 float VolumeToAmplification(int volume) {

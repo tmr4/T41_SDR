@@ -102,7 +102,7 @@ PROGMEM const float32_t sqrtHann[256] = {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void Kim1_NR() {
@@ -316,7 +316,7 @@ void Kim1_NR() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void Xanr() {
@@ -373,7 +373,7 @@ void Xanr() {
   Purpose: spectral_noise_reduction
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 void SpectralNoiseReduction() {
@@ -650,7 +650,7 @@ void SpectralNoiseReduction() {
   Parameter list:
     void
     
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void InitLMSNoiseReduction() {
@@ -686,7 +686,7 @@ FLASHMEM void InitLMSNoiseReduction() {
   Purpose:
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SpectralNoiseReductionInit() {

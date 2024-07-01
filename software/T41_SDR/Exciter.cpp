@@ -29,7 +29,7 @@ int16_t *sp_R2;
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
     Notes:
     There are several actions in this function
@@ -174,7 +174,7 @@ void ExciterIQData() {
   Parameter list:
     int state             OFF = 0, ON = 1
 
-  Return value;
+  Return value:
     void
 *****/
 void SetBandRelay(int state) {

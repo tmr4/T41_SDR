@@ -444,7 +444,7 @@ FLASHMEM void ButtonNotchFilter() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ToggleLiveNoiseFloorFlag() {
@@ -489,7 +489,7 @@ FLASHMEM void ChangeFreqIncrement(int change) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ChangeFtIncrement(int change) {
@@ -514,7 +514,7 @@ FLASHMEM void ChangeFtIncrement(int change) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
     Base Code courtesy of Harry  GM3RVL
 *****/
@@ -738,7 +738,7 @@ FLASHMEM void ButtonFrequencyEntry() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ButtonBearing() {

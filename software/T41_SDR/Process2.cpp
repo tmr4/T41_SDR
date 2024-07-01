@@ -406,7 +406,7 @@ FLASHMEM void ProcessIQData2() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowSpectrum2() {
@@ -472,7 +472,7 @@ FLASHMEM void ShowSpectrum2() {
     int x1, where x1 is the FFT bin.
     cal_bins[2] locations of the desired and undesired signals
     capture_bins width of the bins used to display the signals
-  Return value;
+  Return value:
     float returns the adjusted value in dB
 *****/
 FLASHMEM float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {

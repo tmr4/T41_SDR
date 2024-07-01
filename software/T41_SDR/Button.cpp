@@ -101,7 +101,7 @@ static volatile int buttonADCOut;
 
   Parameter list:
     none
-  Return value;
+  Return value:
     void
 *****/
 void ButtonISR() {
@@ -202,7 +202,7 @@ void ButtonISR() {
 
   Parameter list:
     none
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EnableButtonInterrupts() {
@@ -221,7 +221,7 @@ FLASHMEM void EnableButtonInterrupts() {
   Parameter list:
     int valPin            the ADC value from analogRead()
 
-  Return value;
+  Return value:
     int                   -1 if not valid push button, index of push button if valid
 *****/
 int ProcessButtonPress(int valPin) {
@@ -259,7 +259,7 @@ int ProcessButtonPress(int valPin) {
   Parameter list:
     none
 
-  Return value;
+  Return value:
     int                   -1 if not valid push button, ADC value if valid
 *****/
 int ReadSelectedPushButton() {
@@ -305,7 +305,7 @@ int ReadSelectedPushButton() {
   Parameter list:
     int vsl               the value from analogRead in loop()
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ExecuteButtonPress(int val) {
@@ -509,7 +509,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void NoActiveMenu() {

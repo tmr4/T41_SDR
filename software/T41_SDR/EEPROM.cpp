@@ -128,7 +128,7 @@ config_t EEPROMData {
   Parameter list:
     struct EEPROMData       pointer to the EEPROM structure
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EEPROMWrite() {
@@ -141,7 +141,7 @@ FLASHMEM void EEPROMWrite() {
   Parameter list:
   None
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EEPROMRead() {
@@ -154,7 +154,7 @@ FLASHMEM void EEPROMRead() {
   Parameter list:
   None
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EEPROMWriteSize(int structSize) {
@@ -167,7 +167,7 @@ FLASHMEM void EEPROMWriteSize(int structSize) {
   Parameter list:
   None
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM int EEPROMReadSize() {
@@ -182,7 +182,7 @@ FLASHMEM int EEPROMReadSize() {
   Parameter list:
     
 
-  Return value;
+  Return value:
     char* pointer to EEPROM version string of the form "V049_808"
 *****/
 static char* EEPROMSetVersion(void) {
@@ -203,7 +203,7 @@ static char* EEPROMSetVersion(void) {
   Parameter list:
     struct config_t e[]       pointer to the EEPROM structure
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EEPROMShow() {
@@ -461,7 +461,7 @@ FLASHMEM void EEPROMShow() {
   Parameter list:
     struct config_t e[]       pointer to the EEPROM structure
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EEPROMStuffFavorites(unsigned long current[]) {
@@ -477,7 +477,7 @@ FLASHMEM void EEPROMStuffFavorites(unsigned long current[]) {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
 
   CAUTION: This code assumes you have set the curently active VFO frequency to the new
@@ -541,7 +541,7 @@ FLASHMEM void SetFavoriteFrequency() {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void GetFavoriteFrequency() {
@@ -646,7 +646,7 @@ FLASHMEM void GetFavoriteFrequency() {
   Parameter list:
     struct config_t e[]       pointer to the EEPROM structure
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EEPROMSaveDefaults2() {
@@ -864,7 +864,7 @@ FLASHMEM void EEPROMSaveDefaults2() {
   Parameter list:
     struct config_t e[]       pointer to the EEPROM structure
 
-  Return value;
+  Return value:
     int                         0 unsuccessful, 1 ok
 *****/
 FLASHMEM int CopySDToEEPROM() {
@@ -1487,7 +1487,7 @@ FLASHMEM int CopySDToEEPROM() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     int               0 = no write, 1 = write
 *****/
 FLASHMEM int CopyEEPROMToSD() {
@@ -1874,7 +1874,7 @@ FLASHMEM int CopyEEPROMToSD() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     int               0 = SD is untouched, 1 = has data
 *****/
 FLASHMEM void SDEEPROMDump() {
@@ -1914,7 +1914,7 @@ FLASHMEM void SDEEPROMDump() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EEPROMStartup() {

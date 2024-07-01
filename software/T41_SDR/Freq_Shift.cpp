@@ -70,7 +70,7 @@ void FreqShift1() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
     Notes:  Routine includes checks to ensure the frequency selection stays within the bounds of the
     displayed spectrum

@@ -29,7 +29,7 @@ float32_t DMAMEM Fir_Zoom_FFT_Decimate_coeffs[4];
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ZoomFFTPrep() {
@@ -61,7 +61,7 @@ FLASHMEM void ZoomFFTPrep() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void ZoomFFTExe(uint32_t blockSize) {
@@ -202,7 +202,7 @@ void ZoomFFTExe(uint32_t blockSize) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void CalcZoom1Magn() {

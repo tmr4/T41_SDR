@@ -32,7 +32,7 @@ void KeyTipOn() {
 
   Parameter list:
 
-  Return value;
+  Return value:
   voidKeyRingOn(
 
 *****/
@@ -49,7 +49,7 @@ void KeyRingOn() {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
     Notes:
     There are several actions in this function

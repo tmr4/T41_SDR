@@ -1239,7 +1239,7 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
   Parameter list:
     File &f            the lvalue of the image file handle
 
-  Return value;
+  Return value:
     uint16_t           the image data in proper format
 
   CAUTION: Other systems may not be little-endian so you may have to reverse subscripting
@@ -1258,7 +1258,7 @@ uint16_t read16(File &f) {
   Parameter list:
     File &f            the lvalue of the image file handle
 
-  Return value;
+  Return value:
     uint16_t           the image data in proper format
 
   CAUTION: Other systems may not be little-endian so you may have to reverse subscripting
@@ -1402,7 +1402,7 @@ FLASHMEM void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, b
   Parameter list:
     void
 
-  Return value;
+  Return value:
     int                   0 if cannot initialize, 1 otherwise
 *****/
 FLASHMEM int InitializeSDCard() {
@@ -1435,7 +1435,7 @@ FLASHMEM void WaitforWRComplete() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void BearingMaps() {
@@ -1502,7 +1502,7 @@ FLASHMEM void BearingMaps() {
     char ptrMaps[][]    array to hold the names of the BMP files that are found
     int *count          the number of files found
 
-  Return value;
+  Return value:
     int                   0 if cannot initialize, 1 otherwise
 *****/
 int CreateMapList(char ptrMaps[][50], int *count) {
@@ -1540,7 +1540,7 @@ int CreateMapList(char ptrMaps[][50], int *count) {
     char ptrMaps[][]    array to hold the names of the BMP files that are found
     int *count          the number of files found
 
-  Return value;
+  Return value:
     int                   0 if cannot initialize, 1 otherwise
 *****/
 int WhichOneToUse(char ptrMaps[][50], int count) {

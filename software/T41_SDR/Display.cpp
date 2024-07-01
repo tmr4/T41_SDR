@@ -199,7 +199,7 @@ void DrawAudioSpectContainer();
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowName() {
@@ -234,7 +234,7 @@ int currentNF = 0;
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FASTRUN void ShowSpectrum() {
@@ -510,7 +510,7 @@ FASTRUN void ShowSpectrum() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowBandwidthBarValues() {
@@ -602,7 +602,7 @@ FLASHMEM void ShowBandwidthBarValues() {
   Purpose: ShowSpectrumdBScale()
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowSpectrumdBScale() {
@@ -626,7 +626,7 @@ FLASHMEM void ShowSpectrumdBScale() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowSpectrumFreqValues() {
@@ -733,7 +733,7 @@ FLASHMEM void ShowSpectrumFreqValues() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 
 *****/
@@ -822,7 +822,7 @@ FLASHMEM void ShowOperatingStats() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowCurrentPowerSetting() {
@@ -840,7 +840,7 @@ FLASHMEM void ShowCurrentPowerSetting() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void UpdateCWFilter() {
@@ -886,7 +886,7 @@ FLASHMEM void UpdateCWFilter() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FASTRUN void ShowFrequency() {
@@ -949,7 +949,7 @@ const float pixels_per_s = 12.2;
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FASTRUN void DrawSmeterBar() {
@@ -1038,7 +1038,7 @@ FASTRUN void DrawSmeterBar() {
     int x             the x coordinate for display
     int y                 y          "
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void MyDrawFloat(float val, int decimals, int x, int y, char *buff) {
@@ -1060,7 +1060,7 @@ FLASHMEM void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, in
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void RedrawDisplayScreen() {
@@ -1092,7 +1092,7 @@ FLASHMEM void RedrawDisplayScreen() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FASTRUN void DrawBandwidthBar() {
@@ -1207,7 +1207,7 @@ FASTRUN void DrawBandwidthBar() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void DrawSpectrumFrame() {
@@ -1220,7 +1220,7 @@ FLASHMEM void DrawSpectrumFrame() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EraseSpectrumDisplayContainer() {
@@ -1233,7 +1233,7 @@ FLASHMEM void EraseSpectrumDisplayContainer() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EraseSpectrumWindow() {
@@ -1247,7 +1247,7 @@ FLASHMEM void EraseSpectrumWindow() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void DrawSMeterContainer() {
@@ -1310,7 +1310,7 @@ FLASHMEM void DrawSMeterContainer() {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
 *****/
 // old factor 43.8
@@ -1333,7 +1333,7 @@ FLASHMEM void DrawAudioSpectContainer() {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EraseMenus() {
@@ -1346,7 +1346,7 @@ FLASHMEM void EraseMenus() {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ErasePrimaryMenu() {
@@ -1359,7 +1359,7 @@ FLASHMEM void ErasePrimaryMenu() {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void EraseSecondaryMenu() {
@@ -1372,7 +1372,7 @@ FLASHMEM void EraseSecondaryMenu() {
 
   Parameter list:
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowTransmitReceiveStatus() {
@@ -1395,7 +1395,7 @@ FLASHMEM void ShowTransmitReceiveStatus() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 
 *****/
@@ -1421,7 +1421,7 @@ FLASHMEM void SetZoom(int zoom) {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 
 *****/
@@ -1453,7 +1453,7 @@ FLASHMEM void PrintKeyboardBuffer() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FASTRUN void ShowBeacon() {

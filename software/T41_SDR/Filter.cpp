@@ -111,7 +111,7 @@ arm_biquad_cascade_df2T_instance_f32 S14_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band14_st
   Parameter list:
     void
   
-  Return value;
+  Return value:
     void
 *****/
 void DoReceiveEQ() {
@@ -170,7 +170,7 @@ void DoReceiveEQ() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void DoExciterEQ() {
@@ -229,7 +229,7 @@ void DoExciterEQ() {
   Parameter list:
     void
   
-  Return value;
+  Return value:
     void
 *****/
 void CalcFilters() {
@@ -254,7 +254,7 @@ void CalcFilters() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void InitFilterMask() {
@@ -289,7 +289,7 @@ void InitFilterMask() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void UpdateBWFilters() {
@@ -335,7 +335,7 @@ void UpdateBWFilters() {
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SetupMode() {
@@ -390,7 +390,7 @@ FLASHMEM void SetupMode() {
   Parameter list:
     void
     
-  Return value;
+  Return value:
     void
 *****/
 void SetDecIntFilters() {
@@ -423,7 +423,7 @@ void SetDecIntFilters() {
   Parameter list:
     int filter_BW - desired bandwidth
 
-  Return value;
+  Return value:
     void
 *****/
 void SetDecIntFilters(int filter_BW) {

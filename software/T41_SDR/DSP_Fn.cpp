@@ -77,7 +77,7 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E );
   Purpose: Setup Teensy Mic Compressor
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_ratio1, float attack_sec1, float release_sec1) {
@@ -99,7 +99,7 @@ FLASHMEM void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float
   Purpose: void noiseblanker
   Parameter list:Figure 4.
     void
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
@@ -118,7 +118,7 @@ FLASHMEM void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
   Purpose: void AltNoiseBlanking(
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 
   alt noise blanking is trying to localize some impulse noise within the samples and after that
@@ -438,7 +438,7 @@ FLASHMEM void AGCLoadValues() {
   Purpose: Setup AGC()
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void AGCPrep() {
@@ -473,7 +473,7 @@ FLASHMEM void AGCPrep() {
   Purpose: Audio AGC()
   Parameter list:
     void
-  Return value;
+  Return value:
     void
 *****/
 void AGC() {

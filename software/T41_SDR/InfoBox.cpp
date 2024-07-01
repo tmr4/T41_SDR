@@ -457,7 +457,7 @@ void UpdateDecodeLockIndicator()
   Parameter list:
     void
 
-  Return value;
+  Return value:
     void
 *****/
 void DrawInfoBoxFrame() {

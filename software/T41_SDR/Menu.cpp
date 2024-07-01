@@ -80,7 +80,7 @@ FLASHMEM void Cancel() {
     char *menuItem          pointers to the menu
     int where               PRIMARY_MENU or SECONDARY_MENU
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void ShowMenu(const char *menu[], int where) {
@@ -219,7 +219,7 @@ FLASHMEM void MenuBarSelect() {
     void (*ptrValue)()          pointer to function that will run at the beginning of each loop
     void (*ptrFollowup)()       pointer to function that will run after Select button is pressed or on mouse left click
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, const char *prompt, int offset, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)()) {
@@ -312,7 +312,7 @@ void GetMenuValueLoop() {
     void (*ptrValue)()          pointer to function that will run at the beginning of each loop
     void (*ptrFollowup)()       pointer to function that will run after Select button is pressed or on mouse left click
 
-  Return value;
+  Return value:
     void
 *****/
 FLASHMEM void GetMenuOption(int menuIndex, int *ptrCurrentValue, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)()) {
