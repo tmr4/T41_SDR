@@ -32,6 +32,8 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/beacon
   * feature/wsjtx
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
+  * added DebugSerial objects to use when a single USB serial port is available.
+  * deleted the Clear Buffers block of code in ProcessIQData as it caused audio artifacts without a good explanaition for the restrictive limit on audio buffer size.
 
 * feature/wsjtx - Communicate with WSJT-X over USB using `TS-890S` as the *Rig* on the WSJT-X *Radio* tab.  Must compile with one of the USB Types that includes both `Serial` and `Audio` (`Audio` isn't required if you connect the audio from the T41 to your PC in another way).
 
