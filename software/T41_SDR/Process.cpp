@@ -99,11 +99,10 @@ void ProcessIQData() {
   // for example), will cause a faster (unnatural) playback speed.
   //
   // A note for future reference:
-  // This https://www.pjrc.com/teensy/td_libs_AudioNewObjects.html says the library calls an audio object's update function
-  // every 128 samples and that the update function is run from a low priority interrupt. However, idling here does not increase the
-  // number of packets available to process.  The packets available returned by available() doesn't increase until we go back through
-  // the main loop.  This calls into question the interrupt nature of the audio library, at least for queues (https://www.pjrc.com/teensy/td_libs_AudioProcessorUsage.html).
-  // Or perhaps the Arduino compiler isn't honoring the volatile keyword associated with the variables in AudioRecordQueue.
+  // This https://www.pjrc.com/teensy/td_libs_AudioNewObjects.html indicates the library calls an audio object's update function
+  // every 128 samples and that the update function is run from a low priority interrupt. We can idle here until the
+  // number of packets is sufficient to process.  I wasn't able to use this though with an interval timer driven process
+  // even with reenabling interrupts during the idle loop.  Perhaps the low priority of the update interrupt was affecting this.
   //
   if( (uint32_t) Q_in_L.available() > N_BLOCKS + 0 && (uint32_t) Q_in_R.available() > N_BLOCKS + 0 ) {
     usec = 0;
