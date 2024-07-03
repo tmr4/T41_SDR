@@ -89,15 +89,30 @@ void ProcessIQData() {
         N_BLOCKS = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF; // should be 16 with DF == 8 and FFT_LENGTH = 512
         BUFFER_SIZE*N_BLOCKS = 2048 samples
      **********************************************************************************/
-  // are there at least N_BLOCKS buffers in each channel available ?
-  if ( (uint32_t) Q_in_L.available() > N_BLOCKS + 0 && (uint32_t) Q_in_R.available() > N_BLOCKS + 0 ) {
+  // are there at least N_BLOCKS (16) buffers in each channel available?
+  //
+  // The T41 takes ~1.5-5.0 msec (depending on display update, mode and options) to process 16 (N_BLOCKS) audio packets
+  // afterwards it may take up to 10 msec to refill the buffers until 16 packets are available (thus this if block is
+  // skipped and we return immediately to ShowSpectrum to continue updating the display)
+  // This entire process serves to regulate the audio output stream and changes to any component
+  // will affect that stream.  For example, playing a wav file without some display updates (audio spectrum
+  // for example), will cause a faster (unnatural) playback speed.
+  //
+  // A note for future reference:
+  // This https://www.pjrc.com/teensy/td_libs_AudioNewObjects.html says the library calls an audio object's update function
+  // every 128 samples and that the update function is run from a low priority interrupt. However, idling here does not increase the
+  // number of packets available to process.  The packets available returned by available() doesn't increase until we go back through
+  // the main loop.  This calls into question the interrupt nature of the audio library, at least for queues (https://www.pjrc.com/teensy/td_libs_AudioProcessorUsage.html).
+  // Or perhaps the Arduino compiler isn't honoring the volatile keyword associated with the variables in AudioRecordQueue.
+  //
+  if( (uint32_t) Q_in_L.available() > N_BLOCKS + 0 && (uint32_t) Q_in_R.available() > N_BLOCKS + 0 ) {
     usec = 0;
 
     // we allow input buffer availability to regulate FT8 wav file decoding
     // otherwise we'll process the wav file too fast.  This is better than
     // using delays
     if(!((bands[currentBand].mode == DEMOD_FT8_WAV) || (bands[currentBand].mode == DEMOD_PSK31_WAV))) {
-      // get audio samples from the audio  buffers and convert them to float
+      // get audio samples from the audio buffers and convert them to float
       // read in 32 blocks á 128 samples in I and Q
       for (unsigned i = 0; i < N_BLOCKS; i++) {
         /**********************************************************************************
@@ -140,16 +155,70 @@ void ProcessIQData() {
         if the buffers are full, the Teensy needs much more time
         in that case, we clear the buffers to keep the whole audio chain running smoothly
         **********************************************************************************/
-      // *** this creates loop artifacts (in my version at least) needs reworked ***
-      if (Q_in_L.available() > 25) {
-      //  //Serial.println("audio buffer cleared ...");
-        Q_in_L.clear();
-      //  AudioInterrupts();
+      // ***********************************
+      //     Some T41 operators have commented on audio artifacts when using the T41 controls.  I also noticed
+      //     artifacts after adding some extra functionality (keyboard, mouse, data modes).  I had assumed that
+      //     the additional processing I added to the main loop was taking too much time, causing a gap in the
+      //     audio stream.  That wasn't the case.  While I was taking more time in the main loop, it wasn't long
+      //     enough to delay the audio stream processing to cause a gap.  Rather it just allowed the Teensy audio
+      //     buffers to fill a bit more and reach the limit set in the code block below.  When that limit is reached,
+      //     the audio buffers are cleared, resulting in an audio artifact.  This may not be the only cause of artifacts
+      //     (a discontinuity in the audio stream) in the audio stream, but it is in my case.  Perhaps this could be
+      //     overcome by resetting of the last sample buffers or some other code changes.
+      //
+      //     The code dates back to the Teensy-ConvolutionSDR code incorporated into the original T41 software.
+      //     It clears buffers when there are more than 25 unread packets available (after just having read 16).
+      //     I don't know where this value comes from.  Digging back into the Audio library code
+      //     (https://github.com/PaulStoffregen/Audio), I found that the Teensy audio buffer size was originally set
+      //     to 53 packets. However, this was changed about 5 years ago
+      //     (https://github.com/PaulStoffregen/Audio/commit/0d02a205dfc3136d074e9b88ccf0dcc62a95d2fa).  In fact, the
+      //     change was prompted by DD4WH, author of the Teensy-ConvolutionSDR code (https://forum.pjrc.com/index.php?threads/extend-queue-object-for-teensy-4-0-to-more-blocks.58477/).
+      //     Audio packets for Teensy 3.5+ (including the 4.1) are now 209.  Given the age of the Teensy-ConvolutionSDR
+      //     code, it's possible the old packet value was considered in setting the 25 limit below.  If so, why wasn't it
+      //     updated when the buffer size was increased, especially given that the author prompted the change?  Who knows,
+      //     but perhaps the limit of 25 in the current T41 code is too conservative for the current Audio library version.
+      //
+      //     The Teensy-ConvolutionSDR code did not comment on the purpose of the code block but did comment that it
+      //     was seldom active. In the comment above (added by AFP 12-31-20), "if the buffers are full, the Teensy
+      //     needs much more time" appears to refer to Teensy processing of the packets added to the audio buffer while
+      //     making band, mode, frequency or other changes to the T41. Processing these "old" packets could be considered
+      //     wasted processor effort.  Clearing the audio buffers avoids this.
+      //
+      //     Other interpretations don't make much sense as the Teensy audio buffer is circular and being full doesn't
+      //     imposed additional processng time from an Audio Library standpoint.  A full audio buffer however does prevent
+      //     additional packets from being added to the buffer until some existing packets are removed.  This would delay
+      //     getting new data after making changes to the T41 operations
+      //
+      //     It's unclear what "keep the whole audio chain running smoothly" means or how this block of code helps that (other
+      //     than noted above).  Another possibility is that it refers to fact that the timing of ProcessIQData along with
+      //     ShowSpectrum (see comment to the enclosing IF block) regulates the audio stream.  If too much time is taken in
+      //     this chain, then the quality of the audio stream is degraded. Try it out.  Add a 9 msec delay below and notice
+      //     the poor audio (actually 8 msec and a bit of fiddling with the volume control is enough).
+      //
+      //     Once could argue that if operating changes impact the audio stream that they be handled at the point of the
+      //     change rather than here where it could inadvertently cause other artifacts  It did for me when I added code that
+      //     caused the audio buffer to fill slightly beyond the 25 packet limit here.  It also seems to cause artifacts
+      //     after some button presses in V49 and T41EEE.
+      //
+      //     The purpose of AudioInterrupts below is unclear.  Where is the corresponding AudioNoInterrupts?  I'm guessing
+      //     they were added in an attempt to prevent audio artifacts.  It doesn't help.
+      //
+      // ***********************************
+      //if (Q_in_L.available() > 190) {
+      //if (Q_in_L.available() > 40) {
+      //if (Q_in_L.available() > 36) {
+      if(Q_in_L.available() > 25) {
+        //Serial.print(Q_in_L.available()); Serial.println(" Left audio buffer cleared ...");
+        //Q_in_L.clear();
+        //AudioInterrupts(); // not sure the purpose, it has no effect on autio artifacts
       }
+      //if (Q_in_R.available() > 190) {
+      //if (Q_in_R.available() > 40) {
+      //if (Q_in_R.available() > 36) {
       if (Q_in_R.available() > 25) {
-      //  //Serial.println("audio buffer cleared ...");
-        Q_in_R.clear();
-      //  AudioInterrupts();
+        //Serial.print(Q_in_R.available()); Serial.println(" Right audio buffer cleared ...");
+        //Q_in_R.clear();
+        //AudioInterrupts(); // not sure the purpose, it has no effect on autio artifacts
       }
 
       /**********************************************************************************
@@ -994,8 +1063,8 @@ void Codec_gain() {
           bands[currentBand].RFgain = 0;
         }
         timer = 0;  // reset the adjustment timer
-        AudioNoInterrupts();
-        AudioInterrupts();
+        //AudioNoInterrupts();
+        //AudioInterrupts();
       }
     }
   } else if (quarter_clip == 0)  // no clipping occurred
@@ -1007,8 +1076,8 @@ void Codec_gain() {
       if (bands[currentBand].RFgain > 15) {
         bands[currentBand].RFgain = 15;
       }
-      AudioNoInterrupts();
-      AudioInterrupts();
+      //AudioNoInterrupts();
+      //AudioInterrupts();
     }
   }
   half_clip = 0;     // clear "half clip" indicator that tells us that we should decrease gain
