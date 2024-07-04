@@ -231,6 +231,8 @@ void CalcAudioFilterLinePositions() {
   filterHiPosition = abs(map(bands[currentBand].FHiCut, 0, 6400, 0, AUDIO_SPEC_BOX_W));
 }
 
+// *** pulling this out of ShowSpectrum allows the screen to update about 35% faster
+//     Waterfall Time before update 54s, after 35s ***
 void DrawAudioFilterLines() {
   int filterLoColor;
   int filterHiColor;
@@ -1489,14 +1491,8 @@ FLASHMEM void PrintKeyboardBuffer() {
     void
 *****/
 FASTRUN void ShowBeacon() {
-  int filterLoPositionMarker;
-  int filterHiPositionMarker;
-  int filterLoPosition;
-  int filterHiPosition;
   int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
   static int oldNF;
-  int filterLoColor;
-  int filterHiColor;
 
   currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
 
@@ -1553,7 +1549,9 @@ FASTRUN void ShowBeacon() {
     // pixelCurrent gets copied to pixelold by the FFT function
     pixelCurrent[x1] = pixelnew[x1];
 
-    if (x1 < AUDIO_SPEC_BOX_W - 2) { // don't overwrite right edge of audio spectrum box
+    // update audio spectrum
+    // don't overwrite right edge of audio spectrum box or audio filter lines
+    if (x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
       if (keyPressedOn == 1) {
         return;
       } else {
@@ -1568,76 +1566,6 @@ FASTRUN void ShowBeacon() {
             audioYPixel[x1] = CLIP_AUDIO_PEAK;
           }
           //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
-        }
-
-        // draw fiter indicator lines on the audio spectrum (have to do this here or the filter lines will "blink")
-        // abs prevents these from going below the bottom of the audio spectrum display but that the
-        // resulting filter value isn't meaningful, should fix at the encoder
-        filterLoPositionMarker = map(bands[currentBand].FLoCut, 0, 6400, 0, AUDIO_SPEC_BOX_W);
-        filterHiPositionMarker = map(bands[currentBand].FHiCut, 0, 6400, 0, AUDIO_SPEC_BOX_W);
-        filterLoPosition = abs(filterLoPositionMarker);
-        filterHiPosition = abs(filterHiPositionMarker);
-
-        // set color of active filter bar to green
-        switch (bands[currentBand].mode) {
-          case DEMOD_USB:
-          case DEMOD_PSK31_WAV:
-          case DEMOD_PSK31:
-          case DEMOD_FT8_WAV:
-          case DEMOD_FT8:
-            if (lowerAudioFilterActive) {
-              filterLoColor = RA8875_GREEN;
-              filterHiColor = RA8875_LIGHT_GREY;
-            } else {
-              if(ft8MsgSelectActive) {
-                filterLoColor = RA8875_LIGHT_GREY;
-                filterHiColor = RA8875_LIGHT_GREY;
-              } else {
-                filterLoColor = RA8875_LIGHT_GREY;
-                filterHiColor = RA8875_GREEN;
-              }
-            }
-            break;
-
-          case DEMOD_LSB:
-            if (lowerAudioFilterActive) {
-              filterLoColor = RA8875_LIGHT_GREY;
-              filterHiColor = RA8875_GREEN;
-            } else {
-              filterLoColor = RA8875_GREEN;
-              filterHiColor = RA8875_LIGHT_GREY;
-            }
-            break;
-
-          case DEMOD_NFM:
-            if (nfmBWFilterActive) {
-              filterLoColor = RA8875_LIGHT_GREY;
-              filterHiColor = RA8875_LIGHT_GREY;
-            } else {
-              if (lowerAudioFilterActive) {
-                filterLoColor = RA8875_GREEN;
-                filterHiColor = RA8875_LIGHT_GREY;
-              } else {
-                filterLoColor = RA8875_LIGHT_GREY;
-                filterHiColor = RA8875_GREEN;
-              }
-            }
-            break;
-
-          case DEMOD_AM:
-          case DEMOD_SAM:
-          default:
-            filterLoColor = RA8875_LIGHT_GREY;
-            filterHiColor = RA8875_GREEN;
-            break;
-        }
-
-        // limit the filter line from going out of the spectrum box to the right
-        if(filterLoPosition > 0 && filterLoPosition < (AUDIO_SPEC_BOX_W - 1)) {
-          //tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterLoPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterLoColor);
-        }
-        if(filterHiPosition > 0 && filterHiPosition < (AUDIO_SPEC_BOX_W - 1)) {
-          //tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterHiPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterHiColor);
         }
       }
     }
