@@ -83,7 +83,7 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   tft.print(correctionIncrement, 3);
   userScale = currentScale;  //  Remember user preference so it can be reset when done.  KF5N
   currentScale = 1;          //  Set vertical scale to 10 dB during calibration.  KF5N
-  updateDisplayFlag = 0;
+  updateSpectrumData = false;
   digitalWrite(MUTE, LOW);  //turn off mute
   xrState = RECEIVE_STATE;
   T41State = CW_RECEIVE;
@@ -117,7 +117,7 @@ FLASHMEM void CalibratePreamble(int setZoom) {
  *****/
 FLASHMEM void CalibratePrologue() {
   digitalWrite(RXTX, LOW);  // Turn off the transmitter.
-  updateDisplayFlag = 0;
+  updateSpectrumData = false;
   xrState = RECEIVE_STATE;
   ShowTransmitReceiveStatus();
   T41State = CW_RECEIVE;
@@ -294,9 +294,9 @@ FLASHMEM void DoXmitCalibrate() {
  *****/
 FLASHMEM void ProcessIQData2() {
   float bandCouplingFactor[7] = { 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 };
-  float bandOutputFactor;                                             
-  float rfGainValue;                                                  
-  float recBandFactor[7] = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };     
+  float bandOutputFactor;
+  float rfGainValue;
+  float recBandFactor[7] = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
   /**********************************************************************************
         Get samples from queue buffers
         Teensy Audio Library stores ADC data in two buffers size=128, Q_in_L and Q_in_R as initiated from the audio lib.
@@ -388,7 +388,7 @@ FLASHMEM void ProcessIQData2() {
       CalcZoom1Magn();  //AFP Moved to display function
     }
 
-    if(spectrumZoom != 0 && updateDisplayFlag == 1) {
+    if(spectrumZoom != 0 && updateSpectrumData) {
       //AFP  Used to process Zoom>1 for display
       ZoomFFTExe(BUFFER_SIZE * N_BLOCKS);  // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
       // does not work for magnifications > 8
@@ -483,9 +483,9 @@ FLASHMEM float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
   int16_t y_old, y_new, y1_new, y_old2;
 
   if (x1 == (cal_bins[0] - capture_bins)) {  // Set flag at revised beginning.  KF5N
-    updateDisplayFlag = 1;                   //Set flag so the display data are saved only once during each display refresh cycle at the start of the cycle, not 512 times
+    updateSpectrumData = true;                   //Set flag so the display data are saved only once during each display refresh cycle at the start of the cycle, not 512 times
     ShowBandwidthBarValues();                         // Without this call, the calibration value in dB will not be updated.  KF5N
-  } else updateDisplayFlag = 0;              //  Do not save the the display data for the remainder of the
+  } else updateSpectrumData = false;              //  Do not save the the display data for the remainder of the
 
   ProcessIQData2();  // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
 
@@ -535,7 +535,7 @@ FLASHMEM float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
     tft.writeTo(L2);
     if (bands[currentBand].mode == DEMOD_LSB) {
       tft.fillRect(295, SPECTRUM_TOP_Y + 20, 20, 135 - 6, DARK_RED);  // Adjusted height due to other graphics changes.  KF5N August 3, 2023
-      tft.fillRect(230, SPECTRUM_TOP_Y + 20, 20, 135 - 6, RA8875_BLUE);      
+      tft.fillRect(230, SPECTRUM_TOP_Y + 20, 20, 135 - 6, RA8875_BLUE);
     } else {
       if (bands[currentBand].mode == DEMOD_USB) {  //mode == DEMOD_LSB
         tft.fillRect(199, SPECTRUM_TOP_Y + 20, 20, 135 - 6, DARK_RED);

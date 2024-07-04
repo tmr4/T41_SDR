@@ -212,7 +212,7 @@ void ProcessIQData() {
           Spectrum Zoom uses the shifted spectrum, so the center "hump" around DC is shifted by fs/4
       **********************************************************************************/
       // Run display FFT routine only once for each Audio process FFT
-      if(spectrumZoom != 0 && updateDisplayFlag == 1) {
+      if(spectrumZoom != 0 && updateSpectrumData) {
         ZoomFFTExe(BUFFER_SIZE * N_BLOCKS); // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
         // does not work for magnifications > 8
       }
@@ -550,7 +550,7 @@ void ProcessIQData() {
         arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
 
         // process audio frequency spectrum only at the beginning of the show spectrum process
-        if (updateDisplayFlag == 1) {
+        if (updateSpectrumData) {
           for (int k = 0; k < 1024; k++) {
             audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
           }
@@ -791,7 +791,7 @@ void ProcessIQData() {
       arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
 
       // process audio frequency spectrum only at the beginning of the show spectrum process
-      if (updateDisplayFlag == 1) {
+      if (updateSpectrumData) {
         for (int k = 0; k < 1024; k++) {
           audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
@@ -819,7 +819,7 @@ void ProcessIQData() {
     }
 
     // send audio data to control app if applicable
-    if (updateDisplayFlag == 1 && controlDataFlag) {
+    if (updateSpectrumData && controlDataFlag) {
       for (int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
         // audioYPixel is already >= 0, limit it to 255
         specData[i] = (uint8_t)(audioYPixel[i] > 255 ? 255 : audioYPixel[i]);
@@ -941,9 +941,13 @@ void ProcessIQData() {
 
     Codec_gain();
 
+    //Serial.print("  Processing: "); Serial.println(usec);
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
   } // end of if(audio blocks available)
+  //else {
+  //  Serial.print("Filling audio buffers: "); Serial.println(usec);
+  //}
 }
 
 /*****

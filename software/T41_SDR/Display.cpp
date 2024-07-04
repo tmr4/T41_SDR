@@ -113,7 +113,7 @@ int oldFilterX = 0;
 int newFilterWidth = 0;
 int oldFilterWidth = 0;
 
-int updateDisplayFlag = 1;
+bool updateSpectrumData = true;
 int wfRows = WATERFALL_H;
 
 #ifndef RA8875_DISPLAY
@@ -220,6 +220,176 @@ FLASHMEM void ShowName() {
   tft.print(VERSION);
 }
 
+int filterLoPosition;
+int filterHiPosition;
+
+void CalcAudioFilterLinePositions() {
+  // map filter position to audio spectrum box
+  // abs prevents these from going below the bottom of the audio spectrum display but the
+  // resulting filter value isn't meaningful, should fix at the encoder
+  filterLoPosition = abs(map(bands[currentBand].FLoCut, 0, 6400, 0, AUDIO_SPEC_BOX_W));
+  filterHiPosition = abs(map(bands[currentBand].FHiCut, 0, 6400, 0, AUDIO_SPEC_BOX_W));
+}
+
+void DrawAudioFilterLines() {
+  int filterLoColor;
+  int filterHiColor;
+
+  CalcAudioFilterLinePositions();
+
+  // draw fiter indicator lines on the audio spectrum
+
+  // set color of active filter bar to green
+  switch (bands[currentBand].mode) {
+    case DEMOD_USB:
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8_WAV:
+    case DEMOD_FT8:
+      if (lowerAudioFilterActive) {
+        filterLoColor = RA8875_GREEN;
+        filterHiColor = RA8875_LIGHT_GREY;
+      } else {
+        if(ft8MsgSelectActive) {
+          filterLoColor = RA8875_LIGHT_GREY;
+          filterHiColor = RA8875_LIGHT_GREY;
+        } else {
+          filterLoColor = RA8875_LIGHT_GREY;
+          filterHiColor = RA8875_GREEN;
+        }
+      }
+      break;
+
+    case DEMOD_LSB:
+      if (lowerAudioFilterActive) {
+        filterLoColor = RA8875_LIGHT_GREY;
+        filterHiColor = RA8875_GREEN;
+      } else {
+        filterLoColor = RA8875_GREEN;
+        filterHiColor = RA8875_LIGHT_GREY;
+      }
+      break;
+
+    case DEMOD_NFM:
+      if (nfmBWFilterActive) {
+        filterLoColor = RA8875_LIGHT_GREY;
+        filterHiColor = RA8875_LIGHT_GREY;
+      } else {
+        if (lowerAudioFilterActive) {
+          filterLoColor = RA8875_GREEN;
+          filterHiColor = RA8875_LIGHT_GREY;
+        } else {
+          filterLoColor = RA8875_LIGHT_GREY;
+          filterHiColor = RA8875_GREEN;
+        }
+      }
+      break;
+
+    case DEMOD_AM:
+    case DEMOD_SAM:
+    default:
+      filterLoColor = RA8875_LIGHT_GREY;
+      filterHiColor = RA8875_GREEN;
+      break;
+  }
+
+  // limit the filter line from going out of the spectrum box to the right
+  if(filterLoPosition > 0 && filterLoPosition < (AUDIO_SPEC_BOX_W - 1)) {
+    tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterLoPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterLoColor);
+  }
+  if(filterHiPosition > 0 && filterHiPosition < (AUDIO_SPEC_BOX_W - 1)) {
+    tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterHiPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterHiColor);
+  }
+}
+
+/*****
+  Purpose: Process any updates to the following controls:
+            Audio filter encoder
+            Keyboard and mouse
+            Course and Fine tune encoders
+            Live menus
+            *** TODO: consider putting volume here as well instead of in main loop ***
+
+  Parameter list:
+    void
+
+  Return value:
+    void
+*****/
+FASTRUN void UpdateControls(bool updateDisplay) {
+  // update filters if changed
+  if (posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
+    SetBWFilters();
+
+    if(updateDisplay) {
+      ShowBandwidthBarValues();
+      DrawBandwidthBar();
+      DrawAudioFilterLines();
+    }
+  }
+
+  // handle USB keyboard
+#ifdef KEYBOARD_SUPPORT
+  // poll keyboard at about 125 Hz
+  int now = millis();
+  if (now - last_usb_read > 8) {
+    UsbLoop();
+    last_usb_read = now;
+    MouseLoop();
+  }
+#endif
+
+  // Handle tuning changes
+  // There may seem some duplication of display updates here, but these tuning events
+  // shouldn't occur on the same loop so little efficiency to be gained by changing
+  EncoderCenterTune();
+  if(fineTuneFlag) {
+    if(updateDisplay) {
+      ShowFrequency();
+      DrawBandwidthBar();
+    }
+    fineTuneFlag = false;
+  }
+  if(resetTuningFlag) {
+    resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
+    ResetTuning();
+  }
+
+  // handle any live menu items
+  if(getMenuValueActive) {
+    if(getMenuSelected) {
+      ptrMenuFollowup();
+
+      // wrap up menu
+      getMenuSelected = false;
+      getMenuValueActive = false;
+      ptrMenuLoop = NULL;
+      ptrMenuFollowup = NULL;
+
+      EraseMenus();
+      menuStatus = NO_MENUS_ACTIVE;
+    } else {
+      GetMenuValueLoop();
+    }
+  }
+  if(getMenuOptionActive) {
+    if(getMenuSelected) {
+      ptrMenuFollowup();
+
+      // wrap up menu
+      getMenuSelected = false;
+      getMenuOptionActive = false;
+      ptrMenuLoop = NULL;
+      ptrMenuFollowup = NULL;
+
+      EraseMenus();
+      menuStatus = NO_MENUS_ACTIVE;
+    } else {
+      GetMenuOptionLoop();
+    }
+  }
+}
+
 int currentNF = 0;
 
 /*****
@@ -238,14 +408,8 @@ int currentNF = 0;
     void
 *****/
 FASTRUN void ShowSpectrum() {
-  int filterLoPositionMarker;
-  int filterHiPositionMarker;
-  int filterLoPosition;
-  int filterHiPosition;
   int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
   static int oldNF;
-  int filterLoColor;
-  int filterHiColor;
 
   currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
 
@@ -260,79 +424,14 @@ FASTRUN void ShowSpectrum() {
     // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
     if (x1 == 0) {
       // Set flag so the display FFTs are calculated only once during each display refresh cycle
-      updateDisplayFlag = 1;
+      updateSpectrumData = true;
     } else {
       // Do not save the the display data for the remainder of the display update
-      updateDisplayFlag = 0;
+      updateSpectrumData = false;
     }
 
-    // update filters if changed
-    if (posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
-      SetBWFilters();
-
-      ShowBandwidthBarValues();
-      DrawBandwidthBar();
-    }
-
-  // handle USB keyboard
-#ifdef KEYBOARD_SUPPORT
-  // poll keyboard at about 125 Hz
-  int now = millis();
-  if (now - last_usb_read > 8) {
-    UsbLoop();
-    last_usb_read = now;
-    MouseLoop();
-  }
-#endif
-
-    // Handle tuning changes
-    // Done here to minimize interruption to signal stream during tuning.  There
-    // may seem some duplication of display updates here, but these tuning events
-    // shouldn't occur on the same loop so little efficiency to be gained by changing
-    EncoderCenterTune();
-    if(fineTuneFlag) {
-      ShowFrequency();
-      DrawBandwidthBar();
-      fineTuneFlag = false;
-    }
-    if(resetTuningFlag) {
-      resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
-      ResetTuning();
-    }
-
-    // handle any live menu items
-    if(getMenuValueActive) {
-      if(getMenuSelected) {
-        ptrMenuFollowup();
-
-        // wrap up menu
-        getMenuSelected = false;
-        getMenuValueActive = false;
-        ptrMenuLoop = NULL;
-        ptrMenuFollowup = NULL;
-
-        EraseMenus();
-        menuStatus = NO_MENUS_ACTIVE;
-      } else {
-        GetMenuValueLoop();
-      }
-    }
-    if(getMenuOptionActive) {
-      if(getMenuSelected) {
-        ptrMenuFollowup();
-
-        // wrap up menu
-        getMenuSelected = false;
-        getMenuOptionActive = false;
-        ptrMenuLoop = NULL;
-        ptrMenuFollowup = NULL;
-
-        EraseMenus();
-        menuStatus = NO_MENUS_ACTIVE;
-      } else {
-        GetMenuOptionLoop();
-      }
-    }
+    // Process any control updates here to minimize interruption to signal stream
+    UpdateControls(true);
 
     if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
       // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
@@ -367,8 +466,11 @@ FASTRUN void ShowSpectrum() {
     // pixelCurrent gets copied to pixelold by the FFT function
     pixelCurrent[x1] = pixelnew[x1];
 
-    if (x1 < AUDIO_SPEC_BOX_W - 2) { // don't overwrite right edge of audio spectrum box
+    // update audio spectrum
+    // don't overwrite right edge of audio spectrum box or audio filter lines
+    if (x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
       if (keyPressedOn == 1) {
+        // *** TODO: consider adding audio spectrum for transmission ***
         return;
       } else {
         // erase old audio spectrum line at this position (including filter lines)
@@ -382,76 +484,6 @@ FASTRUN void ShowSpectrum() {
             audioYPixel[x1] = CLIP_AUDIO_PEAK;
           }
           tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
-        }
-
-        // draw fiter indicator lines on the audio spectrum (have to do this here or the filter lines will "blink")
-        // abs prevents these from going below the bottom of the audio spectrum display but that the
-        // resulting filter value isn't meaningful, should fix at the encoder
-        filterLoPositionMarker = map(bands[currentBand].FLoCut, 0, 6400, 0, AUDIO_SPEC_BOX_W);
-        filterHiPositionMarker = map(bands[currentBand].FHiCut, 0, 6400, 0, AUDIO_SPEC_BOX_W);
-        filterLoPosition = abs(filterLoPositionMarker);
-        filterHiPosition = abs(filterHiPositionMarker);
-
-        // set color of active filter bar to green
-        switch (bands[currentBand].mode) {
-          case DEMOD_USB:
-          case DEMOD_PSK31_WAV:
-          case DEMOD_PSK31:
-          case DEMOD_FT8_WAV:
-          case DEMOD_FT8:
-            if (lowerAudioFilterActive) {
-              filterLoColor = RA8875_GREEN;
-              filterHiColor = RA8875_LIGHT_GREY;
-            } else {
-              if(ft8MsgSelectActive) {
-                filterLoColor = RA8875_LIGHT_GREY;
-                filterHiColor = RA8875_LIGHT_GREY;
-              } else {
-                filterLoColor = RA8875_LIGHT_GREY;
-                filterHiColor = RA8875_GREEN;
-              }
-            }
-            break;
-
-          case DEMOD_LSB:
-            if (lowerAudioFilterActive) {
-              filterLoColor = RA8875_LIGHT_GREY;
-              filterHiColor = RA8875_GREEN;
-            } else {
-              filterLoColor = RA8875_GREEN;
-              filterHiColor = RA8875_LIGHT_GREY;
-            }
-            break;
-
-          case DEMOD_NFM:
-            if (nfmBWFilterActive) {
-              filterLoColor = RA8875_LIGHT_GREY;
-              filterHiColor = RA8875_LIGHT_GREY;
-            } else {
-              if (lowerAudioFilterActive) {
-                filterLoColor = RA8875_GREEN;
-                filterHiColor = RA8875_LIGHT_GREY;
-              } else {
-                filterLoColor = RA8875_LIGHT_GREY;
-                filterHiColor = RA8875_GREEN;
-              }
-            }
-            break;
-
-          case DEMOD_AM:
-          case DEMOD_SAM:
-          default:
-            filterLoColor = RA8875_LIGHT_GREY;
-            filterHiColor = RA8875_GREEN;
-            break;
-        }
-
-        // limit the filter line from going out of the spectrum box to the right
-        if(filterLoPosition > 0 && filterLoPosition < (AUDIO_SPEC_BOX_W - 1)) {
-          tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterLoPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterLoColor);
-        }
-        if(filterHiPosition > 0 && filterHiPosition < (AUDIO_SPEC_BOX_W - 1)) {
-          tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterHiPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterHiColor);
         }
       }
     }
@@ -1479,79 +1511,14 @@ FASTRUN void ShowBeacon() {
     // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
     if (x1 == 0) {
       // Set flag so the display FFTs are calculated only once during each display refresh cycle
-      updateDisplayFlag = 1;
+      updateSpectrumData = true;
     } else {
       // Do not save the the display data for the remainder of the display update
-      updateDisplayFlag = 0;
+      updateSpectrumData = false;
     }
 
-    // update filters if changed
-    if (posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
-      SetBWFilters();
-
-      //ShowBandwidthBarValues();
-      //DrawBandwidthBar();
-    }
-
-  // handle USB keyboard
-#ifdef KEYBOARD_SUPPORT
-  // poll keyboard at about 125 Hz
-  int now = millis();
-  if (now - last_usb_read > 8) {
-    UsbLoop();
-    last_usb_read = now;
-    MouseLoop();
-  }
-#endif
-
-    // Handle tuning changes
-    // Done here to minimize interruption to signal stream during tuning.  There
-    // may seem some duplication of display updates here, but these tuning events
-    // shouldn't occur on the same loop so little efficiency to be gained by changing
-    EncoderCenterTune();
-    if(fineTuneFlag) {
-      //ShowFrequency();
-      //DrawBandwidthBar();
-      fineTuneFlag = false;
-    }
-    if(resetTuningFlag) {
-      resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
-      ResetTuning();
-    }
-
-    // handle any live menu items
-    if(getMenuValueActive) {
-      if(getMenuSelected) {
-        ptrMenuFollowup();
-
-        // wrap up menu
-        getMenuSelected = false;
-        getMenuValueActive = false;
-        ptrMenuLoop = NULL;
-        ptrMenuFollowup = NULL;
-
-        EraseMenus();
-        menuStatus = NO_MENUS_ACTIVE;
-      } else {
-        GetMenuValueLoop();
-      }
-    }
-    if(getMenuOptionActive) {
-      if(getMenuSelected) {
-        ptrMenuFollowup();
-
-        // wrap up menu
-        getMenuSelected = false;
-        getMenuOptionActive = false;
-        ptrMenuLoop = NULL;
-        ptrMenuFollowup = NULL;
-
-        EraseMenus();
-        menuStatus = NO_MENUS_ACTIVE;
-      } else {
-        GetMenuOptionLoop();
-      }
-    }
+    // Process any control updates here to minimize interruption to signal stream
+    UpdateControls(false);
 
     if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
       // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays

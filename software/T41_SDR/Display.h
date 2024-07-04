@@ -127,7 +127,7 @@ extern int16_t pixelnew2[];
 extern int16_t pixelold2[];
 extern int newFilterX;
 extern int oldFilterX;
-extern int updateDisplayFlag;
+extern bool updateSpectrumData;
 extern int wfRows;
 
 extern RA8875 tft;

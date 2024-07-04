@@ -25,7 +25,7 @@ bool resetTuningFlag = false;
 bool fineTuneFlag = false;
 
 long posFilterEncoder = 0;
-long lastFilterEncoder = 0;
+long lastFilterEncoder = 1; // force initial update
 
 long filter_pos_BW = 0;
 long last_filter_pos_BW = 0;
@@ -70,7 +70,7 @@ void SetBWFilters() {
         bands[currentBand].FHiCut = bands[currentBand].FHiCut + filter_change * 50 * ENCODER_FACTOR;
       } else {
         bands[currentBand].FLoCut = bands[currentBand].FLoCut + filter_change * 50 * ENCODER_FACTOR;
-      } 
+      }
       break;
 
     case DEMOD_AM:
@@ -100,11 +100,11 @@ void SetBWFilters() {
 }
 
 /*****
-  Purpose: Set center tune frequency based on 
+  Purpose: Set center tune frequency based on
 
   Parameter list:
     void
-    
+
   Return value:
     void
 *****/

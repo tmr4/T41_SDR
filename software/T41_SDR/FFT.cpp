@@ -56,7 +56,7 @@ FLASHMEM void ZoomFFTPrep() {
 
 /*****
   Purpose: Display FFT routine
-           Should only be called when spectrumZoom > 1 and updateDisplayFlag == 1
+           Should only be called when spectrumZoom > 1 and updateSpectrumData
 
   Parameter list:
     void
@@ -206,7 +206,7 @@ void ZoomFFTExe(uint32_t blockSize) {
     void
 *****/
 void CalcZoom1Magn() {
- if (updateDisplayFlag == 1) {
+ if (updateSpectrumData) {
   float32_t spec_help = 0.0;
   float32_t LPFcoeff = 0.7;
   if (LPFcoeff > 1.0) {
