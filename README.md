@@ -31,9 +31,22 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/USB
   * feature/beacon
   * feature/wsjtx
+  * feature/MorseCodeKeyer
   * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
   * added DebugSerial objects to use when a single USB serial port is available.
   * deleted the Clear Buffers block of code in ProcessIQData as it caused audio artifacts without a good explanaition for the restrictive limit on audio buffer size.
+
+* feature/MorseCodeKeyer - Adds a keyboard/memory CW keyer.  It currently requires the keyboard feature but could be simplified to be used on a standalone T41.  It has the following features:
+
+  * Set up to 10 preset messages in code.  The selected preset message is highlighted in green at the bottom of the info box.  I may add code to allow these to be edited.
+  * Select desired message to transmit by using the left/right arrow keys on keyboard.
+  * Transmit selected preset message by pressing enter key.
+  * Enter keyboard mode by pressing the up/down arrow key on the keyboard.  The preset message color changes to white to indicate it's no longer active.  You can return to the preset message with the up/down arrow key on the keyboard.
+  * Type a message on the keyboard to create a custom CW message.  It will be highlighted in green indicating the keyboard mode is active.  Press enter to send the message or escape to erase it.
+  * WPM and Sidetone volume are adjustable with the T41 CW WPM and Sidetone menu items.
+  * The keyer produces fairly accuratly timed CW at 15 WPM.  It's been successfully decoded with another radio.  I need to verify the timing at other WPM rates.  I may need to do some adjustments to the timing.
+  * CW signals (dit/dah) are shaped with a 5 ms raised cosine at the start/end to reduce bandwidth and minimize key clicks.
+  * Note: I scaled the keyer sidetone volume to give a comfortable volume over the entire RF power range at a setting of 20.  This isn't consistent with the current T41 sidetone volume, so if you've increased that you'll want to reduce it before you try the keyer.
 
 * feature/wsjtx - Communicate with WSJT-X over USB using `TS-890S` as the *Rig* on the WSJT-X *Radio* tab.  Must compile with one of the USB Types that includes both `Serial` and `Audio` (`Audio` isn't required if you connect the audio from the T41 to your PC in another way).
 

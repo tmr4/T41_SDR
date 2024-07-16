@@ -32,7 +32,7 @@ int decoderFlag = DECODER_STATE;  // Startup state for decoder
 int keyType = STRAIGHT_KEY_OR_PADDLES;
 int currentWPM =  DEFAULT_KEYER_WPM;
 int sidetoneVolume = 20;
-int cwTransmitDelay = 750;
+unsigned long cwTransmitDelay = 750;
 
 int activeVFO = 0;
 
@@ -127,7 +127,7 @@ void LoadOpVars() {
   keyType = EEPROMData.keyType;
   currentWPM = EEPROMData.currentWPM;
   sidetoneVolume = EEPROMData.sidetoneVolume;
-  cwTransmitDelay = EEPROMData.cwTransmitDelay;
+  cwTransmitDelay = (unsigned long) EEPROMData.cwTransmitDelay;
 
   activeVFO = EEPROMData.activeVFO;
   freqIncrement = EEPROMData.freqIncrement; // *** this isn't needed if tuneIndex is used to set initial value ***

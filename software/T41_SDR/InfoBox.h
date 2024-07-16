@@ -18,7 +18,8 @@
 #define IB_ITEM_FLOOR     6
 #define IB_ITEM_TEMP      7
 #define IB_ITEM_LOAD      8
-#define IB_ITEM_FT8       9
+//#define IB_ITEM_FT8       9
+#define IB_ITEM_KEYER     9
 #define IB_ITEM_STACK     10
 #define IB_ITEM_HEAP      11
 
@@ -28,6 +29,7 @@
 #define IB_ITEM_FILTER    20
 #define IB_ITEM_COMPRESS  20
 #define IB_ITEM_KEY       20
+#define IB_ITEM_FT8       20
 
 //-------------------------------------------------------------------------------------------------------------
 // Code

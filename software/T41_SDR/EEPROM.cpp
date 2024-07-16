@@ -41,7 +41,7 @@ config_t EEPROMData {
   36,                           // int paddleDit
   35,                           // int paddleDah
   DECODER_STATE,                // int decoderFlag
-  STRAIGHT_KEY_OR_PADDLES,      // int keyType - straight key = 0, keyer = 1                   
+  STRAIGHT_KEY_OR_PADDLES,      // int keyType - straight key = 0, keyer = 1
   DEFAULT_KEYER_WPM,            // int currentWPM
   20,                           // int sidetoneVolume
   750,                          // uint32_t cwTransmitDelay
@@ -92,14 +92,14 @@ config_t EEPROMData {
   "",           // char mapFileName[50]
   MY_CALL,      // char myCall[10]
   MY_TIMEZONE,  // char myTimeZone[10]
-  (int) '.',    // int  separationCharacter = 
-  
+  (int) '.',    // int  separationCharacter =
+
   PADDLE_FLIP,  // int paddleFlip
   0,            // int sdCardPresent
 
   MY_LON,       // float myLon
   MY_LAT,       // float myLat
-  { 0, 0, 0, 0, 0, 0, 0 }, // int currentNoiseFloor[NUMBER_OF_BANDS] = 
+  { 0, 0, 0, 0, 0, 0, 0 }, // int currentNoiseFloor[NUMBER_OF_BANDS] =
   0,            // int compressorFlag
 
 #ifndef ALT_ISR
@@ -180,7 +180,7 @@ FLASHMEM int EEPROMReadSize() {
   Purpose: void EEPROMSetVersion()
 
   Parameter list:
-    
+
 
   Return value:
     char* pointer to EEPROM version string of the form "V049_808"
@@ -332,7 +332,7 @@ FLASHMEM void EEPROMShow() {
     Serial.print("] = ");
     Serial.println(EEPROMData.powerOutCW[i], 5);  //AFP 10-13-22
   }
-  Serial.println(" ");  
+  Serial.println(" ");
   for (int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("                 powerOutSSB[");
     Serial.print(i);
@@ -411,7 +411,7 @@ FLASHMEM void EEPROMShow() {
     Serial.print("][1] = ");
     if (i < 2) {
       Serial.print(" ");
-    }  
+    }
     Serial.println(EEPROMData.lastFrequencies[i][1]);
   }
   Serial.println(" ");
@@ -682,17 +682,17 @@ FLASHMEM void EEPROMSaveDefaults2() {
   //DB2OO, 23-AUG-23 7.1MHz for Region 1
 #if defined(ITU_REGION) && ITU_REGION==1
   EEPROMData.currentFreqA = 7100000;
-#else  
+#else
   EEPROMData.currentFreqA = 7200000;
 #endif
   EEPROMData.currentFreqB = 7030000;
   //DB2OO, 23-AUG-23: with TCXO needs to be 0
-#ifdef TCXO_25MHZ  
+#ifdef TCXO_25MHZ
   EEPROMData.freqCorrectionFactor = 0; //68000;
 #else
   //Conventional crystal with freq offset needs a correction factor
   EEPROMData.freqCorrectionFactor = 68000;
-#endif  
+#endif
 
   for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
     EEPROMData.equalizerRec[i] = 100;  // 4 bytes each
@@ -811,7 +811,7 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.favoriteFreqs[12] = 15000000L;
 
   //DB2OO, 23-AUG-23: Region 1 freqs (from https://qrper.com/qrp-calling-frequencies/)
-#if defined(ITU_REGION) && ITU_REGION==1  
+#if defined(ITU_REGION) && ITU_REGION==1
   EEPROMData.lastFrequencies[0][0] = 3690000L; //3985000L;   // 80 Phone
   EEPROMData.lastFrequencies[1][0] = 7090000L; //7200000L;   // 40
   EEPROMData.lastFrequencies[2][0] = 14285000L;  // 50

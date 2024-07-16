@@ -27,6 +27,7 @@ const char *labels[] = { "Select", "Menu Up", "Band Up",
                          "Reset Tuning", "Frequ Entry", "User 2" };
 
 // *** we can have some consolidation here ***
+float32_t cosBuffer[256];
 float32_t cosBuffer2[256];
 float32_t cosBuffer3[256];
 
@@ -67,18 +68,19 @@ FLASHMEM void sineTone(int numCycles) {
   float theta;
   float freqSideTone2;
   float freqSideTone3 = 3000;         // Refactored 32 * 24000 / 256; //AFP 2-7-23
-  float freqSideTone4 = 375;
+  //float freqSideTone4 = 375;
   freqSideTone2 = numCycles * 24000 / 256;
   for (int kf = 0; kf < 256; kf++) { //Calc: numCycles=8, 750 hz sine wave.
     theta = kf * 0.19634950849362;    // Simplify terms: theta = kf * 2 * PI * freqSideTone / 24000  JJP 6/28/23
     sinBuffer[kf] = sin(theta);
+    cosBuffer[kf] = cos(theta);  // Used in CW_Excite.cpp
     theta = kf * 2 * PI * freqSideTone2 / 24000;
     sinBuffer2[kf] = sin(theta);
     cosBuffer2[kf] = cos(theta);
     theta = kf * 2.0 * PI * freqSideTone3 / 24000;
     sinBuffer3[kf] = sin(theta);
     cosBuffer3[kf] = cos(theta);
-    theta = kf * 2.0 * PI * freqSideTone4 / 24000;
+    //theta = kf * 2.0 * PI * freqSideTone4 / 24000;
   }
 }
 

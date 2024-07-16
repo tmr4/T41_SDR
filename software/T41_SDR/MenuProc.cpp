@@ -81,7 +81,7 @@ FLASHMEM void CWOptions() {
 
     case 5:                // Transmit relay hold delay
       //SetTransmitDelay();
-      GetMenuValue(0, 10000, &cwTransmitDelay, 250, "Delay:", 150, NULL, NULL, &SetTransmitDelayFollowup);
+      GetMenuValue(0, 9750, (int*)&cwTransmitDelay, 250, "Delay:", 150, NULL, NULL, &SetTransmitDelayFollowup);
       break;
 
     default:  // Cancel

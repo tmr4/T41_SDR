@@ -9,6 +9,7 @@
 #define WIGGLE_ROOM               20     // This is the maximum value that can added to a BUSY_ANALOG_PIN pin read value of a push
                                          // button and still have the switch value be associated with the correct push button.
 
+extern float32_t cosBuffer[];
 extern float32_t cosBuffer2[];
 extern float32_t cosBuffer3[];
 

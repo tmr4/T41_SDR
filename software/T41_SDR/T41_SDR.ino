@@ -34,6 +34,7 @@
 #include "FIR.h"
 #include "Freq_Shift.h"
 #include "InfoBox.h"
+#include "keyer.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Noise.h"
@@ -981,6 +982,8 @@ FLASHMEM void setup() {
   //biquad1.setBandpass(0, 1000, 0.5);
   biquad1.setLowpass(0, 3000, 0.5);
 #endif
+
+  KeyerSetup(); // testing only
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
@@ -1177,6 +1180,10 @@ FASTRUN void loop()
       //delay(150);
       break;
     case CW_TRANSMIT_STRAIGHT_STATE:
+      // stop collecting input I/Q data
+      // *** the end and begin methods are fast, but leave the background interrupt process running ***
+      Q_in_L.end();
+      Q_in_R.end();
       powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
       CW_ExciterIQData();
       xrState = TRANSMIT_STATE;
@@ -1190,7 +1197,7 @@ FASTRUN void loop()
       modeSelectOutExL.gain(0, 0);
       modeSelectOutExR.gain(0, 0);
       cwTimer = millis();
-      while (millis() - cwTimer - cwTransmitDelay <= 0) {  // Start CW transmit timer on
+      while(millis() - cwTimer <= cwTransmitDelay) {             // Start CW transmit timer on
         digitalWrite(RXTX, HIGH);
         if (digitalRead(paddleDit) == LOW && keyType == 0) {       // Turn on CW signal
           cwTimer = millis();                                      //Reset timer
@@ -1213,8 +1220,15 @@ FASTRUN void loop()
       modeSelectOutExL.gain(0, 0);  //Power = 0 //AFP 10-11-22
       modeSelectOutExR.gain(0, 0);  //AFP 10-11-22
       digitalWrite(RXTX, LOW);      // End Straight Key Mode
+      Q_in_L.begin();
+      Q_in_R.begin();
       break;
     case CW_TRANSMIT_KEYER_STATE:
+      // stop collecting input I/Q data
+      // *** the end and begin methods are fast, but leave the background interrupt process running ***
+      // *** TODO: compare effect of using end/begin and disconnect/connect on CW signal timing ***
+      Q_in_L.end();
+      Q_in_R.end();
       CW_ExciterIQData();
       xrState = TRANSMIT_STATE;
       ShowTransmitReceiveStatus();
@@ -1228,7 +1242,7 @@ FASTRUN void loop()
       modeSelectOutExL.gain(0, 0);
       modeSelectOutExR.gain(0, 0);
       cwTimer = millis();
-      while (millis() - cwTimer - cwTransmitDelay <= 0) {
+      while(millis() - cwTimer <= cwTransmitDelay) {
         digitalWrite(RXTX, HIGH);  //Turns on relay
         CW_ExciterIQData();
         modeSelectInR.gain(0, 0);
@@ -1292,6 +1306,8 @@ FASTRUN void loop()
       modeSelectOutExR.gain(0, 0);
       digitalWrite(RXTX, LOW);
       xmtMode = CW_MODE;
+      Q_in_L.begin();
+      Q_in_R.begin();
       break;
     default:
       break;
@@ -1306,11 +1322,14 @@ FASTRUN void loop()
 #ifdef KEYBOARD_SUPPORT
   // just for testing
   if (elapsed_micros_idx_t > 200) {
-    PrintKeyboardBuffer();
+    //PrintKeyboardBuffer();
   }
   //T41ControlLoop();
   //T41BeaconLoop();
   WSJTLoop();
+  if(keyerState == 1) {
+    KeyerLoop();
+  }
 #endif
 
   // update memory about every second

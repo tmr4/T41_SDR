@@ -8,6 +8,7 @@
 #include "Encoders.h"
 #include "FFT.h"
 #include "InfoBox.h"
+#include "keyer.h"
 #include "Menu.h"
 #include "MenuProc.h"
 #include "Utility.h"
@@ -24,7 +25,6 @@
 #define SCALE_CONSTANT          (1.0 / (1.0 - ADAPTIVE_SCALE_FACTOR)) // Insure array has enough observations to scale
 
 unsigned long ditLength;
-unsigned long transmitDitLength;
 long signalElapsedTime;
 long gapLength;    // Time for noise measures
 float32_t combinedCoeff;
@@ -109,9 +109,6 @@ void DoGapHistogram(long gapLen);
 void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, int32_t *maxIndex, int32_t *firstNonZero, int32_t spread);
 void DoSignalHistogram(long val);
 float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, float *data);
-
-void Dah();
-void Dit();
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -325,18 +322,18 @@ void DoCWReceiveProcessing() {
   int audioTemp;
 
   if (decoderFlag == ON) {
-
     // left channel first
     arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_CW, 256); // Park McClellan FIR filter const Group delay
 
     // ----------------------  Correlation calculation  -------------------------
     //Calculate correlation between calc sine and incoming signal
     arm_correlate_f32(float_buffer_CW, 256, sinBuffer, 256, float_Corr_Buffer);
+
     //get max value of correlation
     arm_max_f32(float_Corr_Buffer, 511, &corrResultL, &corrResultIndexL);
+
     //running average of corr coeff. L
     aveCorrResultL = .7 * corrResultL + .3 * aveCorrResultL;
-    aveCorrResult = (corrResultR + corrResultL) / 2;
 
     // Calculate Goertzel Mahnitude of incomming signal
     goertzelMagnitude1 = goertzel_mag(256, 750, 24000, float_buffer_CW);
@@ -346,8 +343,11 @@ void DoCWReceiveProcessing() {
 
     arm_correlate_f32(float_buffer_CW, 256, sinBuffer, 256, float_Corr_Buffer);
     arm_max_f32(float_Corr_Buffer, 511, &corrResultR, &corrResultIndexR);
+
     //running average of corr coeff. R
     aveCorrResultR = .7 * corrResultR + .3 * aveCorrResultR;
+
+    aveCorrResult = (corrResultR + corrResultL) / 2;
 
     goertzelMagnitude2 = goertzel_mag(256, 750, 24000, float_buffer_CW);
 
@@ -373,62 +373,6 @@ void DoCWReceiveProcessing() {
 }
 
 /*****
-  Purpose: to provide spacing between letters
-
-  Parameter list:
-  void
-
-  Return value:
-  void
-
-  CAUTION: Assumes that a global named ditLength holds the value for dit spacing
-*****/
-void LetterSpace() {
-  delay(3UL * ditLength);
-}
-
-/*****
-  Purpose: to provide spacing between words
-
-  Parameter list:
-  void
-
-  Return value:
-  void
-
-  CAUTION: Assumes that a global named ditLength holds the value for dit spacing
-*****/
-void WordSpace() {
-  delay(7UL * ditLength);
-}
-
-/*****
-  Purpose: to send a Morse code character
-
-  Parameter list:
-    char code       the code for the letter to send
-
-  Return value:
-    void
-*****/
-void SendCode(char code) {
-  int i;
-
-  for (i = 7; i >= 0; i--)  // Find the sentinel. Loop looks for first 1,
-    if (code & (1 << i))    // which marks the start of the letter:   0b11000 = 'B'
-      break;
-
-  for (i--; i >= 0; i--) {  // Now look at rest of binary value: 0b1000 = B after reading sentinel
-    if (code & (1 << i))    // If it's a 1, send a dah, otherwise...
-      Dah();
-    else
-      Dit();  // ...send a dit
-  }
-
-  LetterSpace();
-}
-
-/*****
   Purpose: establish the dit length for code transmission. Crucial since
     all spacing is done using dit length
 
@@ -440,20 +384,6 @@ void SendCode(char code) {
 *****/
 FLASHMEM void SetDitLength(int wpm) {
   ditLength = 1200 / wpm;
-}
-
-/*****
-  Purpose: establish the dit length for code transmission. Crucial since
-    all spacing is done using dit length
-
-  Parameter list:
-    int wpm
-
-  Return value:
-    void
-*****/
-FLASHMEM void SetTransmitDitLength() {
-  transmitDitLength = 1200 / currentWPM;
 }
 
 //==================================== Decoder =================
@@ -550,7 +480,7 @@ void DoCWDecoding(int audioValue) {
   static long signalEnd;  // Start-end of dit or dah
 
   switch (decodeStates) {
-    
+
     case state0:                                                // State 0.  Detects start of signal and starts timer.
       // Detect signal and redirect to appropriate state.
       if (audioValue == 1) {
@@ -604,7 +534,7 @@ void DoCWDecoding(int audioValue) {
       if (signalElapsedTime > (0.5 * ditLength)) {              // Use the geometric mean instead of ditLength???
         currentDashJump = currentDashJump >> 1;                 // Fast divide by 2
         if (signalElapsedTime < (int)thresholdGeometricMean) {  // It was a dit
-          charProcessFlag = true;                               
+          charProcessFlag = true;
           currentDecoderIndex++;
         } else {  // It's a dah!
           charProcessFlag = true;
@@ -858,15 +788,20 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
 
 FLASHMEM void initCW(void) {
   //Serial.println(sizeof(float32_t));
-  
-  int offset = 0;
 
-  float_Corr_Buffer = (float32_t *)&sharedRAM1[0]; // 511 * 4 bytes (round up to 2048)
-  offset += 512 * 4;
-  gapHistogram = (int32_t *)&sharedRAM2[offset]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 3072)
-  offset += 3072 * 4;
-  signalHistogram = (int32_t *)&sharedRAM2[offset]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 3072)
-  offset += 3072 * 4;
+  // decoder is sharing memory with FT8
+  int offset1 = 0;
+  int offset2 = 0;
+
+  // sharedRAM1 is 8k, we're using 2k here
+  float_Corr_Buffer = (float32_t *)&sharedRAM1[offset1]; // 511 * 4 bytes (round up to 512 * 4 = 2048)
+  offset1 += 512 * sizeof(float32_t);
+
+  // sharedRAM2 is 26k, we're using 6k here
+  gapHistogram = (int32_t *)&sharedRAM2[offset2]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 768 * 4 = 3072)
+  offset2 += 768 * sizeof(int32_t);
+  signalHistogram = (int32_t *)&sharedRAM2[offset2]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 3072)
+  offset2 += 768 * sizeof(int32_t);
 
   //Serial.println(offset);
 

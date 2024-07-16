@@ -11,4 +11,4 @@ extern uint8_t keyPressedOn;
 
 void KeyTipOn();
 void KeyRingOn();
-void CW_ExciterIQData();
+void CW_ExciterIQData(int state = ON, bool ramp = false, float timeAdjust = 0.0, bool pwrScale = false);

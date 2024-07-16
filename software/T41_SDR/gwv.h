@@ -27,7 +27,7 @@ extern int decoderFlag;
 extern int keyType;
 extern int currentWPM;
 extern int sidetoneVolume;
-extern int cwTransmitDelay;
+extern unsigned long cwTransmitDelay;
 
 extern int activeVFO;
 extern int freqIncrement;

@@ -86,7 +86,7 @@
 
 // Find a home for these or eliminate them
 
-// eliminate any overlap with radioState and T41State and the below 
+// eliminate any overlap with radioState and T41State and the below
 #define SSB_RECEIVE                 0
 #define CW_RECEIVE                  2
 #define SSB_RECEIVE_STATE 0
@@ -99,7 +99,8 @@
 
 //************************************* End: Clean up stuff to fix ************************
 
-extern byte sharedRAM1[1024 * 8];
+// *** these need to be properly alligned for some CW functions ***
+extern byte sharedRAM1[1024 * 8] __attribute__ ((aligned (4)));;
 extern byte /*DMAMEM*/ sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));
 
 extern int radioState, lastState;  // Used by the loop to monitor current state.

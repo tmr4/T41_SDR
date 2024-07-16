@@ -44,7 +44,6 @@ extern arm_fir_instance_f32 FIR_CW_DecodeL;
 extern arm_fir_instance_f32 FIR_CW_DecodeR;
 
 extern unsigned long ditLength;
-extern unsigned long transmitDitLength;
 
 extern int dahLength;
 
@@ -68,7 +67,6 @@ void SetTransmitDelayFollowup();
 
 void DoCWReceiveProcessing();
 void SetDitLength(int wpm);
-void SetTransmitDitLength();
 
 void ResetHistograms();
 void DoGapHistogram(long gapLen);

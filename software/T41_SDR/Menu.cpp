@@ -273,8 +273,9 @@ void GetMenuValueLoop() {
 
     tft.setFontScale((enum RA8875tsize)1);
 
-    // erase old value *** TODO: consider tft.getFontWidth() * value width in place of 50 below ***
-    tft.fillRect(SECONDARY_MENU_X + getMenuOffset, MENUS_Y, 50, CHAR_HEIGHT, RA8875_MAGENTA);
+    // erase old value
+    // *** TODO: consider tft.getFontWidth() * value width in place of fixed value below ***
+    tft.fillRect(SECONDARY_MENU_X + getMenuOffset, MENUS_Y, 65, CHAR_HEIGHT, RA8875_MAGENTA);
 
     // update current value
     tft.setTextColor(RA8875_WHITE);
@@ -464,7 +465,7 @@ FLASHMEM int DrawMenuDisplay() {
   tft.setCursor(10, mainMenuIndex * 25 + 115);
   tft.print(topMenus[mainMenuIndex]);
   i = 0;
-  tft.setTextColor(DARKGREY, RA8875_BLACK);                   
+  tft.setTextColor(DARKGREY, RA8875_BLACK);
   while (strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {   // Show secondary choices
     tft.setCursor(300, i * 27 + 115);
     tft.print(secondaryChoices[mainMenuIndex][i]);
@@ -482,7 +483,7 @@ FLASHMEM int DrawMenuDisplay() {
   Argument List;
     void
 
-  Return value: index number for the selected primary menu 
+  Return value: index number for the selected primary menu
 *****/
 FLASHMEM int SetPrimaryMenuIndex() {
   int i;
@@ -543,7 +544,7 @@ FLASHMEM int SetPrimaryMenuIndex() {
   Argument List;
     void
 
-  Return value: index number for the selected primary menu 
+  Return value: index number for the selected primary menu
 *****/
 FLASHMEM int SetSecondaryMenuIndex() {
   int i = 0;
@@ -553,7 +554,7 @@ FLASHMEM int SetSecondaryMenuIndex() {
 
   while (true) {                                                        // How many secondary menu options?
     if (strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {    // Have we read the last entry in secondary menu?
-      i++;                                                              // Nope.  
+      i++;                                                              // Nope.
     } else {
       secondaryMenuCounter = i + 1;                                       // Add 1 because index starts with 0
       break;
@@ -575,7 +576,7 @@ FLASHMEM int SetSecondaryMenuIndex() {
       tft.setCursor(300, oldIndex * 25 + 115);
       tft.print(secondaryChoices[mainMenuIndex][oldIndex]);
       i += menuEncoderMove;  // Change the menu index to the new value
-     
+
       if (i == secondaryMenuCounter) {  // Did they go past the end of the primary menu list?
         i = 0;                        // Yep. Set to start of the list.
       } else {

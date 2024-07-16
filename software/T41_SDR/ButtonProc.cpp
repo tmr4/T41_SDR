@@ -10,6 +10,7 @@
 #include "Filter.h"
 #include "ft8.h"
 #include "InfoBox.h"
+#include "keyer.h"
 #include "Menu.h"
 #include "Noise.h"
 #include "Process.h"
@@ -334,6 +335,7 @@ FLASHMEM void ChangeMode(int mode) {
       if(mode == DATA_MODE) {
         priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
       }
+      keyerState = 0; // turn off keyer
       break;
 
     case DATA_MODE:
@@ -364,6 +366,7 @@ FLASHMEM void ChangeMode(int mode) {
         tft.writeTo(L1);
         wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
       }
+      keyerState = 1; // turn on keyer
       break;
 
     case DATA_MODE:

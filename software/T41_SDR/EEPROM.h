@@ -30,7 +30,7 @@ typedef struct {
   int keyType;
   int currentWPM;
   int sidetoneVolume;
-  int cwTransmitDelay;
+  unsigned long cwTransmitDelay;
 
   int activeVFO;
   int freqIncrement;
@@ -78,7 +78,7 @@ typedef struct {
   char myCall[10];
   char myTimeZone[10];
   int  separationCharacter;
-  
+
   int paddleFlip;
   int sdCardPresent;
 

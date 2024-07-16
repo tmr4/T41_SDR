@@ -9,6 +9,7 @@
 #include "Encoders.h"
 #include "ft8.h"
 #include "InfoBox.h"
+#include "keyer.h"
 #include "Menu.h"
 #include "mouse.h"
 #include "Process.h"
@@ -27,6 +28,7 @@ void IBEQFollowup(int row, int col);
 void IBTempFollowup(int row, int col);
 void IBLoadFollowup(int row, int col);
 void IBFT8Followup(int row, int col);
+void IBKeyerFollowup(int row, int col);
 void IBStackFollowup(int row, int col);
 void IBHeapFollowup(int row, int col);
 
@@ -77,6 +79,7 @@ const char *optionsWPM[2] = { "Straight Key", "Paddles " };
 const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
 
 const char *ft8Opts[] = { "Off", "not sync'd", "sync'd" };
+const char *keyerOpts[] = { "Off", "WPM" };
 
 #define IB_NUM_ITEMS 12
 
@@ -92,7 +95,8 @@ PROGMEM const infoBoxItem infoBox[] =
   { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_7_Y,    &IBTempFollowup        }, // Teensy Temp
   { "Load:",       NULL,        NULL,                     0,        4,      1,   IB_COL_2_X,    IB_ROW_7_Y,    &IBLoadFollowup        },  // Teensy Load
-  { "FT8       ",  ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_8_Y,    &IBFT8Followup         },  // FT8 sync
+  //{ "FT8       ",  ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_8_Y,    &IBFT8Followup         },  // FT8 sync
+  { "Keyer     ",  keyerOpts,   &keyerState,              0,       10,      1,   IB_COL_1_X,    IB_ROW_8_Y,    &IBKeyerFollowup       },  // Keyer
   { "Stack:",      NULL,        NULL,                     0,        4,      2,   IB_COL_1_X,    IB_ROW_6_Y,    &IBStackFollowup       },  // Stack
   { "Heap:",       NULL,        NULL,                     0,        4,      2,   IB_COL_2_X,    IB_ROW_6_Y,    &IBHeapFollowup        },  // Heap
   //{ "AutoNotch:",  onOff,       (int*)&ANR_notchOn,       0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Auto Notch
@@ -202,7 +206,7 @@ void UpdateInfoBox() {
   Purpose: Information box follow up function for the Compression item
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -216,7 +220,7 @@ void IBTuneIncFollowup(int row, int col) {
            Assumes this is only called as part of updating Compression item
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -233,7 +237,7 @@ void IBCompressionFollowup(int row, int col) {
            Assumes this is only called as part of updating Keyer item
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -255,7 +259,7 @@ void IBWPMFollowup(int row, int col) {
            Assumes volume is in column 1 row 1, with large font
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -272,7 +276,7 @@ void IBVolFollowup(int row, int col) {
            Assumes Equalizers are in column 1 row 10
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -312,7 +316,7 @@ void IBEQFollowup(int row, int col) {
   Purpose: Information box follow up function for the Temp item
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -333,7 +337,7 @@ void IBTempFollowup(int row, int col) {
   Purpose: Information box follow up function for the Load item
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -374,7 +378,7 @@ void IBLoadFollowup(int row, int col) {
   Purpose: Information box follow up function for the FT8 item
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -402,6 +406,52 @@ void IBFT8Followup(int row, int col) {
   }
 }
 
+/*****
+  Purpose: Information box follow up function for the Keyer item
+
+  Parameter list:
+    int row, col  Row and column of info box item
+
+  Return value:
+    void
+*****/
+void IBKeyerFollowup(int row, int col) {
+  if(keyerState == 1) {
+    tft.print(" ");
+    tft.print(currentWPM);
+
+    if(keyerMessagesActive) {
+      tft.setTextColor(RA8875_GREEN);
+    } else {
+      tft.setTextColor(RA8875_WHITE);
+    }
+
+    // show messages
+    //                  1         2         3
+    //         123456789012345678901234567890123
+    //tft.print("123456789012345678901234567890123");
+    //tft.print("                                 "); // doesn't clear line
+    tft.fillRect(INFO_BOX_L + 5, row + 20, tft.getFontWidth() * 33, tft.getFontHeight(), RA8875_BLACK);
+    tft.setCursor(INFO_BOX_L + 5, row + 20);
+    tft.print(keyerMessages[selectedMsg]);
+
+    if(keyerMessagesActive) {
+      tft.setTextColor(RA8875_WHITE);
+    } else {
+      tft.setTextColor(RA8875_GREEN);
+    }
+
+    tft.fillRect(INFO_BOX_L + 5, row + 40, tft.getFontWidth() * 33, tft.getFontHeight(), RA8875_BLACK);
+    tft.setCursor(INFO_BOX_L + 5, row + 40);
+    msgBuffer[msgIndexIn] = 0; // terminate buffer
+    tft.print((char *)msgBuffer);
+  } else {
+    // clear message lines
+    tft.fillRect(INFO_BOX_L + 5, row + 20, tft.getFontWidth() * 33, tft.getFontHeight(), RA8875_BLACK);
+    tft.fillRect(INFO_BOX_L + 5, row + 40, tft.getFontWidth() * 33, tft.getFontHeight(), RA8875_BLACK);
+  }
+}
+
 // *** TODO: eliminate hard coded column/row references in next two ***
 /*****
   Purpose: Show estimated WPM in information box
@@ -425,7 +475,6 @@ void UpdateIBWPM() {
 
 /*****
   Purpose: Update CW decode lock indicator in information box
-           Assumes decoder is in column 1 row 9
 
   Parameter list:
     void
@@ -433,12 +482,13 @@ void UpdateIBWPM() {
   Return value:
     void
 *****/
-void UpdateDecodeLockIndicator()
-{
+void UpdateDecodeLockIndicator() {
+  int yOffset = infoBox[IB_ITEM_DECODER].row;
+
   // ==========  CW decode "lock" indicator
   if (combinedCoeff > 50)
   {
-    tft.fillRect(IB_COL_2_X - 20, IB_ROW_4_Y, 15, 15, RA8875_GREEN);
+    tft.fillRect(IB_COL_2_X - 20, yOffset, 15, 15, RA8875_GREEN);
   }
   else if (combinedCoeff < 50)
   {
@@ -446,7 +496,7 @@ void UpdateDecodeLockIndicator()
     if (CWLevelTimer - CWLevelTimerOld > 2000)
     {
       CWLevelTimerOld = millis();
-      tft.fillRect(IB_COL_2_X - 20, IB_ROW_4_Y, 17, 17, RA8875_BLACK);
+      tft.fillRect(IB_COL_2_X - 20, yOffset, 17, 17, RA8875_BLACK);
     }
   }
 }
@@ -470,7 +520,7 @@ void DrawInfoBoxFrame() {
             The stack value is more informative when called from within a function that might be stressing the stack
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
@@ -505,7 +555,7 @@ void IBStackFollowup(int row, int col) {
            heap at startup.  See PrimeMallInfo() in Utility.cpp.
 
   Parameter list:
-    void
+    int row, col  Row and column of info box item
 
   Return value:
     void
