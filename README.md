@@ -42,9 +42,9 @@ This is a work in progress.  Some functions from the original version are broken
   * Select desired message to transmit by using the left/right arrow keys on keyboard.
   * Transmit selected preset message by pressing enter key.
   * Enter keyboard mode by pressing the up/down arrow key on the keyboard.  The preset message color changes to white to indicate it's no longer active.  You can return to the preset message with the up/down arrow key on the keyboard.
-  * Type a message on the keyboard to create a custom CW message.  It will be highlighted in green indicating the keyboard mode is active.  Press enter to send the message or escape to erase it.
+  * Type a message on the keyboard to create a custom CW message. It will be highlighted in green indicating the keyboard mode is active. Press the enter key to send the message or the escape key to erase it.
   * WPM and Sidetone volume are adjustable with the T41 CW WPM and Sidetone menu items.
-  * The keyer produces fairly accuratly timed CW at 15 WPM.  It's been successfully decoded with another radio.  I need to verify the timing at other WPM rates.  I may need to do some adjustments to the timing.
+  * The keyer produces fairly accurately timed CW at 15 WPM.  It's been successfully decoded with another radio.  I need to verify the timing at other WPM rates.  I may need to do some adjustments to the timing.
   * CW signals (dit/dah) are shaped with a 5 ms raised cosine at the start/end to reduce bandwidth and minimize key clicks.
   * Note: I scaled the keyer sidetone volume to give a comfortable volume over the entire RF power range at a setting of 20.  This isn't consistent with the current T41 sidetone volume, so if you've increased that you'll want to reduce it before you try the keyer.
 
