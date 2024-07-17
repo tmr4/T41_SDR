@@ -38,9 +38,10 @@ This is a work in progress.  Some functions from the original version are broken
 
 * feature/MorseCodeKeyer - Adds a keyboard/memory CW keyer.  It currently requires the keyboard feature but could be simplified to be used on a standalone T41.  It has the following features:
 
-  * Set up to 10 preset messages in code.  The selected preset message is highlighted in green at the bottom of the info box.  I may add code to allow these to be edited.
+  * Set up to 10 preset messages in code.  The selected preset message is highlighted in green at the bottom of the info box.
   * Select desired message to transmit by using the left/right arrow keys on keyboard.
   * Transmit selected preset message by pressing enter key.
+  * Press the insert key to edit the selected message. The color of the selected message will change to yellow to indicate that you are in edit mode.  The cursor is at the end of the message.  You can add to the message by typing.  You can overwrite the message using the backspace key.  To keep any changes, use the enter key to exit the edit mode.  If you want to discard the changes, press the escape key.  Any changes made are lost after you turn off your T41.  Note that the normal keyer navigation keys are not active in edit mode.
   * Enter keyboard mode by pressing the up/down arrow key on the keyboard.  The preset message color changes to white to indicate it's no longer active.  You can return to the preset message with the up/down arrow key on the keyboard.
   * Type a message on the keyboard to create a custom CW message. It will be highlighted in green indicating the keyboard mode is active. Press the enter key to send the message or the escape key to erase it.
   * WPM and Sidetone volume are adjustable with the T41 CW WPM and Sidetone menu items.

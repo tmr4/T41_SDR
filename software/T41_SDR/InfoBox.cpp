@@ -421,7 +421,11 @@ void IBKeyerFollowup(int row, int col) {
     tft.print(currentWPM);
 
     if(keyerMessagesActive) {
-      tft.setTextColor(RA8875_GREEN);
+      if(keyerMessageEditMode) {
+        tft.setTextColor(YELLOW);
+      } else {
+        tft.setTextColor(RA8875_GREEN);
+      }
     } else {
       tft.setTextColor(RA8875_WHITE);
     }

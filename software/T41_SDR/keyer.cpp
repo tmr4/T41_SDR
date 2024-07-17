@@ -27,6 +27,8 @@ char keyerMessages[MAX_MESSAGES][MAX_MESSAGE_LENGTH + 1] = {
 };
 
 bool keyerMessagesActive = true;
+bool keyerMessageEditMode = false;
+int keyerEditIndex;
 
 char letterTable[] = {                 // Morse coding: dit = 0, dah = 1
   0b101,              // A                first 1 is the sentinel marker
@@ -445,66 +447,136 @@ void KeyerSetup() {
 
 void KeyerLoop() {
   uint8_t chr;
+  static char tmpBuffer[MAX_MESSAGE_LENGTH + 1];
 
   // Process keyboard input
   chr = getc();
-  switch(chr) {
-    case 10:         // enter
-      if(keyerMessagesActive) {
-        SendMessage(&keyerMessages[selectedMsg][0]);
-      } else {
+
+  // process input
+  if(keyerMessagesActive) {
+    // process input relative to stored keyer messages and edit state
+    if(keyerMessageEditMode) {
+      // editing stored message
+      switch(chr) {
+        case 10:         // enter
+          // leave edit mode after making changes
+          keyerMessages[selectedMsg][keyerEditIndex] = 0; // terminate message
+          keyerMessageEditMode = false;
+          break;
+
+        case 27:         // escape
+          // leave edit mode without changes
+
+          // restore stored message
+          strcpy(keyerMessages[selectedMsg], tmpBuffer);
+          keyerMessageEditMode = false;
+          break;
+
+        case 32:          // space
+        case 48 ... 57:   // '0' to '9'
+        case 65 ... 90:   // 'a' to 'z'
+        case 97 ... 122:  // 'A' to 'Z'
+          keyerMessages[selectedMsg][keyerEditIndex++] = chr;
+
+          // treat as circular buffer for now
+          if(keyerEditIndex >= MAX_MESSAGE_LENGTH) {
+            keyerEditIndex = 0;
+          }
+          break;
+
+        case 127:         // backspase
+        case 212:         // delete
+          keyerEditIndex--;
+          keyerMessages[selectedMsg][keyerEditIndex] = 0; // erase character
+          break;
+
+        default:
+          break;
+      }
+    } else {
+      // stored message navigation mode
+      switch(chr) {
+        case 10:         // enter
+          SendMessage(&keyerMessages[selectedMsg][0]);
+          break;
+
+        case 209:         // insert
+          // enter edit mode
+          // store message for possible restoration later
+          //strcpy(&keyerMessages[selectedMsg][0], tmpBuffer);
+          //Serial.println(keyerMessages[selectedMsg]);
+          strcpy(tmpBuffer, keyerMessages[selectedMsg]);
+          //Serial.println(tmpBuffer);
+          keyerEditIndex = strlen(keyerMessages[selectedMsg]);
+          //Serial.println(keyerEditIndex);
+          keyerMessageEditMode = true;
+          break;
+
+        case 210:         // home
+          selectedMsg = 0;
+          break;
+
+        case 213:         // end
+          selectedMsg = MAX_MESSAGES - 1;
+          break;
+
+        case 215:         // right arrow
+          selectedMsg++;
+          if(selectedMsg >= MAX_MESSAGES) selectedMsg = 0;
+          break;
+
+        case 216:         // left arrow
+          selectedMsg--;
+          if(selectedMsg < 0) selectedMsg = MAX_MESSAGES - 1;
+          break;
+
+        case 217:         // up arrow
+        case 218:         // down arrow
+          keyerMessagesActive = !keyerMessagesActive;
+          break;
+
+        default:
+          break;
+      }
+    }
+  } else {
+    // process input relative to stored keyer messages
+    switch(chr) {
+      case 10:         // enter
         msgBuffer[msgIndexIn] = 0;
         SendMessage((char *)msgBuffer);
         msgIndexIn = 0;
-      }
-      break;
+        break;
 
-    case 27:         // escape
-      msgIndexIn = 0;
-      break;
-
-    case 32:          // space
-    case 48 ... 57:   // '0' to '9'
-    case 65 ... 90:   // 'a' to 'z'
-    case 97 ... 122:  // 'A' to 'Z'
-      msgBuffer[msgIndexIn++] = chr;
-
-      // treat as circular buffer for now
-      if(msgIndexIn >= MAX_MESSAGE_LENGTH) {
+      case 27:         // escape
         msgIndexIn = 0;
-      }
-      break;
+        break;
 
-    case 127:         // backspase
-    case 212:         // delete
-      msgIndexIn--;
-      break;
+      case 32:          // space
+      case 48 ... 57:   // '0' to '9'
+      case 65 ... 90:   // 'a' to 'z'
+      case 97 ... 122:  // 'A' to 'Z'
+        msgBuffer[msgIndexIn++] = chr;
 
-    case 210:         // home
-      selectedMsg = 0;
-      break;
+        // treat as circular buffer for now
+        if(msgIndexIn >= MAX_MESSAGE_LENGTH) {
+          msgIndexIn = 0;
+        }
+        break;
 
-    case 213:         // end
-      selectedMsg = MAX_MESSAGES - 1;
-      break;
+      case 127:         // backspase
+      case 212:         // delete
+        msgIndexIn--;
+        break;
 
-    case 215:         // right arrow
-      selectedMsg++;
-      if(selectedMsg >= MAX_MESSAGES) selectedMsg = 0;
-      break;
+      case 217:         // up arrow
+      case 218:         // down arrow
+        keyerMessagesActive = !keyerMessagesActive;
+        break;
 
-    case 216:         // left arrow
-      selectedMsg--;
-      if(selectedMsg < 0) selectedMsg = MAX_MESSAGES - 1;
-      break;
-
-    case 217:         // up arrow
-    case 218:         // down arrow
-      keyerMessagesActive = !keyerMessagesActive;
-      break;
-
-    default:
-      break;
+      default:
+        break;
+    }
   }
   UpdateInfoBoxItem(IB_ITEM_KEYER);
 }
