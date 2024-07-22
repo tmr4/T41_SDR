@@ -75,6 +75,7 @@ const char *tuneValues[] = { "10", "50", "100", "250", "1000", "10000", "100000"
 const char *ftValues[] = { "10", "50", "250", "500" };
 const char *filter[] = { "Off", "Kim", "Spectral", "LMS" };
 const char *onOff[2] = { "Off", "On" };
+const char *nfOptions[3] = { "Off", "Auto", "On"};
 const char *optionsWPM[2] = { "Straight Key", "Paddles " };
 const char *zoomOptions[] = { "1x ", "2x ", "4x ", "8x ", "16x" }; // combine with MAX_ZOOM_ENTRIES somewhere
 
@@ -92,7 +93,7 @@ PROGMEM const infoBoxItem infoBox[] =
   { "FT Inc:",     ftValues,    &ftIndex,                 0,        3,      0,   IB_COL_2_X,    IB_ROW_3_Y,    &IBTuneIncFollowup     }, // FT Inc
   { "Zoom:",       zoomOptions, (int*)&spectrumZoom,      0,        3,      0,   IB_COL_1_X,    IB_ROW_4_Y,    NULL                   }, // Zoom
   { "Decoder:",    onOff,       &decoderFlag,             0,        3,      1,   IB_COL_1_X,    IB_ROW_5_Y,    NULL                   }, // Decoder
-  { "NF Set:",     onOff,       &liveNoiseFloorFlag,      0,        3,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
+  { "NF Set:",     nfOptions,   &liveNoiseFloorFlag,      0,        4,      1,   IB_COL_2_X,    IB_ROW_4_Y,    NULL                   }, // Noise Floor
   { "Temp:",       NULL,        NULL,                     0,        3,      1,   IB_COL_1_X,    IB_ROW_7_Y,    &IBTempFollowup        }, // Teensy Temp
   { "Load:",       NULL,        NULL,                     0,        4,      1,   IB_COL_2_X,    IB_ROW_7_Y,    &IBLoadFollowup        },  // Teensy Load
   //{ "FT8       ",  ft8Opts,     &ft8State,                0,       10,      2,   IB_COL_1_X,    IB_ROW_8_Y,    &IBFT8Followup         },  // FT8 sync

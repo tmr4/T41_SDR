@@ -298,7 +298,7 @@ FASTRUN void EncoderMenuChangeFilterISR() {
     return; // menuEncoderMove processed in GetEncoderValueLive and GetMenuValueLoop routines
   }
 
-  if(liveNoiseFloorFlag) {
+  if(liveNoiseFloorFlag == 2) {
     // we're setting noise floor
     currentNoiseFloor[currentBand] += menuEncoderMove;
   } else {

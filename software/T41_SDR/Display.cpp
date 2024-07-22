@@ -412,8 +412,14 @@ int currentNF = 0;
 FASTRUN void ShowSpectrum() {
   int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
   static int oldNF;
+  int hLo = 0, hHi = 0;
 
-  currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
+  // set current noise flow level for this loop
+  // noise floor is constant for each spectrum update
+  // this allows live noise floor updates
+  if(liveNoiseFloorFlag != 1) {
+    currentNF = currentNoiseFloor[currentBand];
+  }
 
   // initialize old noise floor if this is a new spectrum
   if(newSpectrumFlag == 0) {
@@ -445,6 +451,26 @@ FASTRUN void ShowSpectrum() {
     y1_new_plot = spectrumNoiseFloor - pixelnew[x1 + 1] - currentNF;
     y_old_plot = spectrumNoiseFloor - pixelold[x1] - oldNF;
     y1_old_plot = spectrumNoiseFloor - pixelold[x1 + 1] - oldNF;
+
+    // create rough spectrum histogram if auto noise floor is active
+    // the frequency spectrum is 150 pixels high, let's create
+    // rough histogram 30 bins wide (or 5 pixels each, ie, divide by 5)
+    // you might think divide by 4 would be more efficient as 2 right shifts
+    // but right shift of a negative number is implimentation specific
+    // and I want to keep the negative numbers here
+    if(liveNoiseFloorFlag == 1) {
+      int specPlotY = spectrumNoiseFloor - y_new_plot; // actual spectrum value at current noise floor
+      int bin = specPlotY / 5;                         // divide by 5 to get histogram bin
+
+      // hLo and hHi capture spectrum at or outside the spectrum display extremes
+      // this is all we need to automatically set the noise floor
+      // *** TODO: consider using other histogram bins to more rapidly set noise flow ***
+      if(bin < 1) {
+        hLo += 1;
+      } else if(bin >= 29) {
+        hHi += 1;
+      }
+    }
 
     // Prevent spectrum from going below the bottom of the spectrum area
     if (y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
@@ -506,6 +532,21 @@ FASTRUN void ShowSpectrum() {
   pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];
 
   oldNF = currentNF; // save the noise floor we used for this spectrum
+
+  // adjust noise floor if auto noise floor is active
+  if(liveNoiseFloorFlag == 1) {
+    // auto noise floor give priority to ensuring the noise floor is visible in the lower portion of the spectrum display
+    // the spectrum is 512 pixels wide, the noise floor is adjusted as follows (in order of priority):
+    //    1) increased if more than a 20% of the spectrum is the bottom bin
+    //    2) decreased if more than 5% is in the top bin
+    //    3) decrease if less than 10% is in bottom bin
+    // *** TODO: consider using other histogram bins to more rapidly set noise flow ***
+    if(hLo > 102) {
+      currentNF += 1;
+    } else if((hHi > 25) || (hLo < 51)) {
+      currentNF -= 1;
+    }
+  }
 
   // scroll the waterfall display
   // Use the Block Transfer Engine (BTE) to move waterfall down a line

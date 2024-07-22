@@ -16,9 +16,9 @@ This is a work in progress.  Some functions from the original version are broken
 
 ## Branches
 
-* main - dev/v0.1 w/o feature/USB
+* main - dev/v0.1 as below through feature/psk31
 
-* dev/v0.1 - SDR.1 with:
+* dev/v0.1 - SDR.1 with the following branches (see branch details below for what's included in each) and other features that don't have a separate branch:
 
   * feature/menu
   * feature/liveNoiseFloor
@@ -32,9 +32,11 @@ This is a work in progress.  Some functions from the original version are broken
   * feature/beacon
   * feature/wsjtx
   * feature/MorseCodeKeyer
-  * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
-  * added DebugSerial objects to use when a single USB serial port is available.
-  * deleted the Clear Buffers block of code in ProcessIQData as it caused audio artifacts without a good explanaition for the restrictive limit on audio buffer size.
+  * other features included that don't have a separate brach:
+    * this version has the option to automatically set the noise flow.  The noise floor button toggles between Off, Auto and On.  When set to On you can adjust the noise floor with the Filter/Menu/Change encoder live while the radio is operating.  This noise floor setting for each band is preserved to the EEPROM when the noise floor button is toggled back to Off.  When set to Auto, the T41 will maintain the noise floor at the bottom of the frequency display.  This auto noise floor setting is not preserved.
+    * expanded waterfall, audio spectrum and info box. Added stack and heap info box items.
+    * added DebugSerial objects to use when a single USB serial port is available.
+    * deleted the Clear Buffers block of code in ProcessIQData as it caused audio artifacts without a good explanaition for the restrictive limit on audio buffer size.
 
 * feature/MorseCodeKeyer - Adds a keyboard/memory CW keyer.  It currently requires the keyboard feature but could be simplified to be used on a standalone T41.  It has the following features:
 

@@ -25,7 +25,7 @@
 #define MAX_FREQ_INDEX              8
 
 bool lowerAudioFilterActive = false; // false - upper, true - lower audio filter active
-int liveNoiseFloorFlag = OFF;
+int liveNoiseFloorFlag = OFF;         // ON=1, OFF=0, Auto=-1
 
 bool nfmBWFilterActive = false; // false - audio, true - demod BW filter active
 bool ft8MsgSelectActive = false; // false - audio filters, true - msg select active
@@ -451,13 +451,15 @@ FLASHMEM void ButtonNotchFilter() {
     void
 *****/
 FLASHMEM void ToggleLiveNoiseFloorFlag() {
-  // save final noise floor setting if toggling flag off
-  if(liveNoiseFloorFlag) {
+  // save final noise floor setting if toggling from ON
+  if(liveNoiseFloorFlag == 2) {
     EEPROMData.currentNoiseFloor[currentBand]  = currentNoiseFloor[currentBand];
     EEPROMWrite();
   }
 
-  liveNoiseFloorFlag = !liveNoiseFloorFlag;
+  // toggle noise floor flag: OFF -> Auto -> ON -> OFF
+  liveNoiseFloorFlag += 1;
+  if(liveNoiseFloorFlag > 2) liveNoiseFloorFlag = 0;
   UpdateInfoBoxItem(IB_ITEM_FLOOR);
 }
 
