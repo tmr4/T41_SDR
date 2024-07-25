@@ -14,6 +14,8 @@ The structure of my version has changed sufficiently from the original.  It's un
 
 This is a work in progress.  Some functions from the original version are broken and will likely remain so until they are of interest to me.  Use at your own risk.
 
+![4SQRP T41 Teensy Pin Usage](https://github.com/tmr4/T41_SDR/tree/dev/v0.1/images/4SQRP_Teensy_Pin_Usage.jpg)
+
 ## Branches
 
 * main - dev/v0.1 as below through feature/psk31
