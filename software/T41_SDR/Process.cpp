@@ -791,12 +791,12 @@ void ProcessIQData() {
       arm_cmplx_mult_cmplx_f32 (FFT_buffer, FIR_filter_mask, iFFT_buffer, FFT_length);
 
       // process audio frequency spectrum only at the beginning of the show spectrum process
-      if (updateSpectrumData) {
-        for (int k = 0; k < 1024; k++) {
+      if(updateSpectrumData) {
+        for(int k = 0; k < 1024; k++) {
           audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
         //for (int k = 0; k < 256; k++) {
-        for (int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
+        for(int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
           // a spectrum offset of 20 give about the same magnitude signal peak as seen in the AM modes
           audioYPixel[k] = 20 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
           if (audioYPixel[k] < 0) {
@@ -813,22 +813,28 @@ void ProcessIQData() {
       AGC();  // we can perform AGC on the NFM signal now
 
       // transfer audio signal back to buffer
-      for (unsigned i = 0; i < FFT_length / 2; i++) {
+      for(unsigned i = 0; i < FFT_length / 2; i++) {
         float_buffer_L[i] = iFFT_buffer[FFT_length + (i * 2)];
       }
     }
 
     // send audio data to control app if applicable
-    if (updateSpectrumData && controlDataFlag) {
+    if(updateSpectrumData && controlDataFlag) {
       for (int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
         // audioYPixel is already >= 0, limit it to 255
         specData[i] = (uint8_t)(audioYPixel[i] > 255 ? 255 : audioYPixel[i]);
       }
       T41ControlSendData(specData, AUDIO_SPEC_BOX_W - 2);
     }
+    if(connected) {
+      for(int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
+        // audioYPixel is already >= 0, limit it to 255
+        audioData[i] = (uint8_t)(audioYPixel[i] > 255 ? 255 : audioYPixel[i]);
+      }
+    }
 
     //============================  Receive EQ  ========================
-    if (receiveEQFlag == ON ) {
+    if(receiveEQFlag == ON ) {
       DoReceiveEQ();
       //arm_copy_f32(float_buffer_L, float_buffer_R, FFT_length / 2);
     }

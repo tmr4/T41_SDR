@@ -193,6 +193,22 @@ void ZoomFFTExe(uint32_t blockSize) {
 
     T41ControlSendData(specData, SPECTRUM_RES + 6);
   }
+  //if(connected) {
+  //  int tmp = 0;
+  //  for (int i = 0; i < SPECTRUM_RES; i++) {
+  //    // shift data so max = 255
+  //    // *** TODO: consider scaling here fits data into a 0-255 range ***
+  //    tmp = spectrumNoiseFloor - pixelnew[i] - currentNF;
+  //    // though unlikely, data can still be negative, limit it
+  //    if (tmp < 0) {
+  //      tmp = SPECTRUM_BOTTOM;
+  //    }
+  //    if (tmp > 255) {
+  //      tmp = SPECTRUM_BOTTOM;
+  //    }
+  //    freqData[i] = tmp;
+  //  }
+  //}
 }
 
 /*****

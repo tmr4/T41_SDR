@@ -488,6 +488,9 @@ FASTRUN void ShowSpectrum() {
     tft.drawLine(SPECTRUM_LEFT_X + x1, y1_old_plot, SPECTRUM_LEFT_X + x1, y_old_plot, RA8875_BLACK);
     tft.drawLine(SPECTRUM_LEFT_X + x1, y1_new_plot, SPECTRUM_LEFT_X + x1, y_new_plot, RA8875_YELLOW);
 
+    if(connected) {
+      freqData[x1] = y_new_plot;
+    }
     // What is the actual spectrum at this time?  It's a combination of the old and new spectrums
     // In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum
     // This is the actual "old" spectrum!  This is required due to CW interrupts
@@ -532,6 +535,10 @@ FASTRUN void ShowSpectrum() {
   pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];
 
   oldNF = currentNF; // save the noise floor we used for this spectrum
+
+  if(connected) {
+    freqData[511] = pixelnew[SPECTRUM_RES - 1];
+  }
 
   // adjust noise floor if auto noise floor is active
   if(liveNoiseFloorFlag == 1) {
