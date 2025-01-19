@@ -40,6 +40,8 @@ This is a work in progress.  Some functions from the original version are broken
     * added DebugSerial objects to use when a single USB serial port is available.
     * deleted the Clear Buffers block of code in ProcessIQData as it caused audio artifacts without a good explanaition for the restrictive limit on audio buffer size.
 
+* feature/remote - Adds code to enable connection to a remote display over Bluetooth.  See this [Reddit post](https://www.reddit.com/r/T41_EP/comments/1etxkq8/t41_wireless_remote_display/) for a demo and discussion.  The code for the remote head is in this [repository](https://github.com/tmr4/T41_Remote_Head).
+
 * feature/MorseCodeKeyer - Adds a keyboard/memory CW keyer.  It currently requires the keyboard feature but could be simplified to be used on a standalone T41.  It has the following features:
 
   * Set up to 10 preset messages in code.  The selected preset message is highlighted in green at the bottom of the info box.
