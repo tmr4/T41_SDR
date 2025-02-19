@@ -107,10 +107,17 @@
 //========================================= Display pins
 #define BACKLIGHT_PIN               6
 #define TFT_DC                      9
+#ifdef PROJECTSYSTEM
+#define TFT_CS                      5
+#define TFT_MOSI                    26
+#define TFT_MISO                    39
+#define TFT_SCLK                    27
+#else
 #define TFT_CS                      10
 #define TFT_MOSI                    11
 #define TFT_MISO                    12
 #define TFT_SCLK                    13
+#endif
 #define TFT_RST                     255
 
 #define DISPLAY_T41                 0

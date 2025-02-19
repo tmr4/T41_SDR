@@ -1,7 +1,6 @@
 // library: https://github.com/PaulStoffregen/USBHost_t36
 //
 
-//#include "MyConfigurationFile.h"
 #include "SDT.h"
 
 #ifdef KEYBOARD_SUPPORT

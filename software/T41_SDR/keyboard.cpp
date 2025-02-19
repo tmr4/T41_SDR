@@ -1,7 +1,7 @@
 // library: https://github.com/PaulStoffregen/USBHost_t36
 //
 
-#include "MyConfigurationFile.h"
+#include "T41Config.h"
 
 #ifdef KEYBOARD_SUPPORT
 

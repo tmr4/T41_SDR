@@ -68,7 +68,11 @@
     #define FILTER_ENCODER_A        16
     #define FILTER_ENCODER_B        15
     #define FINETUNE_ENCODER_A       4
+    #ifdef PROJECTSYSTEM
+    #define FINETUNE_ENCODER_B      24 // pin 5 is TFT_CS on Project System (the pin assigned here is only meaningful when testing fine tune encoder on non-front panel systems)
+    #else
     #define FINETUNE_ENCODER_B       5
+    #endif
     #define TUNE_ENCODER_A          14
     #define TUNE_ENCODER_B          17
 #else
@@ -81,7 +85,7 @@
     #define TUNE_ENCODER_A          16
     #define TUNE_ENCODER_B          17
 #endif
-#define OPTO_OUTPUT                 24    // To optoisolator and keyed circuit
+//#define OPTO_OUTPUT                 24    // To optoisolator and keyed circuit
 // Filter Board pins
 #define FILTERPIN80M                30    // 80M filter relay
 #define FILTERPIN40M                31    // 40M filter relay
@@ -838,9 +842,9 @@ FLASHMEM void setup() {
   Serial.begin(9600);
 
   // setup comms with ESP32
-  FlexSerial1.begin(115200);
-  Serial.println("Beginning I2C (m) on T41 T4.1...");
-  Wire2.begin();
+  //FlexSerial1.begin(115200);
+  //Serial.println("Beginning I2C (m) on T41 T4.1...");
+  //Wire2.begin();
 
   setSyncProvider(getTeensy3Time);  // get TIME from real time clock with 3V backup battery
   setTime(now());
@@ -916,7 +920,8 @@ FLASHMEM void setup() {
   attachInterrupt(digitalPinToInterrupt(KEYER_DAH_INPUT_RING), KeyRingOn, CHANGE);
 
   tft.begin(RA8875_800x480, 8, 20000000UL, 4000000UL);  // parameter list from library code
-  tft.setRotation(0);
+  //tft.setRotation(0);
+  tft.setRotation(2);
 
   // Setup for scrolling attributes. Part of initSpectrum_RA8875() call written by Mike Lewis
   tft.useLayers(true); // mainly used to turn on layers

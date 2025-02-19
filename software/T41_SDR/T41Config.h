@@ -60,7 +60,8 @@
 
 // ==== Pick one of the following encoder configurations
 //#define                           NORM_ENCODER
-#define                           FOURSQRP
+//#define                           FOURSQRP
+#define                           PROJECTSYSTEM
 
 #define USE_FULL_MENU             0   // 0 - use top line menus; 1 - use full screen menus
 //#define USE_LIVE_NOISE_FLOOR      1   // 0 - don't use, 1 - use live display when setting noise floor

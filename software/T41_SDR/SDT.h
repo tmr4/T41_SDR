@@ -1,7 +1,7 @@
 #pragma once
 
 //======================================== User section that might need to be changed ===================================
-#include "MyConfigurationFile.h"  // This file name should remain unchanged
+#include "T41Config.h"
 #define VERSION "sdr_dev.1"       // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
 
 //======================================== Library include files ========================================================
@@ -78,7 +78,11 @@ extern uint8_t audioData[270];
 #define KEYER_DAH_INPUT_RING        35    // Ring connection for keyer  -- default for righthanded user
 #define KEYER_DIT_INPUT_TIP         36    // Tip connection for keyer
 #define MUTE                        38    // Mute Audio,  HIGH = "On" Audio available from Audio PA, LOW = Mute audio
+#ifdef PROJECTSYSTEM
+#define BUSY_ANALOG_PIN             40    // pin 39 is TFT_MISO on Project System (the pin assigned here is only meaningful when testing switch matrix on non-front panel systems)
+#else
 #define BUSY_ANALOG_PIN             39    // This is the analog pin that controls the 18 switches
+#endif
 //---- End Global Teensy 4.1 Pin assignments
 
 //************************************* End Global Defines ************************

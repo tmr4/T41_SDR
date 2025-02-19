@@ -121,7 +121,11 @@ ILI9488_t3 tft = ILI9488_t3(&SPI, TFT_CS, TFT_DC, TFT_RST);
 #else
 #define RA8875_CS TFT_CS
 #define RA8875_RESET TFT_DC  // any pin or nothing!
+#ifdef PROJECTSYSTEM
+RA8875 tft = RA8875(RA8875_CS, RA8875_RESET, TFT_MOSI, TFT_SCLK, TFT_MISO);
+#else
 RA8875 tft = RA8875(RA8875_CS, RA8875_RESET);
+#endif
 #endif
 
 dispSc displayScale[] =

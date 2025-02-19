@@ -549,7 +549,7 @@ void Psk31PhaseShiftDetector(float32_t* input, float32_t* output, int size) {
   static float32_t t0 = 0;
   static float32_t t1 = 0;
   static float32_t t2 = 0;
-  //static float32_t t3 = 0;
+  static float32_t t3 = 0;
   static int psk31Count = 0;
   static int symCount = -1;
   float32_t last;
@@ -561,13 +561,14 @@ void Psk31PhaseShiftDetector(float32_t* input, float32_t* output, int size) {
   // take the derivative of output
   //for(int i = 0; i < size; i++) {
   for(int i = 0; i < size - 2; i++) {
-    //t3 = t2;
+    // TODO: needs reexamined
+    t3 = t2;
     t2 = t1;
     t1 = t0;
     t0 = output[i];
-    //last = (t3 - t2) * PSK_MULT;
-    //current = (t2 - t1) * PSK_MULT;
-    //next = (t1 - t0) * PSK_MULT;
+    last = (t3 - t2) * PSK_MULT;
+    current = (t2 - t1) * PSK_MULT;
+    next = (t1 - t0) * PSK_MULT;
 
     //t3 = output[i];
     //t2 = output[i];
