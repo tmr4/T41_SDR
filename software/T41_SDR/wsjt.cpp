@@ -12,6 +12,7 @@
 #include "MenuProc.h"
 #include "mouse.h"
 #include "Tune.h"
+#include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -328,7 +329,7 @@ void WSJTLoop()
             0,            // RIT on/off
             0,            // XIT on/off
             0,0,          // channel bank number
-            !xrState,     // RX/TX (1/0)
+            !GetXRState(),     // RX/TX (1/0)
             mode,         // operating mode
             activeVFO,    // RX VFO
             0,            // scan Status
@@ -415,7 +416,7 @@ void WSJTLoop()
 
       case 'R': //
         if(cmd[1] == 'X' && cmd[2] == ';') {
-          xrState = RECEIVE_STATE;
+          //xrState = RECEIVE_STATE;
         }
         return;
         break;
@@ -435,7 +436,7 @@ void WSJTLoop()
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));
         } else if(cmd[1] == 'X' && cmd[2] == ';') {
-          xrState = TRANSMIT_STATE;
+          //xrState = TRANSMIT_STATE;
         }
         return;
         break;
@@ -627,7 +628,7 @@ void WSJTLoopTS2000()
             0,            // RIT on/off
             0,            // XIT on/off
             0,0,          // channel bank number
-            !xrState,     // RX/TX (1/0)
+            !GetXRState(),     // RX/TX (1/0)
             mode,         // operating mode
             activeVFO,    // RX VFO
             0,            // scan Status
@@ -690,7 +691,7 @@ void WSJTLoopTS2000()
 
       case 'R': //
         if(cmd[1] == 'X' && cmd[2] == ';') {
-          xrState = RECEIVE_STATE;
+          //xrState = RECEIVE_STATE;
         }
         return;
         break;
@@ -712,7 +713,7 @@ void WSJTLoopTS2000()
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));
         } else if(cmd[1] == 'X' && cmd[2] == ';') {
-          xrState = TRANSMIT_STATE;
+          //xrState = TRANSMIT_STATE;
         }
         return;
         break;

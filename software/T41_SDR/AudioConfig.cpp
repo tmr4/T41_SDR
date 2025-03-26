@@ -1,0 +1,212 @@
+#include "SDT.h"
+#include "AudioConfig.h"
+#include "DSP_Fn.h"
+
+AudioControlSGTL5000_Extended sgtl5000_1;      //controller for the Teensy Audio Board
+AudioConvert_I16toF32 int2Float1, int2Float2;  //Converts Int16 to Float.  See class in AudioStream_F32.h
+AudioEffectGain_F32 gain1, gain2;              //Applies digital gain to audio data.  Expected Float data.
+AudioConvert_F32toI16 float2Int1, float2Int2;  //Converts Float to Int16.  See class in AudioStream_F32.h
+
+AudioInputI2SQuad i2s_quadIn;
+AudioOutputI2SQuad i2s_quadOut;
+
+AudioMixer4 modeSelectInR;
+AudioMixer4 modeSelectInL;
+AudioMixer4 modeSelectInExR;
+AudioMixer4 modeSelectInExL;
+
+AudioMixer4 modeSelectOutL;
+AudioMixer4 modeSelectOutR;
+AudioMixer4 modeSelectOutExL;
+AudioMixer4 modeSelectOutExR;
+
+AudioRecordQueue Q_in_L;
+AudioRecordQueue Q_in_R;
+AudioRecordQueue Q_in_L_Ex;
+AudioRecordQueue Q_in_R_Ex;
+
+AudioPlayQueue Q_out_L;
+AudioPlayQueue Q_out_R;
+AudioPlayQueue Q_out_L_Ex;
+AudioPlayQueue Q_out_R_Ex;
+
+#ifdef T41_USB_AUDIO
+AudioOutputUSB usb1;
+AudioAmplifier amp1, amp2;
+AudioFilterBiquad biquad1;
+#endif
+
+AudioConnection patchCord1(i2s_quadIn, 0, int2Float1, 0);  //connect the Left input to the Left Int->Float converter
+AudioConnection patchCord2(i2s_quadIn, 1, int2Float2, 0);  //connect the Right input to the Right Int->Float converter
+
+AudioConnection_F32 patchCord3(int2Float1, 0, comp1, 0);  //Left.  makes Float connections between objects
+AudioConnection_F32 patchCord4(int2Float2, 0, comp2, 0);  //Right.  makes Float connections between objects
+AudioConnection_F32 patchCord5(comp1, 0, float2Int1, 0);  //Left.  makes Float connections between objects
+AudioConnection_F32 patchCord6(comp2, 0, float2Int2, 0);  //Right.  makes Float connections between objects
+//AudioConnection_F32     patchCord3(int2Float1, 0, float2Int1, 0); //Left.  makes Float connections between objects
+//AudioConnection_F32     patchCord4(int2Float2, 0, float2Int2, 0); //Right.  makes Float connections between objects
+
+AudioConnection patchCord7(float2Int1, 0, modeSelectInExL, 0);  //Input Ex
+AudioConnection patchCord8(float2Int2, 0, modeSelectInExR, 0);
+
+AudioConnection patchCord9(i2s_quadIn, 2, modeSelectInL, 0);  //Input Rec
+AudioConnection patchCord10(i2s_quadIn, 3, modeSelectInR, 0);
+
+AudioConnection patchCord11(modeSelectInExR, 0, Q_in_R_Ex, 0);  //Ex in Queue
+AudioConnection patchCord12(modeSelectInExL, 0, Q_in_L_Ex, 0);
+
+AudioConnection patchCord13(modeSelectInR, 0, Q_in_R, 0);  //Rec in Queue
+AudioConnection patchCord14(modeSelectInL, 0, Q_in_L, 0);
+
+AudioConnection patchCord15(Q_out_L_Ex, 0, modeSelectOutExL, 0);  //Ex out Queue
+AudioConnection patchCord16(Q_out_R_Ex, 0, modeSelectOutExR, 0);
+
+AudioConnection patchCord17(Q_out_L, 0, modeSelectOutL, 0);  //Rec out Queue
+AudioConnection patchCord18(Q_out_R, 0, modeSelectOutR, 0);
+
+AudioConnection patchCord19(modeSelectOutExL, 0, i2s_quadOut, 0);  //Ex out
+AudioConnection patchCord20(modeSelectOutExR, 0, i2s_quadOut, 1);
+AudioConnection patchCord21(modeSelectOutL, 0, i2s_quadOut, 2);  //Rec out
+AudioConnection patchCord22(modeSelectOutR, 0, i2s_quadOut, 3);
+
+AudioConnection patchCord23(Q_out_L_Ex, 0, modeSelectOutL, 1);  //Rec out Queue for sidetone
+AudioConnection patchCord24(Q_out_R_Ex, 0, modeSelectOutR, 1);
+
+#ifdef T41_USB_AUDIO
+AudioConnection patchCord25(Q_out_L, biquad1);
+//AudioConnection patchCord25(Q_out_L, amp1);
+AudioConnection patchCord26(biquad1, amp1);
+AudioConnection patchCord27(amp1, 0, usb1, 0);
+AudioConnection patchCord28(Q_out_L, 0, amp2, 0);
+AudioConnection patchCord29(amp2, 0, usb1, 1);
+#endif
+
+AudioControlSGTL5000 sgtl5000_2;
+
+void AudioSetup() {
+  // Enable the audio shield. select input. and enable output
+  sgtl5000_1.setAddress(LOW);
+  sgtl5000_1.enable();
+  AudioMemory(500);
+  AudioMemory_F32(10);
+  sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
+  sgtl5000_1.micGain(20);
+  sgtl5000_1.lineInLevel(0);
+  sgtl5000_1.lineOutLevel(20);
+  sgtl5000_1.adcHighPassFilterDisable();  //reduces noise.  https://forum.pjrc.com/threads/27215-24-bit-audio-boards?p=78831&viewfull=1#post78831
+  sgtl5000_2.setAddress(HIGH);
+  sgtl5000_2.enable();
+  sgtl5000_2.inputSelect(AUDIO_INPUT_LINEIN);
+  sgtl5000_2.volume(0.5);
+}
+
+void AudioStart() {
+  Q_in_L.begin();  //Initialize receive input buffers
+  Q_in_R.begin();
+  Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING); // NON_STALLING
+
+#ifdef T41_USB_AUDIO
+  amp1.gain(100);
+  amp2.gain(200);
+  //amp2.gain(100);
+  //amp2.gain(1);
+  //biquad1.setBandpass(0, 1000, 0.5);
+  biquad1.setLowpass(0, 3000, 0.5);
+#endif
+
+}
+
+void ConfigAudioState() {
+  switch(radioState) {
+    // *** the end and begin methods are fast, but leave the background interrupt process running ***
+    // *** TODO: compare effect of using end/begin and disconnect/connect on CW signal timing ***
+    case SSB_RECEIVE_STATE:
+      // set up input queues for receive
+      Q_in_L_Ex.end();
+      Q_in_R_Ex.end();
+      Q_in_L.begin();
+      Q_in_R.begin();
+
+      modeSelectInR.gain(0, 1);
+      modeSelectInL.gain(0, 1);
+      modeSelectInR.gain(0, 1);
+      modeSelectInL.gain(0, 1);
+      modeSelectInExR.gain(0, 0);
+      modeSelectInExL.gain(0, 0);
+      modeSelectOutL.gain(0, 1);
+      modeSelectOutR.gain(0, 1);
+      modeSelectOutL.gain(1, 0);
+      modeSelectOutR.gain(1, 0);
+      modeSelectOutExL.gain(0, 0);
+      modeSelectOutExR.gain(0, 0);
+      break;
+
+    case SSB_TRANSMIT_STATE:
+      // set up input queues for transmit
+      Q_in_L.end();
+      Q_in_R.end();
+      Q_in_L_Ex.begin();
+      Q_in_R_Ex.begin();
+
+      comp1.setPreGain_dB(currentMicGain);
+      comp2.setPreGain_dB(currentMicGain);
+      modeSelectInR.gain(0, 0);
+      modeSelectInL.gain(0, 0);
+      modeSelectInExR.gain(0, 1);
+      modeSelectInExL.gain(0, 1);
+      modeSelectOutL.gain(0, 0);
+      modeSelectOutR.gain(0, 0);
+      modeSelectOutExL.gain(0, powerOutSSB[currentBand]);
+      modeSelectOutExR.gain(0, powerOutSSB[currentBand]);
+      break;
+
+    case CW_RECEIVE_STATE:
+      modeSelectInR.gain(0, 1);
+      modeSelectInL.gain(0, 1);
+      modeSelectInExR.gain(0, 0);
+      modeSelectInExL.gain(0, 0);
+      modeSelectOutL.gain(0, 1);
+      modeSelectOutR.gain(0, 1);
+      modeSelectOutL.gain(1, 0);
+      modeSelectOutR.gain(1, 0);
+      modeSelectOutExL.gain(0, 0);
+      modeSelectOutExR.gain(0, 0);
+      break;
+
+    case CW_TRANSMIT_STRAIGHT_STATE:
+      // stop collecting input I/Q data
+      Q_in_L.end();
+      Q_in_R.end();
+
+      modeSelectInR.gain(0, 0);
+      modeSelectInL.gain(0, 0);
+      modeSelectInExR.gain(0, 0);
+
+      modeSelectInExL.gain(0, 0); // ??? missing in original
+
+      modeSelectOutL.gain(0, 0);
+      modeSelectOutR.gain(0, 0);
+      modeSelectOutExL.gain(0, 0);
+      modeSelectOutExR.gain(0, 0);
+      break;
+
+    case CW_TRANSMIT_KEYER_STATE:
+      // stop collecting input I/Q data
+      Q_in_L.end();
+      Q_in_R.end();
+
+      modeSelectInR.gain(0, 0);
+      modeSelectInL.gain(0, 0);
+      modeSelectInExR.gain(0, 0);
+      modeSelectInExL.gain(0, 0);
+      modeSelectOutL.gain(0, 0);
+      modeSelectOutR.gain(0, 0);
+      modeSelectOutExL.gain(0, 0);
+      modeSelectOutExR.gain(0, 0);
+      break;
+
+    default:
+    break;
+  }
+
+}

@@ -1464,14 +1464,21 @@ FLASHMEM void EraseSecondaryMenu() {
 FLASHMEM void ShowTransmitReceiveStatus() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_BLACK);
-  if (xrState == TRANSMIT_STATE) {
-    tft.fillRect(X_R_STATUS_X, X_R_STATUS_Y, 55, 25, RA8875_RED);
-    tft.setCursor(X_R_STATUS_X + 4, X_R_STATUS_Y - 5);
-    tft.print("XMT");
-  } else {
-    tft.fillRect(X_R_STATUS_X, X_R_STATUS_Y, 55, 25, RA8875_GREEN);
-    tft.setCursor(X_R_STATUS_X + 4, X_R_STATUS_Y - 5);
-    tft.print("REC");
+
+  switch(radioState) {
+    case SSB_TRANSMIT_STATE:
+    case CW_TRANSMIT_STRAIGHT_STATE:
+    case CW_TRANSMIT_KEYER_STATE:
+      tft.fillRect(X_R_STATUS_X, X_R_STATUS_Y, 55, 25, RA8875_RED);
+      tft.setCursor(X_R_STATUS_X + 4, X_R_STATUS_Y - 5);
+      tft.print("XMT");
+      break;
+
+    default:
+      tft.fillRect(X_R_STATUS_X, X_R_STATUS_Y, 55, 25, RA8875_GREEN);
+      tft.setCursor(X_R_STATUS_X + 4, X_R_STATUS_Y - 5);
+      tft.print("REC");
+      break;
   }
 }
 

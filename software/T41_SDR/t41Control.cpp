@@ -11,6 +11,7 @@
 #include "MenuProc.h"
 #include "mouse.h"
 #include "Tune.h"
+#include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -141,7 +142,7 @@ void SendIF() {
     NCOFreq,                        // NCO freq (%+06ld) at index 19
     currentNoiseFloor[currentBand], // noise floor (%04d) at index 25 *** TODO: verify need for +- or number of digits ***
     liveNoiseFloorFlag,             // set noise floor active/inactive 1/0 (%d) at index 29
-    !xrState,                       // RX/TX (1/0) (%d) at index 30
+    !GetXRState(),                       // RX/TX (1/0) (%d) at index 30
     activeVFO,                      // VFO A/B (0/1) (%d) at index 31
     mouseCenterTuneActive ? 1 : 0,  // fine or center tune enabled (0/1) (%d) at index 32
     ftIndex,                        // fine tune index (%d) at index 33
@@ -331,7 +332,7 @@ void T41ControlLoop()
               0,            // RIT on/off
               0,            // XIT on/off
               0,0,          // channel bank number
-              !xrState,     // RX/TX (1/0)
+              !GetXRState(),     // RX/TX (1/0)
               mode,         // operating mode
               activeVFO,    // RX VFO
               0,            // scan Status

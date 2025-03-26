@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "AudioConfig.h"
 #include "Button.h"
 #include "ButtonProc.h"
 #include "Display.h"
@@ -85,7 +86,6 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   currentScale = 1;          //  Set vertical scale to 10 dB during calibration.  KF5N
   updateSpectrumData = false;
   digitalWrite(MUTE, LOW);  //turn off mute
-  xrState = RECEIVE_STATE;
   T41State = CW_RECEIVE;
   modeSelectInR.gain(0, 1);
   modeSelectInL.gain(0, 1);
@@ -99,7 +99,6 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   modeSelectOutExR.gain(0, 1);
   centerFreq = TxRxFreq;
   NCOFreq = 0L;
-  xrState = TRANSMIT_STATE;
   digitalWrite(MUTE, HIGH);  //  Mute Audio  (HIGH=Mute)
   digitalWrite(RXTX, HIGH);  // Turn on transmitter.
   ShowTransmitReceiveStatus();
@@ -118,7 +117,6 @@ FLASHMEM void CalibratePreamble(int setZoom) {
 FLASHMEM void CalibratePrologue() {
   digitalWrite(RXTX, LOW);  // Turn off the transmitter.
   updateSpectrumData = false;
-  xrState = RECEIVE_STATE;
   ShowTransmitReceiveStatus();
   T41State = CW_RECEIVE;
   // Clear queues to reduce transient.
@@ -126,7 +124,6 @@ FLASHMEM void CalibratePrologue() {
   Q_in_R.clear();
   centerFreq = TxRxFreq;
   NCOFreq = 0L;
-  xrState = RECEIVE_STATE;
   calFreqShift = 0;
   currentScale = userScale;                     //  Restore vertical scale to user preference.  KF5N
   ShowSpectrumdBScale();

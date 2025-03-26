@@ -888,3 +888,16 @@ bool readWave(float32_t *buf, int sizeBuf) {
   }
   return true;
 }
+
+// T41 xmit/rec state: 1 = rec, 0 = xmt
+int GetXRState() {
+  switch(radioState) {
+    case SSB_TRANSMIT_STATE:
+    case CW_TRANSMIT_STRAIGHT_STATE:
+    case CW_TRANSMIT_KEYER_STATE:
+      return 0;
+
+    default:
+      return 1;
+  }
+}

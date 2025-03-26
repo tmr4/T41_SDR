@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "AudioConfig.h"
 #include "Exciter.h"
 #include "keyer.h"
 #include "Utility.h"

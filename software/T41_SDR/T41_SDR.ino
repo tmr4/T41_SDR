@@ -19,6 +19,7 @@
 #include "SerialFlash.h"
 
 #include "SDT.h"
+#include "AudioConfig.h"
 #include "Bearing.h"
 #include "Button.h"
 #include "ButtonProc.h"
@@ -174,87 +175,6 @@ struct band bands[NUMBER_OF_BANDS] = {
 
 uint32_t FFT_length = FFT_LENGTH;
 
-AudioControlSGTL5000_Extended sgtl5000_1;      //controller for the Teensy Audio Board
-AudioConvert_I16toF32 int2Float1, int2Float2;  //Converts Int16 to Float.  See class in AudioStream_F32.h
-AudioEffectGain_F32 gain1, gain2;              //Applies digital gain to audio data.  Expected Float data.
-AudioConvert_F32toI16 float2Int1, float2Int2;  //Converts Float to Int16.  See class in AudioStream_F32.h
-
-AudioInputI2SQuad i2s_quadIn;
-AudioOutputI2SQuad i2s_quadOut;
-
-AudioMixer4 modeSelectInR;    // AFP 09-01-22
-AudioMixer4 modeSelectInL;    // AFP 09-01-22
-AudioMixer4 modeSelectInExR;  // AFP 09-01-22
-AudioMixer4 modeSelectInExL;  // AFP 09-01-22
-
-AudioMixer4 modeSelectOutL;    // AFP 09-01-22
-AudioMixer4 modeSelectOutR;    // AFP 09-01-22
-AudioMixer4 modeSelectOutExL;  // AFP 09-01-22
-AudioMixer4 modeSelectOutExR;  // AFP 09-01-22
-
-AudioRecordQueue Q_in_L;
-AudioRecordQueue Q_in_R;
-AudioRecordQueue Q_in_L_Ex;
-AudioRecordQueue Q_in_R_Ex;
-
-AudioPlayQueue Q_out_L;
-AudioPlayQueue Q_out_R;
-AudioPlayQueue Q_out_L_Ex;
-AudioPlayQueue Q_out_R_Ex;
-
-#ifdef T41_USB_AUDIO
-AudioOutputUSB usb1;
-AudioAmplifier amp1, amp2;
-AudioFilterBiquad biquad1;
-#endif
-
-AudioConnection patchCord1(i2s_quadIn, 0, int2Float1, 0);  //connect the Left input to the Left Int->Float converter
-AudioConnection patchCord2(i2s_quadIn, 1, int2Float2, 0);  //connect the Right input to the Right Int->Float converter
-
-AudioConnection_F32 patchCord3(int2Float1, 0, comp1, 0);  //Left.  makes Float connections between objects
-AudioConnection_F32 patchCord4(int2Float2, 0, comp2, 0);  //Right.  makes Float connections between objects
-AudioConnection_F32 patchCord5(comp1, 0, float2Int1, 0);  //Left.  makes Float connections between objects
-AudioConnection_F32 patchCord6(comp2, 0, float2Int2, 0);  //Right.  makes Float connections between objects
-//AudioConnection_F32     patchCord3(int2Float1, 0, float2Int1, 0); //Left.  makes Float connections between objects
-//AudioConnection_F32     patchCord4(int2Float2, 0, float2Int2, 0); //Right.  makes Float connections between objects
-
-AudioConnection patchCord7(float2Int1, 0, modeSelectInExL, 0);  //Input Ex
-AudioConnection patchCord8(float2Int2, 0, modeSelectInExR, 0);
-
-AudioConnection patchCord9(i2s_quadIn, 2, modeSelectInL, 0);  //Input Rec
-AudioConnection patchCord10(i2s_quadIn, 3, modeSelectInR, 0);
-
-AudioConnection patchCord11(modeSelectInExR, 0, Q_in_R_Ex, 0);  //Ex in Queue
-AudioConnection patchCord12(modeSelectInExL, 0, Q_in_L_Ex, 0);
-
-AudioConnection patchCord13(modeSelectInR, 0, Q_in_R, 0);  //Rec in Queue
-AudioConnection patchCord14(modeSelectInL, 0, Q_in_L, 0);
-
-AudioConnection patchCord15(Q_out_L_Ex, 0, modeSelectOutExL, 0);  //Ex out Queue
-AudioConnection patchCord16(Q_out_R_Ex, 0, modeSelectOutExR, 0);
-
-AudioConnection patchCord17(Q_out_L, 0, modeSelectOutL, 0);  //Rec out Queue
-AudioConnection patchCord18(Q_out_R, 0, modeSelectOutR, 0);
-
-AudioConnection patchCord19(modeSelectOutExL, 0, i2s_quadOut, 0);  //Ex out
-AudioConnection patchCord20(modeSelectOutExR, 0, i2s_quadOut, 1);
-AudioConnection patchCord21(modeSelectOutL, 0, i2s_quadOut, 2);  //Rec out
-AudioConnection patchCord22(modeSelectOutR, 0, i2s_quadOut, 3);
-
-AudioConnection patchCord23(Q_out_L_Ex, 0, modeSelectOutL, 1);  //Rec out Queue for sidetone
-AudioConnection patchCord24(Q_out_R_Ex, 0, modeSelectOutR, 1);
-
-#ifdef T41_USB_AUDIO
-AudioConnection patchCord25(Q_out_L, biquad1);
-//AudioConnection patchCord25(Q_out_L, amp1);
-AudioConnection patchCord26(biquad1, amp1);
-AudioConnection patchCord27(amp1, 0, usb1, 0);
-AudioConnection patchCord28(Q_out_L, 0, amp2, 0);
-AudioConnection patchCord29(amp2, 0, usb1, 1);
-#endif
-
-AudioControlSGTL5000 sgtl5000_2;
-
 Bounce decreaseBand = Bounce(BAND_MENUS, 50);
 Bounce increaseBand = Bounce(BAND_PLUS, 50);
 Bounce modeSwitch = Bounce(CHANGE_MODE, 50);
@@ -364,7 +284,6 @@ int bandswitchPins[] = {
 };
 volatile int menuEncoderMove = 0;
 volatile long fineTuneEncoderMove = 0L;
-int xrState;  // T41 xmit/rec state: 1 = rec, 0 = xmt *** this seems duplicate ***
 
 unsigned long cwTimer;
 unsigned long ditTimerOn;
@@ -766,7 +685,6 @@ FLASHMEM void SoftReset() {
   calFreqShift = 0;
   menuEncoderMove = 0;
   fineTuneEncoderMove = 0L;
-  xrState = RECEIVE_STATE;  // Enter loop() in receive state
 
   initCW();
 
@@ -851,20 +769,7 @@ FLASHMEM void setup() {
   Teensy3Clock.set(now());  // set the RTC
   T4_rtc_set(Teensy3Clock.get());
 
-  // Enable the audio shield. select input. and enable output
-  sgtl5000_1.setAddress(LOW);
-  sgtl5000_1.enable();
-  AudioMemory(500);
-  AudioMemory_F32(10);
-  sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
-  sgtl5000_1.micGain(20);
-  sgtl5000_1.lineInLevel(0);
-  sgtl5000_1.lineOutLevel(20);
-  sgtl5000_1.adcHighPassFilterDisable();  //reduces noise.  https://forum.pjrc.com/threads/27215-24-bit-audio-boards?p=78831&viewfull=1#post78831
-  sgtl5000_2.setAddress(HIGH);
-  sgtl5000_2.enable();
-  sgtl5000_2.inputSelect(AUDIO_INPUT_LINEIN);
-  sgtl5000_2.volume(0.5);
+  AudioSetup();
 
   pinMode(FILTERPIN15M, OUTPUT);
   pinMode(FILTERPIN20M, OUTPUT);
@@ -920,8 +825,12 @@ FLASHMEM void setup() {
   attachInterrupt(digitalPinToInterrupt(KEYER_DAH_INPUT_RING), KeyRingOn, CHANGE);
 
   tft.begin(RA8875_800x480, 8, 20000000UL, 4000000UL);  // parameter list from library code
-  //tft.setRotation(0);
+#ifdef FOURSQRP
+  tft.setRotation(0);
+#endif
+  #ifdef PROJECTSYSTEM
   tft.setRotation(2);
+#endif
 
   // Setup for scrolling attributes. Part of initSpectrum_RA8875() call written by Mike Lewis
   tft.useLayers(true); // mainly used to turn on layers
@@ -944,9 +853,7 @@ FLASHMEM void setup() {
   // Enable switch matrix button interrupts (from T41EEE.3)
   EnableButtonInterrupts();
 
-  Q_in_L.begin();  //Initialize receive input buffers
-  Q_in_R.begin();
-  Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING); // NON_STALLING
+  AudioStart();
   delay(100L);
 
   /****************************************************************************************
@@ -986,15 +893,6 @@ FLASHMEM void setup() {
   //T41BeaconSetup();
   //WSJTControlSetup();
   //ARMCorrTest();
-
-#ifdef T41_USB_AUDIO
-  amp1.gain(100);
-  amp2.gain(200);
-  //amp2.gain(100);
-  //amp2.gain(1);
-  //biquad1.setBandpass(0, 1000, 0.5);
-  biquad1.setLowpass(0, 3000, 0.5);
-#endif
 
   KeyerSetup(); // testing only
 }
@@ -1144,36 +1042,21 @@ FASTRUN void loop()
   }
 
   if(lastState != radioState) {
-    SetFreq();  // Update frequencies if the radio state has changed.
+    ConfigAudioState();
+    SetFreq();  // Update frequencies if the radio state has changed
+    ShowTransmitReceiveStatus();
   }
 
-  //  Begin radio state machines
-
-  //  Begin SSB Mode state machine
-
-  switch (radioState) {
-    case (SSB_RECEIVE_STATE):
+  // process radio state
+  switch(radioState) {
+    case SSB_RECEIVE_STATE:
       if (lastState != radioState) {
         digitalWrite(MUTE, LOW);      // Audio Mute off
-        modeSelectInR.gain(0, 1);
-        modeSelectInL.gain(0, 1);
         digitalWrite(RXTX, LOW);  //xmit off
         T41State = SSB_RECEIVE;
-        xrState = RECEIVE_STATE;
-        modeSelectInR.gain(0, 1);
-        modeSelectInL.gain(0, 1);
-        modeSelectInExR.gain(0, 0);
-        modeSelectInExL.gain(0, 0);
-        modeSelectOutL.gain(0, 1);
-        modeSelectOutR.gain(0, 1);
-        modeSelectOutL.gain(1, 0);
-        modeSelectOutR.gain(1, 0);
-        modeSelectOutExL.gain(0, 0);
-        modeSelectOutExR.gain(0, 0);
         if (keyPressedOn == 1) {
           return;
         }
-        ShowTransmitReceiveStatus();
       }
       switch(displayScreen) {
         case DISPLAY_T41:
@@ -1190,70 +1073,29 @@ FASTRUN void loop()
       }
       //delay(150);
       break;
+
     case SSB_TRANSMIT_STATE:
-      Q_in_L.end();  //Set up input Queues for transmit
-      Q_in_R.end();
-      Q_in_L_Ex.begin();
-      Q_in_R_Ex.begin();
-      comp1.setPreGain_dB(currentMicGain);
-      comp2.setPreGain_dB(currentMicGain);
       if (compressorFlag == 1) {
         SetupMyCompressors(use_HP_filter, (float)currentMicThreshold, comp_ratio, attack_sec, release_sec);  // Cast currentMicThreshold to float.  KF5N, October 31, 2023
-      } else {
-        if (compressorFlag == 0) {
-          SetupMyCompressors(use_HP_filter, 0.0, comp_ratio, 0.01, 0.01);
-        }
+      } else if (compressorFlag == 0) {
+        SetupMyCompressors(use_HP_filter, 0.0, comp_ratio, 0.01, 0.01);
       }
-      xrState = TRANSMIT_STATE;
+
       digitalWrite(MUTE, HIGH);  //  Mute Audio  (HIGH=Mute)
       digitalWrite(RXTX, HIGH);  //xmit on
-      xrState = TRANSMIT_STATE;
-      modeSelectInR.gain(0, 0);
-      modeSelectInL.gain(0, 0);
-      modeSelectInExR.gain(0, 1);
-      modeSelectInExL.gain(0, 1);
-      modeSelectOutL.gain(0, 0);
-      modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, powerOutSSB[currentBand]);
-      modeSelectOutExR.gain(0, powerOutSSB[currentBand]);
-      ShowTransmitReceiveStatus();
 
-      while (digitalRead(PTT) == LOW) {
+      while(digitalRead(PTT) == LOW) {
         ExciterIQData();
       }
-      Q_in_L_Ex.end();  // End Transmit Queue
-      Q_in_R_Ex.end();
-      Q_in_L.begin();  // Start Receive Queue
-      Q_in_R.begin();
-      xrState = RECEIVE_STATE;
       break;
-    default:
-      break;
-  }
-  //======================  End SSB Mode =================
 
-  // Begin CW Mode state machine
-
-  switch (radioState) {
     case CW_RECEIVE_STATE:
-      if (lastState != radioState) {  // G0ORX 01092023
+      if (lastState != radioState) {
         digitalWrite(MUTE, LOW);      //turn off mute
         T41State = CW_RECEIVE;
-        ShowTransmitReceiveStatus();
-        xrState = RECEIVE_STATE;
-        //SetFreq();   // KF5N
-        modeSelectInR.gain(0, 1);
-        modeSelectInL.gain(0, 1);
-        modeSelectInExR.gain(0, 0);
-        modeSelectInExL.gain(0, 0);
-        modeSelectOutL.gain(0, 1);
-        modeSelectOutR.gain(0, 1);
-        modeSelectOutL.gain(1, 0);
-        modeSelectOutR.gain(1, 0);
-        modeSelectOutExL.gain(0, 0);
-        modeSelectOutExR.gain(0, 0);
         keyPressedOn = 0;
       }
+
       switch(displayScreen) {
         case DISPLAY_T41:
           ShowSpectrum();  // if removed CW signal on is 2 mS
@@ -1269,84 +1111,64 @@ FASTRUN void loop()
       }
       //delay(150);
       break;
+
     case CW_TRANSMIT_STRAIGHT_STATE:
-      // stop collecting input I/Q data
-      // *** the end and begin methods are fast, but leave the background interrupt process running ***
-      Q_in_L.end();
-      Q_in_R.end();
       powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
       CW_ExciterIQData();
-      xrState = TRANSMIT_STATE;
-      ShowTransmitReceiveStatus();
+
       digitalWrite(MUTE, HIGH);  //   Mute Audio  (HIGH=Mute)
-      modeSelectInR.gain(0, 0);
-      modeSelectInL.gain(0, 0);
-      modeSelectInExR.gain(0, 0);
-      modeSelectOutL.gain(0, 0);
-      modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, 0);
-      modeSelectOutExR.gain(0, 0);
+
       cwTimer = millis();
-      while(millis() - cwTimer <= cwTransmitDelay) {             // Start CW transmit timer on
-        digitalWrite(RXTX, HIGH);
-        if (digitalRead(paddleDit) == LOW && keyType == 0) {       // Turn on CW signal
-          cwTimer = millis();                                      //Reset timer
+      digitalWrite(RXTX, HIGH);
+      while(millis() - cwTimer <= cwTransmitDelay) {
+        // start CW transmit, dit/dah timer is on
+        if(digitalRead(paddleDit) == LOW && keyType == 0) {
+          // reset dit/dah timer
+          cwTimer = millis();
+
+          // turn on CW signal
           modeSelectOutExL.gain(0, powerOutCW[currentBand]);
           modeSelectOutExR.gain(0, powerOutCW[currentBand]);
-          digitalWrite(MUTE, LOW);                                 // unmutes audio
-          modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);  // Sidetone
-        } else {
-          if (digitalRead(paddleDit) == HIGH && keyType == 0) {  //Turn off CW signal
-            keyPressedOn = 0;
-            digitalWrite(MUTE, HIGH);     // mutes audio
-            modeSelectOutExL.gain(0, 0);  //Power = 0
-            modeSelectOutExR.gain(0, 0);
-            modeSelectOutL.gain(1, 0);  // Sidetone off
-            modeSelectOutR.gain(1, 0);
-          }
+
+          // play sidetone
+          modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);
+          digitalWrite(MUTE, LOW);
+        } else if(digitalRead(paddleDit) == HIGH && keyType == 0) {
+          // turn off CW signal
+          keyPressedOn = 0;
+          digitalWrite(MUTE, HIGH);     // mutes audio
+          modeSelectOutExL.gain(0, 0);  // Power = 0
+          modeSelectOutExR.gain(0, 0);
+          modeSelectOutL.gain(1, 0);    // sidetone off
+          //modeSelectOutR.gain(1, 0);
         }
         CW_ExciterIQData();
       }
-      modeSelectOutExL.gain(0, 0);  //Power = 0 //AFP 10-11-22
-      modeSelectOutExR.gain(0, 0);  //AFP 10-11-22
-      digitalWrite(RXTX, LOW);      // End Straight Key Mode
-      Q_in_L.begin();
-      Q_in_R.begin();
-      break;
-    case CW_TRANSMIT_KEYER_STATE:
-      // stop collecting input I/Q data
-      // *** the end and begin methods are fast, but leave the background interrupt process running ***
-      // *** TODO: compare effect of using end/begin and disconnect/connect on CW signal timing ***
-      Q_in_L.end();
-      Q_in_R.end();
-      CW_ExciterIQData();
-      xrState = TRANSMIT_STATE;
-      ShowTransmitReceiveStatus();
-      digitalWrite(MUTE, HIGH);  //   Mute Audio  (HIGH=Mute)
-      modeSelectInR.gain(0, 0);
-      modeSelectInL.gain(0, 0);
-      modeSelectInExR.gain(0, 0);
-      modeSelectInExL.gain(0, 0);
-      modeSelectOutL.gain(0, 0);
-      modeSelectOutR.gain(0, 0);
-      modeSelectOutExL.gain(0, 0);
+      modeSelectOutExL.gain(0, 0);  // Power = 0
       modeSelectOutExR.gain(0, 0);
+      modeSelectOutL.gain(1, 0);    // sidetone off *** TODO: added this, seems it could be needed ***
+      digitalWrite(RXTX, LOW);
+      break;
+
+    case CW_TRANSMIT_KEYER_STATE:
+      CW_ExciterIQData();
+      digitalWrite(MUTE, HIGH);  // Mute Audio (HIGH=Mute)
+
       cwTimer = millis();
       while(millis() - cwTimer <= cwTransmitDelay) {
-        digitalWrite(RXTX, HIGH);  //Turns on relay
+        digitalWrite(RXTX, HIGH);  // Turns on relay
         CW_ExciterIQData();
-        modeSelectInR.gain(0, 0);
-        modeSelectInL.gain(0, 0);
-        modeSelectInExR.gain(0, 0);
-        modeSelectInExL.gain(0, 0);
+        //modeSelectInR.gain(0, 0);
+        //modeSelectInL.gain(0, 0);
+        //modeSelectInExR.gain(0, 0);
+        //modeSelectInExL.gain(0, 0);
         modeSelectOutL.gain(0, 0);
-        modeSelectOutR.gain(0, 0);
+        //modeSelectOutR.gain(0, 0);
 
-        if (digitalRead(paddleDit) == LOW) {  // Keyer Dit
+        if(digitalRead(paddleDit) == LOW) {  // Keyer Dit
           cwTimer = millis();
           ditTimerOn = millis();
-          //          while (millis() - ditTimerOn <= ditLength) {
-          while (millis() - ditTimerOn <= transmitDitLength) {
+          while(millis() - ditTimerOn <= transmitDitLength) {
             modeSelectOutExL.gain(0, powerOutCW[currentBand]);
             modeSelectOutExR.gain(0, powerOutCW[currentBand]);
             digitalWrite(MUTE, LOW);                                 // unmutes audio
@@ -1355,21 +1177,19 @@ FASTRUN void loop()
             keyPressedOn = 0;
           }
           ditTimerOff = millis();
-          //          while (millis() - ditTimerOff <= ditLength - 10) {  //Time between
-          while (millis() - ditTimerOff <= transmitDitLength - 10L) {
+          while(millis() - ditTimerOff <= transmitDitLength - 10L) {
             modeSelectOutExL.gain(0, 0);                               //Power =0
             modeSelectOutExR.gain(0, 0);
             modeSelectOutL.gain(1, 0);  // Sidetone off
-            modeSelectOutR.gain(1, 0);
+            //modeSelectOutR.gain(1, 0);
             CW_ExciterIQData();
             keyPressedOn = 0;
           }
         } else {
-          if (digitalRead(paddleDah) == LOW) {  //Keyer DAH
+          if(digitalRead(paddleDah) == LOW) {  // Keyer DAH
             cwTimer = millis();
             dahTimerOn = millis();
-            //            while (millis() - dahTimerOn <= 3UL * ditLength) {
-            while (millis() - dahTimerOn <= 3UL * transmitDitLength) {
+            while(millis() - dahTimerOn <= 3UL * transmitDitLength) {
               modeSelectOutExL.gain(0, powerOutCW[currentBand]);
               modeSelectOutExR.gain(0, powerOutCW[currentBand]);
               digitalWrite(MUTE, LOW);                                  // unmutes audio
@@ -1378,36 +1198,34 @@ FASTRUN void loop()
               keyPressedOn = 0;
             }
             ditTimerOff = millis();
-            //            while (millis() - ditTimerOff <= ditLength - 10UL) {  //Time between characters                         // mutes audio
-            while (millis() - ditTimerOff <= transmitDitLength - 10UL) {
+            while(millis() - ditTimerOff <= transmitDitLength - 10UL) {
               modeSelectOutExL.gain(0, 0);                                //Power =0
               modeSelectOutExR.gain(0, 0);
               modeSelectOutL.gain(1, 0);  // Sidetone off
-              modeSelectOutR.gain(1, 0);
+              //modeSelectOutR.gain(1, 0);
               CW_ExciterIQData();
             }
           }
         }
         CW_ExciterIQData();
         keyPressedOn = 0;  // Fix for keyer click-clack
-      }                    //End Relay timer
+      }                    // End Relay timer
 
-      modeSelectOutExL.gain(0, 0);  //Power = 0
+      modeSelectOutExL.gain(0, 0);  // Power = 0
       modeSelectOutExR.gain(0, 0);
       digitalWrite(RXTX, LOW);
-      xmtMode = CW_MODE;
-      Q_in_L.begin();
-      Q_in_R.begin();
       break;
+
     default:
       break;
   }
 
-  //  End radio state machine
-  if (lastState != radioState) {
-    lastState = radioState;
-    ShowTransmitReceiveStatus();
-  }
+  // save radio state for next loop
+  lastState = radioState;
+  //if(lastState != radioState) {
+  //  lastState = radioState;
+  //  ShowTransmitReceiveStatus();
+  //}
 
 #ifdef KEYBOARD_SUPPORT
   // just for testing

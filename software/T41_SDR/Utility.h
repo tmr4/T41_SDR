@@ -51,3 +51,4 @@ void PrimeMallInfo();
 
 int load_wav(const char* inputFile, uint32_t num_samples);
 bool readWave(float32_t *buf, int sizeBuf);
+int GetXRState();

@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "AudioConfig.h"
 #include "ButtonProc.h"
 #include "CW_Excite.h"
 #include "CWProcessing.h"

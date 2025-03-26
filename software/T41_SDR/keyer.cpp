@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "AudioConfig.h"
 #include "CWProcessing.h"
 #include "CW_Excite.h"
 #include "Display.h"
@@ -353,8 +354,6 @@ void Send(char chr) {
     void
 *****/
 void SendMessage(char *msg) {
-  int oldstate = xrState;
-
   // set frequency for CW transmission
   radioState = CW_TRANSMIT_KEYER_STATE;
   SetFreq();
@@ -378,7 +377,6 @@ void SendMessage(char *msg) {
   // *** TODO: consider adjustment for power level to set constant sidetone volume
   modeSelectOutL.gain(1, volumeLog[sidetoneVolume] / 0.000100);
 
-  xrState = TRANSMIT_STATE;
   ShowTransmitReceiveStatus();
 
   cwDelayTimer = millis();
@@ -397,7 +395,6 @@ void SendMessage(char *msg) {
   modeSelectOutExR.gain(0, 0);
   digitalWrite(RXTX, LOW);
 
-  xrState = oldstate;
   lastState = -1;
   ShowTransmitReceiveStatus();
 

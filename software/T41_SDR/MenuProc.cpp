@@ -1,4 +1,5 @@
 #include "SDT.h"
+#include "AudioConfig.h"
 #include "Beacon.h"
 #include "Bearing.h"
 #include "Button.h"
@@ -527,7 +528,6 @@ FLASHMEM void CalibrateOptions() {
         if (digitalRead(KEYER_DIT_INPUT_TIP) == LOW && keyType == 0) {  //Straight Key
           powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
           CW_ExciterIQData();
-          xrState = TRANSMIT_STATE;
           ShowTransmitReceiveStatus();
           SetFreq();                 //  AFP 10-02-22
           digitalWrite(MUTE, HIGH);  //   Mute Audio  (HIGH=Mute)
