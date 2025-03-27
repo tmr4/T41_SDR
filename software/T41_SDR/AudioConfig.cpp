@@ -2,7 +2,7 @@
 #include "AudioConfig.h"
 #include "DSP_Fn.h"
 
-AudioControlSGTL5000_Extended sgtl5000_1;      //controller for the Teensy Audio Board
+AudioControlSGTL5000_Extended sgtl5000_1;      // controller for the Teensy Audio Board microphone
 AudioConvert_I16toF32 int2Float1, int2Float2;  //Converts Int16 to Float.  See class in AudioStream_F32.h
 AudioEffectGain_F32 gain1, gain2;              //Applies digital gain to audio data.  Expected Float data.
 AudioConvert_F32toI16 float2Int1, float2Int2;  //Converts Float to Int16.  See class in AudioStream_F32.h
@@ -84,7 +84,8 @@ AudioConnection patchCord29(amp2, 0, usb1, 1);
 AudioControlSGTL5000 sgtl5000_2;
 
 void AudioSetup() {
-  // Enable the audio shield. select input. and enable output
+  // configure an SGTL5000 control object for input from the audio adapter microphone
+  // (this is on Teensy pin 8)
   sgtl5000_1.setAddress(LOW);
   sgtl5000_1.enable();
   AudioMemory(500);
@@ -94,6 +95,10 @@ void AudioSetup() {
   sgtl5000_1.lineInLevel(0);
   sgtl5000_1.lineOutLevel(20);
   sgtl5000_1.adcHighPassFilterDisable();  //reduces noise.  https://forum.pjrc.com/threads/27215-24-bit-audio-boards?p=78831&viewfull=1#post78831
+
+  // configure a second SGTL5000 control object for input from the Main board ADC
+  // this is a PCM1808 not an SGTL5000 so any I2C related configuration functions aren't usable
+  // (this is on Teensy pin 6)
   sgtl5000_2.setAddress(HIGH);
   sgtl5000_2.enable();
   sgtl5000_2.inputSelect(AUDIO_INPUT_LINEIN);
@@ -133,6 +138,7 @@ void ConfigAudioState() {
       modeSelectInL.gain(0, 1);
       modeSelectInExR.gain(0, 0);
       modeSelectInExL.gain(0, 0);
+
       modeSelectOutL.gain(0, 1);
       modeSelectOutR.gain(0, 1);
       modeSelectOutL.gain(1, 0);
@@ -150,10 +156,12 @@ void ConfigAudioState() {
 
       comp1.setPreGain_dB(currentMicGain);
       comp2.setPreGain_dB(currentMicGain);
+
       modeSelectInR.gain(0, 0);
       modeSelectInL.gain(0, 0);
       modeSelectInExR.gain(0, 1);
       modeSelectInExL.gain(0, 1);
+
       modeSelectOutL.gain(0, 0);
       modeSelectOutR.gain(0, 0);
       modeSelectOutExL.gain(0, powerOutSSB[currentBand]);
@@ -161,10 +169,14 @@ void ConfigAudioState() {
       break;
 
     case CW_RECEIVE_STATE:
+      Q_in_L.begin();
+      Q_in_R.begin();
+
       modeSelectInR.gain(0, 1);
       modeSelectInL.gain(0, 1);
       modeSelectInExR.gain(0, 0);
       modeSelectInExL.gain(0, 0);
+
       modeSelectOutL.gain(0, 1);
       modeSelectOutR.gain(0, 1);
       modeSelectOutL.gain(1, 0);
