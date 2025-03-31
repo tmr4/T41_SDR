@@ -22,7 +22,11 @@
 #include <arm_math.h>
 #include <arm_const_structs.h>
 #include <si5351.h>                    // https://github.com/etherkit/Si5351Arduino
+#ifdef NO_DISPLAY
+#include "RA8875.h"
+#else
 #include <RA8875.h>                    // https://github.com/mjs513/RA8875/tree/RA8875_t4
+#endif
 #include <Rotary.h>                    // https://github.com/brianlow/Rotary
 #include <stdio.h>
 #include <stdlib.h>

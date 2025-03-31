@@ -116,9 +116,7 @@ int oldFilterWidth = 0;
 bool updateSpectrumData = true;
 int wfRows = WATERFALL_H;
 
-#ifndef RA8875_DISPLAY
-ILI9488_t3 tft = ILI9488_t3(&SPI, TFT_CS, TFT_DC, TFT_RST);
-#else
+#ifdef RA8875_DISPLAY
 #define RA8875_CS TFT_CS
 #define RA8875_RESET TFT_DC  // any pin or nothing!
 #ifdef PROJECTSYSTEM
@@ -126,6 +124,12 @@ RA8875 tft = RA8875(RA8875_CS, RA8875_RESET, TFT_MOSI, TFT_SCLK, TFT_MISO);
 #else
 RA8875 tft = RA8875(RA8875_CS, RA8875_RESET);
 #endif
+#endif
+#ifdef ILI9488_DISPLAY
+ILI9488_t3 tft = ILI9488_t3(&SPI, TFT_CS, TFT_DC, TFT_RST);
+#endif
+#ifdef NO_DISPLAY
+RA8875 tft = RA8875();
 #endif
 
 dispSc displayScale[] =
@@ -531,6 +535,13 @@ FASTRUN void ShowSpectrum() {
     //if (test1 > 117) test1 = 117;
     if (test1 > 116) test1 = 116; // *** above is out of range of gradient
     waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array
+
+#ifdef NO_DISPLAY
+    // along with the delay in the main loop this duplicates overall loop timing
+    // with a display.  These are needed to regulate the flow of messages to the
+    // PC control app.  These may not be needed if that app isn't used.
+    delayMicroseconds(147);
+#endif
   }
 
   // update S-meter once per loop

@@ -9,7 +9,12 @@
 //-------------------------------------------------------------------------------------------------------------
 
 #define RIGNAME             "T41-EP SDT"
-#define RA8875_DISPLAY      1               // Comment out if not using RA8875 display
+
+// select display type
+#define RA8875_DISPLAY      1
+//#define ILI9488_DISPLAY     1
+//#define NO_DISPLAY          1
+
 #define Si_5351_crystal     25000000L
 #define MASTER_CLK_MULT     4ULL            // FOURSQRP QSD frontend requires 4x clock
 
@@ -74,10 +79,10 @@
 #define KEYBOARD_SUPPORT
 #define BEACON_FILE_NAME          "beacon.bmp"
 
-#define T41_USB_AUDIO
-#define controlSerial Serial // SerialUSB1
-#define beaconSerial Serial // SerialUSB2
-#define wsjtSerial Serial // SerialUSB1 // Serial // SerialUSB2
+//#define T41_USB_AUDIO
+#define controlSerial SerialUSB1 // Serial or SerialUSB1
+#define beaconSerial Serial // Serial or SerialUSB2
+#define wsjtSerial Serial // Serial or SerialUSB1 or SerialUSB2
 
 struct maps {
   char mapNames[50];

@@ -889,7 +889,7 @@ FLASHMEM void setup() {
   char myGrid[] = "CM87";
   set_Station_Coordinates(myGrid);
 
-  //T41ControlSetup();
+  T41ControlSetup();
   //T41BeaconSetup();
   //WSJTControlSetup();
   //ARMCorrTest();
@@ -1232,9 +1232,9 @@ FASTRUN void loop()
   if (elapsed_micros_idx_t > 200) {
     //PrintKeyboardBuffer();
   }
-  //T41ControlLoop();
+  T41ControlLoop();
   //T41BeaconLoop();
-  WSJTLoop();
+  //WSJTLoop();
   if(keyerState == 1) {
     KeyerLoop();
   }
@@ -1290,4 +1290,19 @@ FASTRUN void loop()
 #ifdef DEBUG_LOOP
   ExitLoop();
 #endif
+
+#ifdef NO_DISPLAY
+  // along with the delay in ShowSpectrum this duplicates overall loop timing
+  // with a display.  These are needed to regulate the flow of messages to the
+  // PC control app.  These may not be needed if that app isn't used.
+  delay(12);
+#endif
 }
+
+/*
+// timing
+  double before = usec;
+
+  double now = usec;
+  Serial.println(now-before);
+*/
