@@ -531,13 +531,13 @@ FLASHMEM void CalibrateOptions() {
           ShowTransmitReceiveStatus();
           SetFreq();                 //  AFP 10-02-22
           digitalWrite(MUTE, HIGH);  //   Mute Audio  (HIGH=Mute)
-          modeSelectInR.gain(0, 0);
-          modeSelectInL.gain(0, 0);
-          modeSelectInExR.gain(0, 0);
-          modeSelectOutL.gain(0, 0);
-          modeSelectOutR.gain(0, 0);
-          modeSelectOutExL.gain(0, 0);
-          modeSelectOutExR.gain(0, 0);
+          //modeSelectInR.gain(0, 0);
+          //modeSelectInL.gain(0, 0);
+          //modeSelectInExR.gain(0, 0);
+          //modeSelectOutL.gain(0, 0);
+          //modeSelectOutR.gain(0, 0);
+          //modeSelectOutExL.gain(0, 0);
+          //modeSelectOutExR.gain(0, 0);
         }
       }
       CWPowerCalibrationFactor[currentBand] = GetEncoderValueLive(-2.0, 2.0, CWPowerCalibrationFactor[currentBand], 0.001, (char *)"CW PA Cal: ");
@@ -586,8 +586,8 @@ FLASHMEM void CalibrateOptions() {
       //ShowFrequency();
       //ShowOperatingStats();
       calibrateFlag = -1;
-      modeSelectOutExL.gain(0, 0);
-      modeSelectOutExR.gain(0, 0);
+      //modeSelectOutExL.gain(0, 0);
+      //modeSelectOutExR.gain(0, 0);
       break;
 
     default:  // Cancelled choice

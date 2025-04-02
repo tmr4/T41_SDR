@@ -880,16 +880,16 @@ void ProcessIQData() {
       EXPERIMENTAL: noise blanker
       by Michael Wild
     **********************************************************************************/
-    if (NB_on != 0) {
+    if(NB_on != 0) {
       NoiseBlanker(float_buffer_L, float_buffer_R);
       arm_copy_f32(float_buffer_R, float_buffer_L, FFT_length / 2);
     }
 
-    if (T41State == CW_RECEIVE) {
+    if(radioState == CW_RECEIVE_STATE) {
       DoCWReceiveProcessing();
 
       // ----------------------  CW Narrow band filters -------------------------
-      if (CWFilterIndex != 5) {
+      if(CWFilterIndex != 5) {
         switch (CWFilterIndex) {
           case 0:  // 0.8 KHz
             arm_biquad_cascade_df2T_f32(&S1_CW_AudioFilter1, float_buffer_L, float_buffer_R, 256);

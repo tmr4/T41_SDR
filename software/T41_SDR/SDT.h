@@ -96,18 +96,13 @@ extern uint8_t audioData[270];
 // delete once we get rid of global working variables
 #include "gwv.h"
 
-// Find a home for these or eliminate them
-
-// eliminate any overlap with radioState and T41State and the below
-#define SSB_RECEIVE                 0
-#define CW_RECEIVE                  2
+// Radio State
 #define SSB_RECEIVE_STATE 0
 #define SSB_TRANSMIT_STATE 1
 #define CW_RECEIVE_STATE 2
 #define CW_TRANSMIT_STRAIGHT_STATE 3
 #define CW_TRANSMIT_KEYER_STATE 4
-#define RECEIVE_STATE         1
-#define TRANSMIT_STATE        0
+#define CALIBRATE_STATE 5
 
 //************************************* End: Clean up stuff to fix ************************
 
@@ -185,7 +180,6 @@ struct band {
 };
 extern struct band bands[];
 
-extern uint8_t T41State;
 extern const uint16_t n_dec1_taps;
 extern const uint16_t n_dec2_taps;
 extern int bandswitchPins[];

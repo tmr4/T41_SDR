@@ -59,8 +59,6 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   transmitPowerLevelTemp = transmitPowerLevel;
   transmitPowerLevel = 5;
   powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
-  modeSelectOutExL.gain(0, powerOutCW[currentBand]);
-  modeSelectOutExR.gain(0, powerOutCW[currentBand]);
   userXmtMode = xmtMode;          // Store the user's mode setting
   userZoomIndex = spectrumZoom;  // Save the zoom index so it can be reset at the conclusion
   SetZoom(setZoom);
@@ -86,17 +84,9 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   currentScale = 1;          //  Set vertical scale to 10 dB during calibration.  KF5N
   updateSpectrumData = false;
   digitalWrite(MUTE, LOW);  //turn off mute
-  T41State = CW_RECEIVE;
-  modeSelectInR.gain(0, 1);
-  modeSelectInL.gain(0, 1);
-  modeSelectInExR.gain(0, 0);
-  modeSelectInExL.gain(0, 0);
-  modeSelectOutL.gain(0, 1);
-  modeSelectOutR.gain(0, 1);
-  modeSelectOutL.gain(1, 0);
-  modeSelectOutR.gain(1, 0);
-  modeSelectOutExL.gain(0, 1);
-  modeSelectOutExR.gain(0, 1);
+
+  ConfigAudioState();
+
   centerFreq = TxRxFreq;
   NCOFreq = 0L;
   digitalWrite(MUTE, HIGH);  //  Mute Audio  (HIGH=Mute)
@@ -118,7 +108,6 @@ FLASHMEM void CalibratePrologue() {
   digitalWrite(RXTX, LOW);  // Turn off the transmitter.
   updateSpectrumData = false;
   ShowTransmitReceiveStatus();
-  T41State = CW_RECEIVE;
   // Clear queues to reduce transient.
   Q_in_L.clear();
   Q_in_R.clear();

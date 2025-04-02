@@ -25,3 +25,8 @@ extern AudioPlayQueue Q_out_R_Ex;
 void AudioSetup();
 void AudioStart();
 void ConfigAudioState();
+
+#ifdef AUDIO_STATS
+void StartAudioStats();
+void EndAudioStats();
+#endif

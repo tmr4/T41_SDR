@@ -50,6 +50,7 @@ void KeyRingOn() {
   Purpose: Create and play I and Q sample for CW signal
            This creates a 10ms, 750 Hz sample at 192 kHz sample rate to the DAC through Q_out_L_Ex and Q_out_R_Ex.
            Function must be called within that time for a continuous signal.
+           *** TODO: update below as audio chain is changed ***
            Q_out_L_Ex and Q_out_R_Ex feed both exciter board through modeSelectOutExL and modeSelectOutExR
            and speaker (for sidetone) through modeSelectOutL and modeSelectOutR.
            Signal level is controlled by setting the gain on these connections.  This should

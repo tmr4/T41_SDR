@@ -269,7 +269,6 @@ const float32_t n_fstop2 = ((n_samplerate / (DF1 * DF2)) - n_desired_BW) / (n_sa
 const uint16_t n_dec1_taps = (1 + (uint16_t)(n_att / (22.0 * (n_fstop1 - n_fpass1))));
 const uint16_t n_dec2_taps = (1 + (uint16_t)(n_att / (22.0 * (n_fstop2 - n_fpass2))));
 
-uint8_t T41State = 1;
 int16_t spectrum_height = 96;
 const uint32_t IIR_biquad_Zoom_FFT_N_stages = 4;
 const uint32_t N_stages_biquad_lowpass1 = 1;
@@ -747,6 +746,11 @@ void ARMCorrTest(){
 #include <FlexSerial.h>
 FlexSerial FlexSerial1(26, 27); // pin 26 receive, pin 27 transmit; Works!
 
+extern AudioConnection patchCord9;
+extern AudioConnection patchCord10;
+volatile unsigned int tmpChannel = 0;
+volatile unsigned int tmpGain = 1;
+
 /*****
   Purpose: program entry point that sets the environment for program
 
@@ -889,12 +893,31 @@ FLASHMEM void setup() {
   char myGrid[] = "CM87";
   set_Station_Coordinates(myGrid);
 
+#ifdef NO_DISPLAY
   T41ControlSetup();
+#endif
   //T41BeaconSetup();
   //WSJTControlSetup();
   //ARMCorrTest();
 
   KeyerSetup(); // testing only
+/*
+  StartAudioStats();
+  for(int i = 0; i < 1000; i++) {
+#ifdef USE_MIXERS
+    modeSelectInL.gain(tmpChannel, tmpGain);
+    modeSelectInR.gain(tmpChannel, tmpGain);
+    modeSelectInL.gain(tmpChannel, tmpGain);
+    modeSelectInR.gain(tmpChannel, tmpGain);
+#else
+    patchCord9.disconnect();
+    patchCord10.disconnect();
+    patchCord9.connect();
+    patchCord10.connect();
+#endif
+  }
+  EndAudioStats();
+*/
 }
 
 elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
@@ -982,6 +1005,10 @@ FASTRUN void loop()
   long ditTimerOff;
   long dahTimerOn;
 
+#ifdef AUDIO_STATS
+  StartAudioStats();
+#endif
+
   if(!connected && FlexSerial1.available()) {
     char command = FlexSerial1.read();
     Serial.print("got command "); Serial.println(command);
@@ -1053,7 +1080,6 @@ FASTRUN void loop()
       if (lastState != radioState) {
         digitalWrite(MUTE, LOW);      // Audio Mute off
         digitalWrite(RXTX, LOW);  //xmit off
-        T41State = SSB_RECEIVE;
         if (keyPressedOn == 1) {
           return;
         }
@@ -1092,7 +1118,6 @@ FASTRUN void loop()
     case CW_RECEIVE_STATE:
       if (lastState != radioState) {
         digitalWrite(MUTE, LOW);      //turn off mute
-        T41State = CW_RECEIVE;
         keyPressedOn = 0;
       }
 
@@ -1220,6 +1245,13 @@ FASTRUN void loop()
       break;
   }
 
+#ifdef AUDIO_STATS
+  if(lastState != radioState) {
+    //EndAudioStats();
+  }
+  EndAudioStats();
+#endif
+
   // save radio state for next loop
   lastState = radioState;
   //if(lastState != radioState) {
@@ -1232,7 +1264,9 @@ FASTRUN void loop()
   if (elapsed_micros_idx_t > 200) {
     //PrintKeyboardBuffer();
   }
+#ifdef NO_DISPLAY
   T41ControlLoop();
+#endif
   //T41BeaconLoop();
   //WSJTLoop();
   if(keyerState == 1) {
@@ -1267,7 +1301,6 @@ FASTRUN void loop()
     Serial.printf("sent spectrum data: %d\n", ++fCount);
   }
 
-
   // update memory about every second
   if (elapsed_micros_idx_t > 100) {
     // Stack is more informative when called from within a function that might be stressing the stack
@@ -1297,12 +1330,5 @@ FASTRUN void loop()
   // PC control app.  These may not be needed if that app isn't used.
   delay(12);
 #endif
+
 }
-
-/*
-// timing
-  double before = usec;
-
-  double now = usec;
-  Serial.println(now-before);
-*/

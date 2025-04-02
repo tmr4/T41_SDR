@@ -416,7 +416,6 @@ void WSJTLoop()
 
       case 'R': //
         if(cmd[1] == 'X' && cmd[2] == ';') {
-          //xrState = RECEIVE_STATE;
         }
         return;
         break;
@@ -436,7 +435,6 @@ void WSJTLoop()
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));
         } else if(cmd[1] == 'X' && cmd[2] == ';') {
-          //xrState = TRANSMIT_STATE;
         }
         return;
         break;
@@ -691,7 +689,6 @@ void WSJTLoopTS2000()
 
       case 'R': //
         if(cmd[1] == 'X' && cmd[2] == ';') {
-          //xrState = RECEIVE_STATE;
         }
         return;
         break;
@@ -713,7 +710,6 @@ void WSJTLoopTS2000()
           Teensy3Clock.set(atol(&cmd[2]));
           setTime(atol(&cmd[2]));
         } else if(cmd[1] == 'X' && cmd[2] == ';') {
-          //xrState = TRANSMIT_STATE;
         }
         return;
         break;

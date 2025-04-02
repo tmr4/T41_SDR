@@ -897,6 +897,7 @@ int GetXRState() {
     case CW_TRANSMIT_KEYER_STATE:
       return 0;
 
+    // *** TODO: may need to add specific receive states if other radio states are added
     default:
       return 1;
   }

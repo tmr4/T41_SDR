@@ -18,6 +18,14 @@
 #define Si_5351_crystal     25000000L
 #define MASTER_CLK_MULT     4ULL            // FOURSQRP QSD frontend requires 4x clock
 
+// Audio chain configuration options
+// uncomment to use mixer to control audio flow (faster?S, more memory usage?)
+// otherwise patchcords and queues will be controlled directly (slower?, less memory usage?)
+#define USE_MIXERS          1
+
+#define AUDIO_STATS         1
+
+
 #define DECODER_STATE							0						                              // 0 = off, 1 = on
 #define DEFAULT_KEYER_WPM   			15                                        // Startup value for keyer wpm
 #define FREQ_SEP_CHARACTER  			'.'					                              // Some may prefer period, space, or combo

@@ -449,7 +449,7 @@ FASTRUN void ShowSpectrum() {
     // Process any control updates here to minimize interruption to signal stream
     UpdateControls(true);
 
-    if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
+    if(GetXRState()) {
       // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
       ProcessIQData();
     }
@@ -1586,7 +1586,7 @@ FASTRUN void ShowBeacon() {
     // Process any control updates here to minimize interruption to signal stream
     UpdateControls(false);
 
-    if(T41State == SSB_RECEIVE || T41State == CW_RECEIVE) {
+    if(GetXRState()) {
       // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
       ProcessIQData();
     }
