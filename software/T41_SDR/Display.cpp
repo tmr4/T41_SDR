@@ -508,22 +508,18 @@ FASTRUN void ShowSpectrum() {
     // update audio spectrum
     // don't overwrite right edge of audio spectrum box or audio filter lines
     if (x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
-      if (keyPressedOn == 1) {
-        // *** TODO: consider adding audio spectrum for transmission ***
-        return;
-      } else {
-        // erase old audio spectrum line at this position (including filter lines)
-        tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
+      // *** TODO: consider adding audio spectrum for transmission ***
+      // erase old audio spectrum line at this position (including filter lines)
+      tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
 
-        // draw current audio spectrum line at this position
-        if (audioYPixel[x1] != 0) {
-          // maintain spectrum within box
-          if (audioYPixel[x1] > CLIP_AUDIO_PEAK)
-          {
-            audioYPixel[x1] = CLIP_AUDIO_PEAK;
-          }
-          tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
+      // draw current audio spectrum line at this position
+      if (audioYPixel[x1] != 0) {
+        // maintain spectrum within box
+        if (audioYPixel[x1] > CLIP_AUDIO_PEAK)
+        {
+          audioYPixel[x1] = CLIP_AUDIO_PEAK;
         }
+        tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
       }
     }
 
@@ -572,18 +568,14 @@ FASTRUN void ShowSpectrum() {
 
   // scroll the waterfall display
   // Use the Block Transfer Engine (BTE) to move waterfall down a line
-  if (keyPressedOn == 1) {
-    return;
-  } else {
-    // copy the waterfall to layer 2, moving it down to row 2
-    tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-    while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
-      ;
-    // copy the waterfall back to layer 1, row 2
-    tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
-    while (tft.readStatus())  // Make sure it's done.
-      ;
-  }
+  // copy the waterfall to layer 2, moving it down to row 2
+  tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
+  while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+    ;
+  // copy the waterfall back to layer 1, row 2
+  tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
+  while (tft.readStatus())  // Make sure it's done.
+    ;
 
   // write new row of data into the top row to finish the scrolling effect
   tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);
@@ -1622,21 +1614,17 @@ FASTRUN void ShowBeacon() {
     // update audio spectrum
     // don't overwrite right edge of audio spectrum box or audio filter lines
     if (x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
-      if (keyPressedOn == 1) {
-        return;
-      } else {
-        // erase old audio spectrum line at this position (including filter lines)
-        //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
+      // erase old audio spectrum line at this position (including filter lines)
+      //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
 
-        // draw current audio spectrum line at this position
-        if (audioYPixel[x1] != 0) {
-          // maintain spectrum within box
-          if (audioYPixel[x1] > CLIP_AUDIO_PEAK)
-          {
-            audioYPixel[x1] = CLIP_AUDIO_PEAK;
-          }
-          //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
+      // draw current audio spectrum line at this position
+      if (audioYPixel[x1] != 0) {
+        // maintain spectrum within box
+        if (audioYPixel[x1] > CLIP_AUDIO_PEAK)
+        {
+          audioYPixel[x1] = CLIP_AUDIO_PEAK;
         }
+        //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
       }
     }
 
@@ -1659,18 +1647,14 @@ FASTRUN void ShowBeacon() {
 
   // scroll the waterfall display
   // Use the Block Transfer Engine (BTE) to move waterfall down a line
-  if (keyPressedOn == 1) {
-    return;
-  } else {
-    // copy the waterfall to layer 2, moving it down to row 2
-    //tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-    //while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
-    //  ;
-    //// copy the waterfall back to layer 1, row 2
-    //tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
-    //while (tft.readStatus())  // Make sure it's done.
-    //  ;
-  }
+  // copy the waterfall to layer 2, moving it down to row 2
+  //tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
+  //while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+  //  ;
+  //// copy the waterfall back to layer 1, row 2
+  //tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
+  //while (tft.readStatus())  // Make sure it's done.
+  //  ;
 
   // write new row of data into the top row to finish the scrolling effect
   //tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);

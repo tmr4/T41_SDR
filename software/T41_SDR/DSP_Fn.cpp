@@ -19,8 +19,6 @@
 #define MAX_N_TAU                   (8)
 #define MAX_TAU_ATTACK              (0.01)
 
-AudioEffectCompressor_F32 comp1, comp2;
-
 //------------------------- Local Variables ----------
 long notchFreq = 1000;
 int8_t NB_taps = 10;
@@ -72,28 +70,6 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E );
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
-
-/*****
-  Purpose: Setup Teensy Mic Compressor
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
-FLASHMEM void SetupMyCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_ratio1, float attack_sec1, float release_sec1) {
-  comp1.enableHPFilter(use_HP_filter1);
-  comp2.enableHPFilter(use_HP_filter1);
-  comp1.setThresh_dBFS(knee_dBFS1);
-  comp2.setThresh_dBFS(knee_dBFS1);
-  comp1.setCompressionRatio(comp_ratio1);
-  comp2.setCompressionRatio(comp_ratio1);
-
-  float fs_Hz = AUDIO_SAMPLE_RATE;
-  comp1.setAttack_sec(attack_sec1, fs_Hz);
-  comp2.setAttack_sec(attack_sec1, fs_Hz);
-  comp1.setRelease_sec(release_sec1, fs_Hz);
-  comp2.setRelease_sec(release_sec1, fs_Hz);
-}
 
 /*****
   Purpose: void noiseblanker
@@ -376,7 +352,7 @@ FLASHMEM void AGCLoadValues() {
       break;
 
     case 1:                                           //agcLONG
-      // G0ORX 
+      // G0ORX
       hangtime = 2.000;
       tau_decay = 2.000;
       break;
@@ -404,7 +380,7 @@ FLASHMEM void AGCLoadValues() {
     default:
       break;
   }
-  
+
   max_gain = powf (10.0, (float32_t)bands[currentBand].AGC_thresh / 20.0);
   attack_buffsize = (int)ceil(sample_rate * n_tau * tau_attack);
   in_index = attack_buffsize + out_index;

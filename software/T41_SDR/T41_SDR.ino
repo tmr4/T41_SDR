@@ -284,8 +284,6 @@ int bandswitchPins[] = {
 volatile int menuEncoderMove = 0;
 volatile long fineTuneEncoderMove = 0L;
 
-unsigned long cwTimer;
-unsigned long ditTimerOn;
 uint16_t temp_check_frequency;
 
 const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;
@@ -695,8 +693,11 @@ FLASHMEM void SoftReset() {
   comp_ratio = 5.0;
   attack_sec = .1;
   release_sec = 2.0;
+
+#ifdef USE_MIC_COMPRESSION
   comp1.setPreGain_dB(-10);  //set the gain of the Left-channel gain processor
   comp2.setPreGain_dB(-10);  //set the gain of the Right-channel gain processor
+#endif
 
   // set T41 last state different from radio state indicating a state change
   // so receiver will be configured on the first pass through loop()
@@ -857,7 +858,6 @@ FLASHMEM void setup() {
   // Enable switch matrix button interrupts (from T41EEE.3)
   EnableButtonInterrupts();
 
-  AudioStart();
   delay(100L);
 
   /****************************************************************************************
@@ -905,10 +905,10 @@ FLASHMEM void setup() {
   StartAudioStats();
   for(int i = 0; i < 1000; i++) {
 #ifdef USE_MIXERS
-    modeSelectInL.gain(tmpChannel, tmpGain);
-    modeSelectInR.gain(tmpChannel, tmpGain);
-    modeSelectInL.gain(tmpChannel, tmpGain);
-    modeSelectInR.gain(tmpChannel, tmpGain);
+    //modeSelectInL.gain(tmpChannel, tmpGain);
+    //modeSelectInR.gain(tmpChannel, tmpGain);
+    //modeSelectInL.gain(tmpChannel, tmpGain);
+    //modeSelectInR.gain(tmpChannel, tmpGain);
 #else
     patchCord9.disconnect();
     patchCord10.disconnect();
@@ -1002,8 +1002,8 @@ FASTRUN void loop()
 {
   int pushButtonSwitchIndex = -1;
   int valPin;
-  long ditTimerOff;
-  long dahTimerOn;
+  int oldVal = HIGH;
+  unsigned long cwTransmitTimer;
 
 #ifdef AUDIO_STATS
   StartAudioStats();
@@ -1037,9 +1037,10 @@ FASTRUN void loop()
   EnterLoop();
 #endif
 
-  valPin = ReadSelectedPushButton();                     // Poll UI push buttons
-  if (valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
-    pushButtonSwitchIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
+  // check for UI button press and process accordingly
+  valPin = ReadSelectedPushButton();
+  if (valPin != BOGUS_PIN_READ) {
+    pushButtonSwitchIndex = ProcessButtonPress(valPin);
     ExecuteButtonPress(pushButtonSwitchIndex);
   }
 
@@ -1055,13 +1056,14 @@ FASTRUN void loop()
     radioState = SSB_TRANSMIT_STATE;
   }
   if(xmtMode == CW_MODE && (digitalRead(paddleDit) == HIGH && digitalRead(paddleDah) == HIGH)) {
-    radioState = CW_RECEIVE_STATE;  // Was using symbolic constants. Also changed in code below.  KF5N August 8, 2023
+    radioState = CW_RECEIVE_STATE;
   }
   if(xmtMode == CW_MODE && (digitalRead(paddleDit) == LOW && keyType == 0)) {
     radioState = CW_TRANSMIT_STRAIGHT_STATE;
   }
   if(xmtMode == CW_MODE && (keyPressedOn == 1 && keyType == 1)) {
     radioState = CW_TRANSMIT_KEYER_STATE;
+    keyPressedOn = 0;
   }
 
   if(xmtMode == DATA_MODE) {
@@ -1077,13 +1079,7 @@ FASTRUN void loop()
   // process radio state
   switch(radioState) {
     case SSB_RECEIVE_STATE:
-      if (lastState != radioState) {
-        digitalWrite(MUTE, LOW);      // Audio Mute off
-        digitalWrite(RXTX, LOW);  //xmit off
-        if (keyPressedOn == 1) {
-          return;
-        }
-      }
+    case CW_RECEIVE_STATE:
       switch(displayScreen) {
         case DISPLAY_T41:
           ShowSpectrum();
@@ -1097,148 +1093,103 @@ FASTRUN void loop()
         // no screen updates at all
         break;
       }
-      //delay(150);
       break;
 
     case SSB_TRANSMIT_STATE:
+#ifdef USE_MIC_COMPRESSION
       if (compressorFlag == 1) {
-        SetupMyCompressors(use_HP_filter, (float)currentMicThreshold, comp_ratio, attack_sec, release_sec);  // Cast currentMicThreshold to float.  KF5N, October 31, 2023
+        SetupMicCompressors(use_HP_filter, (float)currentMicThreshold, comp_ratio, attack_sec, release_sec);  // Cast currentMicThreshold to float.  KF5N, October 31, 2023
       } else if (compressorFlag == 0) {
-        SetupMyCompressors(use_HP_filter, 0.0, comp_ratio, 0.01, 0.01);
+        SetupMicCompressors(use_HP_filter, 0.0, comp_ratio, 0.01, 0.01);
       }
-
-      digitalWrite(MUTE, HIGH);  //  Mute Audio  (HIGH=Mute)
-      digitalWrite(RXTX, HIGH);  //xmit on
+#endif
+      digitalWrite(RXTX, HIGH); // xmit on
 
       while(digitalRead(PTT) == LOW) {
         ExciterIQData();
       }
-      break;
 
-    case CW_RECEIVE_STATE:
-      if (lastState != radioState) {
-        digitalWrite(MUTE, LOW);      //turn off mute
-        keyPressedOn = 0;
-      }
-
-      switch(displayScreen) {
-        case DISPLAY_T41:
-          ShowSpectrum();  // if removed CW signal on is 2 mS
-          break;
-
-        case DISPLAY_BEACON_MONITOR:
-          ShowBeacon();
-          break;
-
-        default:
-        // no screen updates at all
-        break;
-      }
-      //delay(150);
+      digitalWrite(RXTX, LOW); // xmit off
       break;
 
     case CW_TRANSMIT_STRAIGHT_STATE:
-      powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
-      CW_ExciterIQData();
-
-      digitalWrite(MUTE, HIGH);  //   Mute Audio  (HIGH=Mute)
-
-      cwTimer = millis();
+      // turn on TX relay and initialize CW signal timer
       digitalWrite(RXTX, HIGH);
-      while(millis() - cwTimer <= cwTransmitDelay) {
-        // start CW transmit, dit/dah timer is on
-        if(digitalRead(paddleDit) == LOW && keyType == 0) {
-          // reset dit/dah timer
-          cwTimer = millis();
+      cwTransmitTimer = millis();
 
-          // turn on CW signal
-          modeSelectOutExL.gain(0, powerOutCW[currentBand]);
-          modeSelectOutExR.gain(0, powerOutCW[currentBand]);
+      // start generating CW signal
+      while(millis() - cwTransmitTimer <= cwTransmitDelay) {
+        valPin = digitalRead(paddleDit);
 
-          // play sidetone
-          modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);
-          digitalWrite(MUTE, LOW);
-        } else if(digitalRead(paddleDit) == HIGH && keyType == 0) {
-          // turn off CW signal
-          keyPressedOn = 0;
-          digitalWrite(MUTE, HIGH);     // mutes audio
-          modeSelectOutExL.gain(0, 0);  // Power = 0
-          modeSelectOutExR.gain(0, 0);
-          modeSelectOutL.gain(1, 0);    // sidetone off
-          //modeSelectOutR.gain(1, 0);
+        // start CW transmit, CW signal timer is on
+        switch(valPin) {
+          case LOW:
+            cwTransmitTimer = millis();
+            if(oldVal == HIGH) {
+              // begin ramp up
+              CW_ExciterIQData(ON, true);
+            } else {
+              // continue signal
+              CW_ExciterIQData();
+            }
+            break;
+
+          case HIGH:
+            if(oldVal == LOW) {
+              // begin ramp down
+              CW_ExciterIQData(OFF, true);
+
+              // reset CW signal timer
+              cwTransmitTimer = millis();
+            } else {
+              // continue signal
+              CW_ExciterIQData(OFF);
+            }
+            break;
+
+          default:
+            break;
         }
-        CW_ExciterIQData();
+
+        oldVal = valPin;
       }
-      modeSelectOutExL.gain(0, 0);  // Power = 0
-      modeSelectOutExR.gain(0, 0);
-      modeSelectOutL.gain(1, 0);    // sidetone off *** TODO: added this, seems it could be needed ***
+
       digitalWrite(RXTX, LOW);
+
+      // delay a bit to allow play buffer to empty, otherwise
+      // the remaining buffer will be played next time it's connected
+      CWPause(50);
       break;
 
     case CW_TRANSMIT_KEYER_STATE:
-      CW_ExciterIQData();
-      digitalWrite(MUTE, HIGH);  // Mute Audio (HIGH=Mute)
+      // turn on TX relay and initialize CW signal timer
+      digitalWrite(RXTX, HIGH);
+      cwTransmitTimer = millis();
 
-      cwTimer = millis();
-      while(millis() - cwTimer <= cwTransmitDelay) {
-        digitalWrite(RXTX, HIGH);  // Turns on relay
-        CW_ExciterIQData();
-        //modeSelectInR.gain(0, 0);
-        //modeSelectInL.gain(0, 0);
-        //modeSelectInExR.gain(0, 0);
-        //modeSelectInExL.gain(0, 0);
-        modeSelectOutL.gain(0, 0);
-        //modeSelectOutR.gain(0, 0);
+      // start generating CW signal
+      while(millis() - cwTransmitTimer <= cwTransmitDelay) {
+        if(digitalRead(paddleDit) == LOW) {
+          Dit();
+          cwTransmitTimer = millis();
 
-        if(digitalRead(paddleDit) == LOW) {  // Keyer Dit
-          cwTimer = millis();
-          ditTimerOn = millis();
-          while(millis() - ditTimerOn <= transmitDitLength) {
-            modeSelectOutExL.gain(0, powerOutCW[currentBand]);
-            modeSelectOutExR.gain(0, powerOutCW[currentBand]);
-            digitalWrite(MUTE, LOW);                                 // unmutes audio
-            modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);  // Sidetone
-            CW_ExciterIQData();                                      // Creates CW output signal
-            keyPressedOn = 0;
-          }
-          ditTimerOff = millis();
-          while(millis() - ditTimerOff <= transmitDitLength - 10L) {
-            modeSelectOutExL.gain(0, 0);                               //Power =0
-            modeSelectOutExR.gain(0, 0);
-            modeSelectOutL.gain(1, 0);  // Sidetone off
-            //modeSelectOutR.gain(1, 0);
-            CW_ExciterIQData();
-            keyPressedOn = 0;
-          }
+          // pause for one dit length
+          IntraSpace();
+        } else if(digitalRead(paddleDah) == LOW) {
+          Dah();
+          cwTransmitTimer = millis();
+
+          // pause for one dit length
+          IntraSpace();
         } else {
-          if(digitalRead(paddleDah) == LOW) {  // Keyer DAH
-            cwTimer = millis();
-            dahTimerOn = millis();
-            while(millis() - dahTimerOn <= 3UL * transmitDitLength) {
-              modeSelectOutExL.gain(0, powerOutCW[currentBand]);
-              modeSelectOutExR.gain(0, powerOutCW[currentBand]);
-              digitalWrite(MUTE, LOW);                                  // unmutes audio
-              modeSelectOutL.gain(1, volumeLog[sidetoneVolume]);   // Dah sidetone was using constants.  KD0RC
-              CW_ExciterIQData();                                       // Creates CW output signal
-              keyPressedOn = 0;
-            }
-            ditTimerOff = millis();
-            while(millis() - ditTimerOff <= transmitDitLength - 10UL) {
-              modeSelectOutExL.gain(0, 0);                                //Power =0
-              modeSelectOutExR.gain(0, 0);
-              modeSelectOutL.gain(1, 0);  // Sidetone off
-              //modeSelectOutR.gain(1, 0);
-              CW_ExciterIQData();
-            }
-          }
+          CW_ExciterIQData(OFF);
         }
-        CW_ExciterIQData();
-        keyPressedOn = 0;  // Fix for keyer click-clack
-      }                    // End Relay timer
+      }
 
-      modeSelectOutExL.gain(0, 0);  // Power = 0
-      modeSelectOutExR.gain(0, 0);
       digitalWrite(RXTX, LOW);
+
+      // delay a bit to allow play buffer to empty, otherwise
+      // the remaining buffer will be played next time it's connected
+      CWPause(50);
       break;
 
     default:
@@ -1254,10 +1205,6 @@ FASTRUN void loop()
 
   // save radio state for next loop
   lastState = radioState;
-  //if(lastState != radioState) {
-  //  lastState = radioState;
-  //  ShowTransmitReceiveStatus();
-  //}
 
 #ifdef KEYBOARD_SUPPORT
   // just for testing
@@ -1301,7 +1248,7 @@ FASTRUN void loop()
     Serial.printf("sent spectrum data: %d\n", ++fCount);
   }
 
-  // update memory about every second
+  // update memory usage about every second
   if (elapsed_micros_idx_t > 100) {
     // Stack is more informative when called from within a function that might be stressing the stack
     UpdateInfoBoxItem(IB_ITEM_STACK);

@@ -78,10 +78,6 @@ void ProcessIQData() {
   uint32_t AudioMaxIndex;
   float rfGainValue;
 
-  if (keyPressedOn == 1) {
-    return;
-  }
-
   /**********************************************************************************
         Get samples from queue buffers
         Teensy Audio Library stores ADC data in two buffers, Q_in_L and Q_in_R as initiated from the audio lib.
@@ -92,8 +88,8 @@ void ProcessIQData() {
      **********************************************************************************/
   // are there at least N_BLOCKS (16) buffers in each channel available?
   //
-  // The T41 takes ~1.5-5.0 msec (depending on display update, mode and options) to process 16 (N_BLOCKS) audio packets
-  // afterwards it may take up to 10 msec to refill the buffers until 16 packets are available (thus this if block is
+  // The T41 takes ~1.5-5.0 ms (depending on display update, mode and options) to process 16 (N_BLOCKS) audio packets
+  // afterwards it may take up to 10 ms to refill the buffers until 16 packets are available (thus this if block is
   // skipped and we return immediately to ShowSpectrum to continue updating the display)
   // This entire process serves to regulate the audio output stream and changes may affect that stream.
   // For example, playing a wav file without some display updates (audio spectrum

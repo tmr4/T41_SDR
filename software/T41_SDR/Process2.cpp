@@ -127,8 +127,8 @@ FLASHMEM void CalibratePrologue() {
   tft.writeTo(L1);  // Exit function in layer 1.  KF5N August 3, 2023
   RedrawDisplayScreen();
   calOnFlag = 0;
-  radioState = CW_RECEIVE_STATE;  // KF5N
-  SetFreq();                      // Return Si5351 to normal operation mode.  KF5N
+  //radioState = CW_RECEIVE_STATE;  // KF5N
+  //SetFreq();                      // Return Si5351 to normal operation mode.  KF5N
   lastState = -1;  // This is required due to the function deactivating the receiver.  This forces a pass through the receiver set-up code.  KF5N October 16, 2023
   return;
 }

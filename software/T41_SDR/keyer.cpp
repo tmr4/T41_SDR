@@ -16,7 +16,7 @@
 
 float cwRampUp[128], cwRampDown[128];
 unsigned long cwDelayTimer;       // used to keep transmitter keyed after CW transmission
-elapsedMillis msec = 0;           // used for CW signal timing, automatically increases as time passes
+elapsedMillis cwAtomTimer = 0;    // used for CW signal timing, automatically increases as time passes
 unsigned long transmitDitLength;
 
 char keyerMessages[MAX_MESSAGES][MAX_MESSAGE_LENGTH + 1] = {
@@ -101,10 +101,6 @@ int msgIndexIn = 0;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-// Forwards
-void CreateCWSignal(unsigned long signalLength);
-
-
 /*****
   Purpose: establish the dit length for code transmission. Crucial since
     all spacing is done using dit length
@@ -122,11 +118,10 @@ FLASHMEM void SetTransmitDitLength() {
 // *** TODO: consider more refined shaping with https://www.ivarc.org.uk/uploads/1/2/3/8/12380834/keyclicks_version_1.pdf ***
 void IncreaseGain(float cwPwr) {
   CW_ExciterIQData();
-  CW_ExciterIQData();
   for(int i = 0; i < 2000; i++) {
-    float fac = (float)i / 2000.0;
-    modeSelectOutExL.gain(0, cwPwr * fac);
-    modeSelectOutExR.gain(0, cwPwr * fac);
+    //float fac = (float)i / 2000.0;
+    //modeSelectOutExL.gain(0, cwPwr * fac);
+    //modeSelectOutExR.gain(0, cwPwr * fac);
     delayMicroseconds(5);
   }
 }
@@ -134,9 +129,9 @@ void IncreaseGain(float cwPwr) {
 void DecreaseGain(float cwPwr) {
   CW_ExciterIQData();
   for(int i = 0; i < 100; i++) {
-    float fac = (100.0 - i) / 100.0;
-    modeSelectOutExL.gain(0, cwPwr * fac);
-    modeSelectOutExR.gain(0, cwPwr * fac);
+    //float fac = (100.0 - i) / 100.0;
+    //modeSelectOutExL.gain(0, cwPwr * fac);
+    //modeSelectOutExR.gain(0, cwPwr * fac);
     delayMicroseconds(100);
   }
 }
@@ -152,13 +147,6 @@ void DecreaseGain(float cwPwr) {
 *****/
 void Dit() {
   CreateCWSignal(transmitDitLength);
-
-  // pause while dit plays
-  while(msec <= transmitDitLength) {
-    ;
-  }
-
-  msec = 0; // reset CW signal timing
 }
 
 /*****
@@ -172,13 +160,13 @@ void Dit() {
 *****/
 void Dah() {
   CreateCWSignal(3UL * transmitDitLength);
+}
 
-  // pause while dah plays
-  while(msec <= 3UL * transmitDitLength) {
+void CWPause(unsigned long ms) {
+  cwAtomTimer = 0; // reset CW signal timing
+  while(cwAtomTimer < ms) {
     ;
   }
-
-  msec = 0; // reset CW signal timing
 }
 
 /*****
@@ -191,7 +179,7 @@ void Dah() {
   void
 *****/
 void IntraSpace() {
-  delay(transmitDitLength);
+  CWPause(transmitDitLength);
 }
 
 /*****
@@ -204,7 +192,7 @@ void IntraSpace() {
   void
 *****/
 void LetterSpace() {
-  delay(3UL * transmitDitLength);
+  CWPause(3UL * transmitDitLength);
 }
 
 /*****
@@ -217,7 +205,7 @@ void LetterSpace() {
   void
 *****/
 void WordSpace() {
-  delay(7UL * transmitDitLength);
+  CWPause(7UL * transmitDitLength);
 }
 
 /*****
@@ -233,12 +221,12 @@ void SendCode(char code) {
   int i;
 
   // Find the sentinel. Loop looks for first 1 which marks the start of the letter:   0b11000 = 'B'
-  for (i = 7; i >= 0; i--) {
+  for(i = 7; i >= 0; i--) {
     if (code & (1 << i)) break;
   }
 
   // Now look at rest of binary value: 0b1000 = B after reading sentinel
-  for (i--; i >= 0; i--) {
+  for(i--; i >= 0; i--) {
     cwDelayTimer = millis();
     if (code & (1 << i)) {
       // send a dah
@@ -250,14 +238,10 @@ void SendCode(char code) {
 
     if(i == 0) {
       // pause for space between letters
-      while(msec <= 3UL * transmitDitLength) {
-        ;
-      }
+      CWPause(3UL * transmitDitLength);
     } else {
       // pause for space within letter
-      while(msec <= transmitDitLength - 7UL) {
-        ;
-      }
+      CWPause(transmitDitLength - 7UL);
     }
   }
 }
@@ -337,9 +321,8 @@ void Send(char chr) {
     case ' ':  // Space
     default:
       // pause for space between words
-      while(msec <= 7UL * transmitDitLength) {
-        ;
-      }
+      // we've already paused inter-letter
+      CWPause((7UL - 3UL) * transmitDitLength);
       break;
   }
 }
@@ -354,52 +337,28 @@ void Send(char chr) {
     void
 *****/
 void SendMessage(char *msg) {
-  // set frequency for CW transmission
+  // configure radio for CW transmission
   radioState = CW_TRANSMIT_KEYER_STATE;
+  ConfigAudioState();
   SetFreq();
-
-  // stop collecting input I/Q data
-  // without doing this the audio buffer will quickly fill creating a distorted sidetone
-  // *** the end and begin methods are fast, but leave the background interrupt process running ***
-  // *** TODO: compare effect of using end/begin and disconnect/connect on CW signal timing ***
-  Q_in_L.end();
-  Q_in_R.end();
-  Q_in_L.clear();
-  Q_in_R.clear();
-
-  // set exciter gain of 1, power is adjusted in CW_ExciterIQData
-  // *** TODO: either remove mixer throughtout or add a separate patchcord for this ***
-  modeSelectOutExL.gain(0, 1);
-  modeSelectOutExR.gain(0, 1);
-
-  // Sidetone signal adjusted for a gain of 1 at a volume of 30
-  // this gives a reasonable volume with power level of 1-20 W
-  // *** TODO: consider adjustment for power level to set constant sidetone volume
-  modeSelectOutL.gain(1, volumeLog[sidetoneVolume] / 0.000100);
-
   ShowTransmitReceiveStatus();
+
+  digitalWrite(RXTX, HIGH);  // turn on xmit relay
 
   cwDelayTimer = millis();
 
-  digitalWrite(RXTX, HIGH);  //Turns on xmit relay
   while (*msg != '\0') {
     Send(*msg++);
   }
 
-  // continue until we reach transmit delay
+  // continue CW exciter until we reach transmit delay
   while(millis() - cwDelayTimer <= cwTransmitDelay) {
     ;
   }
 
-  modeSelectOutExL.gain(0, 0);  // Power = 0
-  modeSelectOutExR.gain(0, 0);
   digitalWrite(RXTX, LOW);
 
   lastState = -1;
-  ShowTransmitReceiveStatus();
-
-  Q_in_L.begin();
-  Q_in_R.begin();
 }
 
 /*****

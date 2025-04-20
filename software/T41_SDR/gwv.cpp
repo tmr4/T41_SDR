@@ -32,7 +32,7 @@ int decoderFlag = DECODER_STATE;  // Startup state for decoder
 int keyType = STRAIGHT_KEY_OR_PADDLES;
 int currentWPM =  DEFAULT_KEYER_WPM;
 int sidetoneVolume = 20;
-unsigned long cwTransmitDelay = 750;
+unsigned long cwTransmitDelay = 750; // CW exciter stays active for this amount of time after last CW atom
 
 int activeVFO = 0;
 

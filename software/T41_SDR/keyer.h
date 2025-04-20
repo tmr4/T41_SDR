@@ -15,7 +15,7 @@ extern int keyerState;
 extern uint8_t msgBuffer[50];
 extern int msgIndexIn;
 
-extern elapsedMillis msec;
+extern elapsedMillis cwAtomTimer;
 extern unsigned long transmitDitLength;
 extern float cwRampUp[128], cwRampDown[128];
 
@@ -26,6 +26,8 @@ extern float cwRampUp[128], cwRampDown[128];
 
 void SetTransmitDitLength();
 
+void CWPause(unsigned long ms);
+void IntraSpace();
 void Dit();
 void Dah();
 void SendCode(char code);
