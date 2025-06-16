@@ -9,7 +9,6 @@ extern uint8_t kbIndexIn, kbIndexOut;
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-void UsbSetup();
-void UsbLoop();
+void KeyboardSetup();
 void putc(uint8_t input);
 uint8_t getc();

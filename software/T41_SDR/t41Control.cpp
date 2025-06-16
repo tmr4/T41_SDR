@@ -1,17 +1,22 @@
 #include "SDT.h"
 
-//#include <USBHost_t36.h>
-
 #include "ButtonProc.h"
 #include "Display.h"
 #include "Encoders.h"
 #include "EEPROM.h"
+#include "Filter.h"
 #include "keyboard.h"
 #include "InfoBox.h"
 #include "MenuProc.h"
 #include "mouse.h"
 #include "Tune.h"
 #include "Utility.h"
+
+#ifdef HOST_CAT_CONTROL_SUPPORT
+#undef BUFFER_SIZE
+#include <USBHost_t36.h>
+extern USBSerial_BigBuffer usbHostSerial;
+#endif
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -29,7 +34,7 @@ uint8_t specData[518]; // xDyyy[up to 512 bytes of data];   x=A or F, yyy = 255 
 // I suppose to prevent naming conflict somewhere, but this prevents having serial commands with a common argument specifying the serial channel to use, such as
 // void T41ControlSetup(Stream& serial) { serial.begin(); }.  As such might as well duplicate these functions for both the T41 control app and Beacon monitor
 void T41ControlSetup() {
-  controlSerial.begin(19200);
+  //controlSerial.begin(19200);
 }
 
 void T41ControlSendData(uint8_t *data, int len) {
@@ -59,7 +64,9 @@ void T41ControlSendCmd(char *cmd) {
     //Serial.println(sizeBuf);
     if(controlSerial.availableForWrite() > len) {
       controlSerial.write(cmd, len);
+#if controlSerial != usbHostSerial
       controlSerial.send_now(); // we'll have a delay without this
+#endif
     } else {
       int i=0;
       //Serial.println(sizeBuf);
@@ -93,7 +100,8 @@ void T41ControlGetCommand(char * cmd, int max) {
   cmd[i+1] = 0; // *** TODO: this is currently needed by send command, revisit if that is changed ***
 }
 
-void SendSmeter(int16_t smeterPad, float32_t dbm) {
+//void SendSmeter(int16_t smeterPad, float32_t dbm) {
+void SendSmeter(int smeterPad, float dbm) {
   char cmd[30];
 
   // we can send these separately or together
@@ -186,6 +194,12 @@ int GetMode() {
 
 void T41ControlLoop()
 {
+  //int avail;
+
+  //avail = controlSerial.available();
+  //if(avail > 0) {
+  //  Serial.print("host serial available: "); Serial.println(avail);
+  //}
   if(controlSerial.available()) {
     char cmd[256];
     int mode = GetMode();
@@ -357,7 +371,7 @@ void T41ControlLoop()
           ChangeDemodMode(atoi(&cmd[2]));
           SendAS();
           return;
-        } if(cmd[1] == 'E' && cmd[3] == ';') {
+        } else if(cmd[1] == 'E' && cmd[3] == ';') {
           // set operating mode
           ChangeMode(atoi(&cmd[2]));
           SendAS();
@@ -384,6 +398,30 @@ void T41ControlLoop()
           }
           UpdateInfoBoxItem(IB_ITEM_FLOOR);
           return;
+        } else if(cmd[1] == 'W' && cmd[2] == ';') {
+          // sets 0.5kHz-1.5kHz audio filter
+          switch(bands[currentBand].mode) {
+            case DEMOD_USB:
+              bands[currentBand].FLoCut = 500;
+              bands[currentBand].FHiCut = 1500;
+              break;
+
+            case DEMOD_LSB:
+              bands[currentBand].FLoCut = -1500;
+              bands[currentBand].FHiCut = -500;
+              break;
+
+            default:
+              return;
+              //break;
+          }
+
+          CalcFilters();
+          //updateDisplay = true;
+          ShowBandwidthBarValues();
+          DrawBandwidthBar();
+          DrawAudioFilterLines();
+          return;
         }
         break;
 
@@ -392,6 +430,25 @@ void T41ControlLoop()
           // set transmitter power level
           transmitPowerLevel = atoi(&cmd[2]);
           ShowCurrentPowerSetting();
+        }
+        break;
+
+      case 'S': // SM;
+        // One of the following:
+        // send dBm
+        //sprintf(cmd, "SM0%+05d;", (int)(dbm * 10));
+
+        // send s-meter
+        //sprintf(cmd, "SM20%04d;", smeterPad);
+
+        if(cmd[1] == 'M' && cmd[2] == ';') {
+          // just send dBm for now
+          sprintf(cmd, "SM0%+05d;", (int)(dbm * 10));
+        } else if(cmd[1] == 'M' && cmd[3] == ';') {
+          int index = atoi(&cmd[2]);
+
+          // just send dBm for now
+          sprintf(cmd, "SM%d%+05d;", index, (int)(dbm * 10));
         }
         break;
 
@@ -412,12 +469,33 @@ void T41ControlLoop()
           audioVolume = atoi(&cmd[2]);
           volumeChangeFlag = true;
         }
+        return;
+        break;
+
+      case 'Z': // ZMx;
+        if(cmd[1] == 'M' && cmd[3] == ';') {
+          // set spectrum zoom
+          spectrumZoom = atoi(&cmd[2]);
+          SetZoom(spectrumZoom);
+        }
+        return;
+        break;
+
+      case '?': // unknow command
+        return; // do nothing for now
         break;
 
       default:
+        // what was received in not handled or recognized
+#if controlSerial == Serial
+        // ignore if the control line is Serial ...
+        return;
+#else
+        // ... otherwise send back a question
         cmd[0] = '?';
         cmd[1] = ';';
         cmd[2] = 0;
+#endif
         break;
     }
 

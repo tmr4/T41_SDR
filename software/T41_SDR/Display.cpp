@@ -20,6 +20,7 @@
 #include "Process.h"
 #include "Tune.h"
 #include "t41Control.h"
+#include "t41USBHost.h"
 #include "Utility.h"
 
 #include "keyboard.h"
@@ -331,21 +332,21 @@ FASTRUN void UpdateControls(bool updateDisplay) {
   if (posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
     SetBWFilters();
 
-    if(updateDisplay) {
+    //if(updateDisplay)
+    {
       ShowBandwidthBarValues();
       DrawBandwidthBar();
       DrawAudioFilterLines();
     }
   }
 
-  // handle USB keyboard
-#ifdef KEYBOARD_SUPPORT
-  // poll keyboard at about 125 Hz
+  // handle USB Host
+#ifdef USB_HOST_SUPPORT
+  // poll USB Host at about 125 Hz
   int now = millis();
   if (now - last_usb_read > 8) {
-    UsbLoop();
+    UsbHostLoop();
     last_usb_read = now;
-    MouseLoop();
   }
 #endif
 
@@ -1529,7 +1530,7 @@ FLASHMEM void DrawStaticDisplayItems() {
   DrawInfoBoxFrame();
 }
 
-#ifdef KEYBOARD_SUPPORT
+#ifdef HOST_KEYBOARD_MOUSE_SUPPORT
 // for testing only
 FLASHMEM void PrintKeyboardBuffer() {
   tft.setFontScale(0,1);

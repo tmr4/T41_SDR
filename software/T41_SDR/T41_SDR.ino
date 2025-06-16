@@ -48,6 +48,7 @@
 #include "mouse.h"
 #include "t41Control.h"
 #include "t41Beacon.h"
+#include "t41USBHost.h"
 #include "Beacon.h"
 #include "wsjt.h"
 
@@ -877,9 +878,11 @@ FLASHMEM void setup() {
 
   SoftReset();
 
-#ifdef KEYBOARD_SUPPORT
-  UsbSetup();
+#ifdef USB_HOST_SUPPORT
+  UsbHostSetup();
+#endif
 
+#ifdef HOST_KEYBOARD_MOUSE_SUPPORT
   // draw a white rectangle to layer 1 to mask the cursor copy area
   //tft.fillRect(XPIXELS - 20, TIME_Y, 16, 32, RA8875_WHITE);
   tft.fillRect(0, 0, 16, 32, RA8875_WHITE);
@@ -894,11 +897,12 @@ FLASHMEM void setup() {
   set_Station_Coordinates(myGrid);
 
 #ifdef NO_DISPLAY
-  T41ControlSetup();
+  //T41ControlSetup();
 #endif
   //T41BeaconSetup();
   //WSJTControlSetup();
   //ARMCorrTest();
+  //T41ControlSetup();
 
   KeyerSetup(); // testing only
 /*
@@ -1206,19 +1210,24 @@ FASTRUN void loop()
   // save radio state for next loop
   lastState = radioState;
 
-#ifdef KEYBOARD_SUPPORT
+#ifdef HOST_KEYBOARD_MOUSE_SUPPORT
   // just for testing
   if (elapsed_micros_idx_t > 200) {
     //PrintKeyboardBuffer();
   }
-#ifdef NO_DISPLAY
-  T41ControlLoop();
-#endif
-  //T41BeaconLoop();
-  //WSJTLoop();
+
   if(keyerState == 1) {
     KeyerLoop();
   }
+#endif
+
+#ifdef NO_DISPLAY
+  // need PC control without a display
+  T41ControlLoop();
+#endif
+
+#ifndef HOST_CAT_CONTROL_SUPPORT
+  T41ControlLoop();
 #endif
 
   if(connected) {

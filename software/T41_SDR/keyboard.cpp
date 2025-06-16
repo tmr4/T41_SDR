@@ -1,24 +1,15 @@
-// library: https://github.com/PaulStoffregen/USBHost_t36
-//
 
 #include "T41Config.h"
 
-#ifdef KEYBOARD_SUPPORT
+#ifdef HOST_KEYBOARD_MOUSE_SUPPORT
 
-#include <USBHost_t36.h>
+#include <USBHost_t36.h> // https://github.com/PaulStoffregen/USBHost_t36
+
+extern KeyboardController kbController;
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
-
-// *** it would be nice to save this memory until a keyboard is plugged in
-// *** but both USBHost and USBHIDParser are needed to automatically detect
-// *** a new devise so we don't really save that much.  Doing this manually
-// is a possibility if we need to save memory when not using a keyboard.
-USBHost usbHost;
-USBHub usbHub(usbHost);
-USBHIDParser hkbParser(usbHost); // each device needs a parser
-KeyboardController kbController(usbHost);
 
 uint8_t kbIndexIn, kbIndexOut;
 DMAMEM uint8_t kbBuffer[256];
@@ -74,9 +65,7 @@ void OnRelease(int unicode) {
   putc(unicode & 0xff);
 }
 
-FLASHMEM void UsbSetup() {
-  usbHost.begin();
-
+void KeyboardSetup() {
   // capture processed key on release and store in keyboard buffer
   kbController.attachRelease(OnRelease);
 
@@ -88,12 +77,6 @@ FLASHMEM void UsbSetup() {
   kbIndexIn = 0;
   kbIndexOut = 0;
   kbBuffer[0] = 0;
-
-  delay(1000);
-}
-
-void UsbLoop() {
-  usbHost.Task();
 }
 
 #endif

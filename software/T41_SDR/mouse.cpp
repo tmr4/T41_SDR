@@ -3,7 +3,11 @@
 
 #include "SDT.h"
 
-#ifdef KEYBOARD_SUPPORT
+bool mouseCenterTuneActive = false;
+int mouseWheelValue = 0;
+int menuBarSelected = false;
+
+#ifdef HOST_KEYBOARD_MOUSE_SUPPORT
 
 #include "ButtonProc.h"
 #include "Display.h"
@@ -22,8 +26,7 @@
 
 #include <USBHost_t36.h>
 
-
-extern USBHost usbHost;
+extern MouseController mouseController;
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -61,15 +64,8 @@ extern USBHost usbHost;
 #define FREQ_20_1  FREQ_20_2 + FREQ_W
 #define FREQ_20_0  FREQ_20_1 + FREQ_W
 
-USBHIDParser mouseParser(usbHost); // each device needs a parser
-MouseController mouseController(usbHost);
-
 int cursorL, cursorT, cursorR, cursorB;
 int cursorX, cursorY, oldCursorX, oldCursorY;
-
-bool mouseCenterTuneActive = false;
-int mouseWheelValue = 0;
-int menuBarSelected = false;
 
 //-------------------------------------------------------------------------------------------------------------
 // Forwards

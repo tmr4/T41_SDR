@@ -174,6 +174,7 @@ void ShowSpectrumFreqValues();
 void DrawSmeterBar();
 void DrawBandwidthBar();
 void ShowBandwidthBarValues();
+void DrawAudioFilterLines();
 
 //
 void ShowSpectrumdBScale();

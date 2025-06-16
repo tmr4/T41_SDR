@@ -78,14 +78,28 @@
 
 #define SDCARD_MESSAGE_LENGTH     3000L                                     // The number of milliseconds to leave error message on screen
 
-// uncomment to enable FT8
-// this requires about an additional 86k FLASH, 111k of RAM1 and 183k of RAM2
-// ultimately I'll probably delete this option as I've decided to keep this feature
-#define KEYBOARD_SUPPORT
 #define BEACON_FILE_NAME          "beacon.bmp"
 
+// uncomment below for USB Host support
+#define USB_HOST_SUPPORT
+
+// uncomment below for specific USB Host device support
+#define HOST_KEYBOARD_MOUSE_SUPPORT
+#define HOST_SERIAL_SUPPORT
+//#define HOST_CAT_CONTROL_SUPPORT
+
 //#define T41_USB_AUDIO
-#define controlSerial SerialUSB1 // Serial or SerialUSB1
+
+// For use with PC apps and connecting to other CAT controlled units over the USB host connector.
+// Select one of the noted serial objects according to compile options for enabled services.
+// Set disabled services to Serial. Any messages from these services are sent to Arduino serial monitor.
+//   Serial when multiple services are enabled and compiling with Serial+MIDI+Audio (Arduino IDE must be closed to connect to T41Server)
+//   SerialUSB1 when compiling with Dual or Triple Serial (need to figure which COM port is associated with each)
+//   SerialUSB2 when two services enabled and compiling with Triple Serial (need to figure which COM port is associated with each)
+//
+// *** note: debug messages go out over Serial and will be transmitted if controlSerial
+// is set to Serial and the unit is connected to the USB host of another unit ***
+#define controlSerial Serial // Serial or SerialUSB1 for USB port or usbHostSerial for USB Host port
 #define beaconSerial Serial // Serial or SerialUSB2
 #define wsjtSerial Serial // Serial or SerialUSB1 or SerialUSB2
 
