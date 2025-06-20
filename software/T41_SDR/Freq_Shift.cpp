@@ -1,6 +1,9 @@
+
 #include "SDT.h"
-#include "Display.h"
-#include "FIR.h"
+
+//#include "Display.h"
+#include "Encoders.h"
+#include "pi.h"
 #include "Tune.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -32,7 +35,7 @@ double Osc_I = 0.0;
            xnew(0) =  xreal(0) + jximag(0)
                leave first value (DC component) as it is!
            xnew(1) =  - ximag(1) + jxreal(1)
-           
+
   Parameter list:
     void
 
@@ -43,7 +46,7 @@ void FreqShift1() {
   float32_t hh1;
   float32_t hh2;
 
-  for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS; i += 4) {
+  for(unsigned i = 0; i < 2048; i += 4) {
     hh1 = - float_buffer_R[i + 1];  // xnew(1) =  - ximag(1) + jxreal(1)
     hh2 =   float_buffer_L[i + 1];
     float_buffer_L[i + 1] = hh1;
@@ -57,7 +60,7 @@ void FreqShift1() {
     float_buffer_L[i + 3] = hh1;
     float_buffer_R[i + 3] = hh2;
   }
-  for (unsigned i = 0; i < BUFFER_SIZE * N_BLOCKS; i ++) {
+  for(unsigned i = 0; i < 2048; i ++) {
     float_buffer_L_EX[i] = float_buffer_L[i];
     float_buffer_R_EX[i] = float_buffer_R[i];
   }
@@ -95,8 +98,8 @@ void FreqShift2() {
   uint i;
   int sideToneShift = 0;
 
-  if (fineTuneEncoderMove != 0L) {
-    if (NCOFreq > 40000L) {
+  if(fineTuneEncoderMove != 0L) {
+    if(NCOFreq > 40000L) {
       NCOFreq = 40000L;
     }
 
@@ -105,25 +108,25 @@ void FreqShift2() {
 
   TxRxFreq = centerFreq + NCOFreq;
 
-  if (xmtMode == SSB_MODE || xmtMode == DATA_MODE) {
+  if(xmtMode == SSB_MODE || xmtMode == DATA_MODE) {
     sideToneShift = 0;
   } else {
-    if (xmtMode == CW_MODE ) {
-      if (bands[currentBand].mode == 1) {
-        sideToneShift = CWFreqShift;  // KF5N experiment
+    if(xmtMode == CW_MODE ) {
+      if(bands[currentBand].demod == DEMOD_LSB) {
+        sideToneShift = CWFreqShift;
       } else {
-        if (bands[currentBand].mode == 0) {
-          sideToneShift = -CWFreqShift;  // KF5N experiment
+        if(bands[currentBand].demod == DEMOD_USB) {
+          sideToneShift = -CWFreqShift;
         }
       }
     }
   }
   NCO_INC = 2.0 * PI * (NCOFreq + sideToneShift) / 192000.0; //192000 SPS is the actual sample rate used in the Receive ADC
 
-  OSC_COS = cos (NCO_INC);
-  OSC_SIN = sin (NCO_INC);
+  OSC_COS = cos(NCO_INC);
+  OSC_SIN = sin(NCO_INC);
 
-  for (i = 0; i < BUFFER_SIZE * N_BLOCKS; i++) {
+  for(i = 0; i < 2048; i++) {
     // generate local oscillator on-the-fly:  This takes a lot of processor time!
     Osc_Q = (Osc_Vect_Q * OSC_COS) - (Osc_Vect_I * OSC_SIN);  // Q channel of oscillator
     Osc_I = (Osc_Vect_I * OSC_COS) + (Osc_Vect_Q * OSC_SIN);  // I channel of oscillator

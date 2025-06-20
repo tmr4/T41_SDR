@@ -1,3 +1,6 @@
+
+#include <TimeLib.h>                   // Part of Teensy Time library
+
 #include "SDT.h"
 
 #include "ButtonProc.h"
@@ -13,7 +16,6 @@
 #include "Utility.h"
 
 #ifdef HOST_CAT_CONTROL_SUPPORT
-#undef BUFFER_SIZE
 #include <USBHost_t36.h>
 extern USBSerial_BigBuffer usbHostSerial;
 #endif
@@ -130,7 +132,7 @@ void SendAS() {
     TxRxFreq,                       // freq in Hz (%011d) at index 2
     currentBand,                    // current band (%d) at index 13
     xmtMode,                        // transmission mode (%d) at index 14
-    bands[currentBand].mode         // demodulation mode (%d)  at index 15
+    bands[currentBand].demod         // demodulation mode (%d)  at index 15
   );
   T41ControlSendCmd(cmd);
 }
@@ -145,7 +147,7 @@ void SendIF() {
     TxRxFreq,                       // freq in Hz (%011d) at index 2
     currentBand,                    // current band (%d) at index 13
     xmtMode,                        // transmission mode (%d) at index 14
-    bands[currentBand].mode,        // demodulation mode (%d)  at index 15
+    bands[currentBand].demod,        // demodulation mode (%d)  at index 15
     audioVolume,                    // audio volume (%03d) at index 16
     NCOFreq,                        // NCO freq (%+06ld) at index 19
     currentNoiseFloor[currentBand], // noise floor (%04d) at index 25 *** TODO: verify need for +- or number of digits ***
@@ -167,10 +169,10 @@ void SendIF() {
 int GetMode() {
   // 1: LSB, 2: USB, 3: CW, 4: FM, 5: AM
   int mode;
-  if (xmtMode == CW_MODE) {
+  if(xmtMode == CW_MODE) {
     mode=3;
   } else {
-    switch(bands[currentBand].mode) {
+    switch(bands[currentBand].demod) {
       case DEMOD_USB:
         mode=2; // USB
         break;
@@ -365,7 +367,7 @@ void T41ControlLoop()
       case 'M':
         if(cmd[1] == 'D' && cmd[2] == ';') {
           // send demod mode
-          sprintf(cmd,"MD%d;", useKenwoodIF ? mode : bands[currentBand].mode);
+          sprintf(cmd,"MD%d;", useKenwoodIF ? mode : bands[currentBand].demod);
         } else if(cmd[1] == 'D' && cmd[3] == ';') {
           // set demod mode status
           ChangeDemodMode(atoi(&cmd[2]));
@@ -400,7 +402,7 @@ void T41ControlLoop()
           return;
         } else if(cmd[1] == 'W' && cmd[2] == ';') {
           // sets 0.5kHz-1.5kHz audio filter
-          switch(bands[currentBand].mode) {
+          switch(bands[currentBand].demod) {
             case DEMOD_USB:
               bands[currentBand].FLoCut = 500;
               bands[currentBand].FHiCut = 1500;
@@ -505,8 +507,8 @@ void T41ControlLoop()
 }
 
 //bool CompareStrings(const char *sz1, const char *sz2) {
-//  while (*sz2 != 0) {
-//    if (toupper(*sz1) != toupper(*sz2))
+//  while(*sz2 != 0) {
+//    if(toupper(*sz1) != toupper(*sz2))
 //      return false;
 //    sz1++;
 //    sz2++;

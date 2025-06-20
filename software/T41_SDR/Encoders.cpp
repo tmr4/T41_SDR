@@ -1,6 +1,11 @@
+
 #include "SDT.h"
+
+#include <Rotary.h>                    // https://github.com/brianlow/Rotary
+
 #include "Button.h"
 #include "ButtonProc.h"
+#include "CW_Excite.h"
 #include "CWProcessing.h"
 #include "Display.h"
 //#include "EEPROM.h"
@@ -20,23 +25,40 @@
 #define MENU_F_LO_CUT            40
 
 //------------------------- Global Variables ----------
-bool volumeChangeFlag = false;
-bool resetTuningFlag = false;
-bool fineTuneFlag = false;
+bool volumeChangeFlag, resetTuningFlag, fineTuneFlag, getEncoderValueFlag;
+long posFilterEncoder, lastFilterEncoder, filter_pos_BW, last_filter_pos_BW;
 
-long posFilterEncoder = 0;
-long lastFilterEncoder = 1; // force initial update
-
-long filter_pos_BW = 0;
-long last_filter_pos_BW = 0;
+volatile int menuEncoderMove;
+volatile long fineTuneEncoderMove;
 
 //------------------------- Local Variables ----------
 
-bool getEncoderValueFlag = false;
+Rotary fineTuneEncoder = Rotary(FINETUNE_ENCODER_A, FINETUNE_ENCODER_B);  // ( 4,  5)
+Rotary menuChangeEncoder = Rotary(FILTER_ENCODER_A, FILTER_ENCODER_B);    // (15, 14)
+Rotary tuneEncoder = Rotary(TUNE_ENCODER_A, TUNE_ENCODER_B);              // (16, 17)
+Rotary volumeEncoder = Rotary(VOLUME_ENCODER_A, VOLUME_ENCODER_B);        // ( 2,  3)
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
+
+// set up encoders
+void EncodersInit() {
+  pinMode(FILTER_ENCODER_A, INPUT);
+  pinMode(FILTER_ENCODER_B, INPUT);
+
+  fineTuneEncoder.begin(true);
+  menuChangeEncoder.begin(true);
+  tuneEncoder.begin(true);
+  volumeEncoder.begin(true);
+
+  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_A), EncoderVolumeISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_B), EncoderVolumeISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_A), EncoderMenuChangeFilterISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_B), EncoderMenuChangeFilterISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_A), EncoderFineTuneISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_B), EncoderFineTuneISR, CHANGE);
+}
 
 /*****
   Purpose: Set bandwidth filters based on accumulated filter encoder changes, update BW values on display
@@ -52,13 +74,13 @@ void SetBWFilters() {
 
   lastFilterEncoder = posFilterEncoder;
 
-  switch (bands[currentBand].mode) {
+  switch(bands[currentBand].demod) {
     case DEMOD_USB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
     case DEMOD_FT8:
     case DEMOD_FT8_WAV:
-      if (lowerAudioFilterActive) { // false - high, true - low filter
+      if(lowerAudioFilterActive) { // false - high, true - low filter
         bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
       } else {
         bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
@@ -66,7 +88,7 @@ void SetBWFilters() {
       break;
 
     case DEMOD_LSB:
-      if (lowerAudioFilterActive) {
+      if(lowerAudioFilterActive) {
         bands[currentBand].FHiCut = bands[currentBand].FHiCut + filter_change * 50 * ENCODER_FACTOR;
       } else {
         bands[currentBand].FLoCut = bands[currentBand].FLoCut + filter_change * 50 * ENCODER_FACTOR;
@@ -80,14 +102,14 @@ void SetBWFilters() {
       break;
 
     case DEMOD_NFM:
-      if (nfmBWFilterActive) {
+      if(nfmBWFilterActive) {
         filter_change = filter_pos_BW - last_filter_pos_BW;
         last_filter_pos_BW = filter_pos_BW;
         nfmFilterBW = (nfmFilterBW / 2.0 - filter_change * 50 * ENCODER_FACTOR) * 2;
       } else {
         //bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
         //bands[currentBand].FLoCut = -bands[currentBand].FHiCut;
-        if (lowerAudioFilterActive) { // false - high, true - low filter
+        if(lowerAudioFilterActive) { // false - high, true - low filter
           bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
         } else {
           bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
@@ -113,14 +135,14 @@ void EncoderCenterTune() {
 
   unsigned char result = tuneEncoder.process();  // Read the encoder
 
-  if (result == 0)  // Nothing read
+  if(result == 0)  // Nothing read
     return;
 
-  if (xmtMode == CW_MODE && decoderFlag == ON) {  // No reason to reset if we're not doing decoded CW
+  if(xmtMode == CW_MODE && decoderFlag == ON) {  // No reason to reset if we're not doing decoded CW
     ResetHistograms();
   }
 
-  switch (result) {
+  switch(result) {
     case DIR_CW:  // Turned it clockwise, 16
       tuneChange = 1L;
       break;
@@ -156,21 +178,21 @@ float GetEncoderValueLive(float minValue, float maxValue, float startValue, floa
   tft.setCursor(257, 1);
   tft.print(prompt);
   tft.setCursor(440, 1);
-  if (abs(startValue) > 2) {
+  if(abs(startValue) > 2) {
     tft.print(startValue, 0);
   } else {
     tft.print(startValue, 3);
   }
 
-  if (menuEncoderMove != 0) {
+  if(menuEncoderMove != 0) {
     currentValue += menuEncoderMove * increment;  // Bump up or down...
-    if (currentValue < minValue)
+    if(currentValue < minValue)
       currentValue = minValue;
-    else if (currentValue > maxValue)
+    else if(currentValue > maxValue)
       currentValue = maxValue;
 
     tft.setCursor(440, 1);
-    if (abs(startValue) > 2) {
+    if(abs(startValue) > 2) {
       tft.print(startValue, 0);
     } else {
       tft.print(startValue, 3);
@@ -200,10 +222,10 @@ void EncoderVolumeISR() {
 
   result = volumeEncoder.process();  // Read the encoder
 
-  if (result == 0) {  // Nothing read
+  if(result == 0) {  // Nothing read
     return;
   }
-  switch (result) {
+  switch(result) {
     case DIR_CW:  // Turned it clockwise, 16
       adjustVolEncoder = 1;
       break;
@@ -215,19 +237,19 @@ void EncoderVolumeISR() {
   audioVolume += adjustVolEncoder;
   // simulate log taper.  As we go higher in volume, the increment increases.
 
-  if (audioVolume < (MIN_AUDIO_VOLUME + 10)) increment = 2;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 20)) increment = 3;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 30)) increment = 4;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 40)) increment = 5;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 50)) increment = 6;
-  else if (audioVolume < (MIN_AUDIO_VOLUME + 60)) increment = 7;
+  if(audioVolume < (MIN_AUDIO_VOLUME + 10)) increment = 2;
+  else if(audioVolume < (MIN_AUDIO_VOLUME + 20)) increment = 3;
+  else if(audioVolume < (MIN_AUDIO_VOLUME + 30)) increment = 4;
+  else if(audioVolume < (MIN_AUDIO_VOLUME + 40)) increment = 5;
+  else if(audioVolume < (MIN_AUDIO_VOLUME + 50)) increment = 6;
+  else if(audioVolume < (MIN_AUDIO_VOLUME + 60)) increment = 7;
   else increment = 8;
 
 
-  if (audioVolume > MAX_AUDIO_VOLUME) {
+  if(audioVolume > MAX_AUDIO_VOLUME) {
     audioVolume = MAX_AUDIO_VOLUME;
   } else {
-    if (audioVolume < MIN_AUDIO_VOLUME)
+    if(audioVolume < MIN_AUDIO_VOLUME)
       audioVolume = MIN_AUDIO_VOLUME;
   }
 
@@ -247,11 +269,11 @@ FASTRUN void EncoderFineTuneISR() {
   char result;
 
   result = fineTuneEncoder.process();  // Read the encoder
-  if (result == 0) {                   // Nothing read
+  if(result == 0) {                   // Nothing read
     fineTuneEncoderMove = 0L;
     return;
   } else {
-    if (result == DIR_CW) {  // 16 = CW, 32 = CCW
+    if(result == DIR_CW) {  // 16 = CW, 32 = CCW
       fineTuneEncoderMove = 1L;
     } else {
       fineTuneEncoderMove = -1L;
@@ -277,11 +299,11 @@ FASTRUN void EncoderMenuChangeFilterISR() {
 
   result = menuChangeEncoder.process();  // Read the encoder
 
-  if (result == 0) {
+  if(result == 0) {
     return;
   }
 
-  switch (result) {
+  switch(result) {
     case DIR_CW:  // Turned it clockwise, 16
       menuEncoderMove = 1;
       break;
@@ -302,7 +324,7 @@ FASTRUN void EncoderMenuChangeFilterISR() {
     // we're setting noise floor
     currentNoiseFloor[currentBand] += menuEncoderMove;
   } else {
-    if (ft8MsgSelectActive) {
+    if(ft8MsgSelectActive) {
       if(num_decoded_msg > 0) {
         activeMsg += menuEncoderMove;
         if(activeMsg >= num_decoded_msg) {
@@ -315,7 +337,7 @@ FASTRUN void EncoderMenuChangeFilterISR() {
       }
       menuEncoderMove = 0;
     } else {
-      if (bands[currentBand].mode == DEMOD_NFM && nfmBWFilterActive) {
+      if(bands[currentBand].demod == DEMOD_NFM && nfmBWFilterActive) {
         // we're adjusting NFM demod bandwidth
         filter_pos_BW = last_filter_pos_BW - 5 * menuEncoderMove;
       } else {

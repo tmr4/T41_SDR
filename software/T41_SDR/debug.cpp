@@ -1,4 +1,6 @@
+
 #include "SDT.h"
+#include "Button.h"
 #include "EEPROM.h"
 #include "debug.h"
 
@@ -51,7 +53,7 @@ void EnterLoop() {
   oldEEPROMData.currentFreqB = currentFreqB;
   oldEEPROMData.freqCorrectionFactor = freqCorrectionFactor;
 
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+  for(int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
     oldEEPROMData.equalizerRec[i] = equalizerRec[i];
     oldEEPROMData.equalizerXmt[i] = equalizerXmt[i];
   }
@@ -62,7 +64,7 @@ void EnterLoop() {
   oldEEPROMData.currentMicRelease = currentMicRelease;
   oldEEPROMData.currentMicGain = currentMicGain;
 
-  for (int i = 0; i < NUMBER_OF_SWITCHES; i++) {
+  for(int i = 0; i < NUMBER_OF_SWITCHES; i++) {
     oldEEPROMData.switchValues[0] = switchValues[0];
   }
 
@@ -73,7 +75,7 @@ void EnterLoop() {
   oldEEPROMData.omegaN = omegaN;
   oldEEPROMData.pll_fmax = pll_fmax;
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     oldEEPROMData.powerOutCW[i] = powerOutCW[i];
     oldEEPROMData.powerOutSSB[i] = powerOutSSB[i];
     oldEEPROMData.CWPowerCalibrationFactor[i] = CWPowerCalibrationFactor[i];
@@ -84,11 +86,11 @@ void EnterLoop() {
     oldEEPROMData.IQXPhaseCorrectionFactor[i] = IQXPhaseCorrectionFactor[i];
   }
 
-  for (int i = 0; i < 13; i++) {
+  for(int i = 0; i < 13; i++) {
     oldEEPROMData.favoriteFreqs[i] = favoriteFreqs[i];
   }
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     oldEEPROMData.lastFrequencies[i][0] = lastFrequencies[i][0];
     oldEEPROMData.lastFrequencies[i][1] = lastFrequencies[i][1];
   }
@@ -104,7 +106,7 @@ void EnterLoop() {
 
   oldEEPROMData.myLat = myLat;
   oldEEPROMData.myLong = myLong;
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     oldEEPROMData.currentNoiseFloor[i] = currentNoiseFloor[i];
   }
   oldEEPROMData.compressorFlag = compressorFlag;
@@ -118,13 +120,13 @@ void EnterLoop() {
 //  valPin = value returned from ReadSelectedPushButton()
 //  pushButtonSwitchIndex = value returned from ProcessButtonPress()
 void ButtonInfoOut(int valPin, int pushButtonSwitchIndex) {
-  //Serial.print("buttonState = " );  
+  //Serial.print("buttonState = " );
   //Serial.println(buttonState);
-  if (valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
-    Serial.print("  valPin = " );  
+  if(valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
+    Serial.print("  valPin = " );
     Serial.println(valPin);
 
-    Serial.print("  Switch Index = " );  
+    Serial.print("  Switch Index = " );
     Serial.println(pushButtonSwitchIndex + 1);
   }
 }
@@ -262,7 +264,7 @@ void EnterLoop() {
   oldEEPROMData.currentFreqB = EEPROMData.currentFreqB;
   oldEEPROMData.freqCorrectionFactor = EEPROMData.freqCorrectionFactor;
 
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+  for(int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
     oldEEPROMData.equalizerRec[i] = EEPROMData.equalizerRec[i];
     oldEEPROMData.equalizerXmt[i] = EEPROMData.equalizerXmt[i];
   }
@@ -273,7 +275,7 @@ void EnterLoop() {
   oldEEPROMData.currentMicRelease = EEPROMData.currentMicRelease;
   oldEEPROMData.currentMicGain = EEPROMData.currentMicGain;
 
-  for (int i = 0; i < NUMBER_OF_SWITCHES; i++) {
+  for(int i = 0; i < NUMBER_OF_SWITCHES; i++) {
     oldEEPROMData.switchValues[0] = EEPROMData.switchValues[0];
   }
 
@@ -284,7 +286,7 @@ void EnterLoop() {
   oldEEPROMData.omegaN = EEPROMData.omegaN;
   oldEEPROMData.pll_fmax = EEPROMData.pll_fmax;
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     oldEEPROMData.powerOutCW[i] = EEPROMData.powerOutCW[i];
     oldEEPROMData.powerOutSSB[i] = EEPROMData.powerOutSSB[i];
     oldEEPROMData.CWPowerCalibrationFactor[i] = EEPROMData.CWPowerCalibrationFactor[i];
@@ -295,11 +297,11 @@ void EnterLoop() {
     oldEEPROMData.IQXPhaseCorrectionFactor[i] = EEPROMData.IQXPhaseCorrectionFactor[i];
   }
 
-  for (int i = 0; i < 13; i++) {
+  for(int i = 0; i < 13; i++) {
     oldEEPROMData.favoriteFreqs[i] = EEPROMData.favoriteFreqs[i];
   }
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     oldEEPROMData.lastFrequencies[i][0] = EEPROMData.lastFrequencies[i][0];
     oldEEPROMData.lastFrequencies[i][1] = EEPROMData.lastFrequencies[i][1];
   }
@@ -315,7 +317,7 @@ void EnterLoop() {
 
   oldEEPROMData.myLat = EEPROMData.myLat;
   oldEEPROMData.myLong = EEPROMData.myLong;
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     oldEEPROMData.currentNoiseFloor[i] = EEPROMData.currentNoiseFloor[i];
   }
   oldEEPROMData.compressorFlag = EEPROMData.compressorFlag;
@@ -328,7 +330,7 @@ void EnterLoop() {
 // set oldEEPROMData equal to EEPROMData
 void ExitLoop() {
   int loopCount = loopCounter++;
-  
+
   if(oldEEPROMData.AGCMode != EEPROMData.AGCMode) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("AGCMode changed"); }
   if(oldEEPROMData.audioVolume != EEPROMData.audioVolume) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("audioVolume changed"); }
   if(oldEEPROMData.rfGainAllBands != EEPROMData.rfGainAllBands) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("rfGainAllBands changed"); }
@@ -427,7 +429,7 @@ void ExitLoop() {
 
 #define printf Serial.printf
 extern "C" uint8_t external_psram_size;
-  
+
 void memInfo() {
   constexpr auto RAM_BASE   = 0x2020'0000;
                               constexpr auto RAM_SIZE   = 512 << 10;
@@ -469,7 +471,7 @@ void memInfo() {
          RAM_BASE, RAM_BASE + RAM_SIZE - 1);
   printf("<FLASH> %08x .. %08x\n",
          FLASH_BASE, FLASH_BASE + FLASH_SIZE - 1);
-  if (external_psram_size > 0)
+  if(external_psram_size > 0)
     printf("<PSRAM> %08x .. %08x\n",
            _extram_start, _extram_start + (external_psram_size << 20) - 1);
   printf("\n");
@@ -498,9 +500,8 @@ FLASHMEM void   getFreeITCM() { // end of CODE ITCM, skip full 32 bits
   printf( "Size of Free ITCM in Bytes = %u\n", sizeofFreeITCM * sizeof(ptrFreeITCM[0]) );
   printf( "Start of Free ITCM = %u [%X] \n", ptrFreeITCM, ptrFreeITCM);
   printf( "End of Free ITCM = %u [%X] \n", ptrFreeITCM + sizeofFreeITCM, ptrFreeITCM + sizeofFreeITCM);
-  for ( uint32_t ii = 0; ii < sizeofFreeITCM; ii++) ptrFreeITCM[ii] = 1;
+  for( uint32_t ii = 0; ii < sizeofFreeITCM; ii++) ptrFreeITCM[ii] = 1;
   uint32_t jj = 0;
-  for ( uint32_t ii = 0; ii < sizeofFreeITCM; ii++) jj += ptrFreeITCM[ii];
+  for( uint32_t ii = 0; ii < sizeofFreeITCM; ii++) jj += ptrFreeITCM[ii];
   printf( "ITCM DWORD cnt = %u [#bytes=%u] \n", jj, jj*4);
 }
-

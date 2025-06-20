@@ -3,16 +3,17 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-extern float32_t /*DMAMEM*/ FFT_buffer[FFT_LENGTH * 2];
+extern float32_t /*DMAMEM*/ FFT_buffer[1024];
 extern float32_t /*DMAMEM*/ buffer_spec_FFT[1024];
 extern float32_t /*DMAMEM*/ FFT_spec[1024];
 extern float32_t /*DMAMEM*/ FFT_spec_old[1024];
-
-extern float32_t Fir_Zoom_FFT_Decimate_coeffs[4];
+extern float32_t /*DMAMEM*/ iFFT_buffer[];
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
+
+void InitFFTFilter();
 
 void ZoomFFTPrep();
 void ZoomFFTExe(uint32_t blockSize);

@@ -3,6 +3,8 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
+extern float32_t biquad_lowpass1_coeffs[];
+
 extern uint8_t ANR_notch;
 extern uint8_t ANR_notchOn;
 extern int audioYPixel[];
@@ -11,6 +13,8 @@ extern float32_t audioMaxSquaredAve;
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
+
+void InitAMDemodBiquadFilter();
 
 void ProcessIQData();
 void Codec_gain();

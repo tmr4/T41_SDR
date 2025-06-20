@@ -6,6 +6,7 @@
 
 #include "Demod.h"
 #include "Display.h"
+#include "pi.h"
 #include "psk31.h"
 #include "Utility.h"
 
@@ -779,9 +780,9 @@ void Psk31Decoder(float32_t* input, float32_t* output, int size) {
           psk31Count = 0;
         }
       }
-    } else {//if (psk31Count >= PSK_TIME) {
+    } else {//if(psk31Count >= PSK_TIME) {
       /*
-      if (psk31Count >= PSK_TIME + PSK_WIGGLE) {
+      if(psk31Count >= PSK_TIME + PSK_WIGGLE) {
       Serial.print("   No phase change ... "); PrintPSK(psk31Count, symCount, last, current, next);
       // no phase shift, we got a 1, reset psk31Count
       if(idle) {
@@ -811,9 +812,9 @@ void Psk31Decoder(float32_t* input, float32_t* output, int size) {
       lastSymbol = 1;
       psk31Count = 0;
       */
-    //} else if (psk31Count >= PSK_TIME - 10 && !idle && symCount >= 3 && symCount <= 4) {
+    //} else if(psk31Count >= PSK_TIME - 10 && !idle && symCount >= 3 && symCount <= 4) {
       //Serial.print("else #1 "); PrintPSK(psk31Count, symCount, last, current, next);
-    //} else if (psk31Count > 0 && psk31Count < 10 && !idle && symCount >= 3 && symCount <= 4) {
+    //} else if(psk31Count > 0 && psk31Count < 10 && !idle && symCount >= 3 && symCount <= 4) {
       //Serial.print("else #2 "); PrintPSK(psk31Count, symCount, last, current, next);
 
       if(psk31Count > PSK_TIME) {

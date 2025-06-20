@@ -1,6 +1,9 @@
 
 #include <Audio.h>
-#include <OpenAudio_ArduinoLibrary.h>  // https://github.com/chipaudette/OpenAudio_ArduinoLibrary
+
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
 
 //extern AudioMixer4 modeSelectInR;
 //extern AudioMixer4 modeSelectInL;
@@ -21,6 +24,10 @@ extern AudioPlayQueue Q_out_L;
 extern AudioPlayQueue Q_out_R;
 extern AudioPlayQueue Q_out_L_Ex;
 extern AudioPlayQueue Q_out_R_Ex;
+
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
 
 void AudioSetup();
 void ConfigAudioState();

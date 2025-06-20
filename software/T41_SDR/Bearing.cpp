@@ -1,7 +1,12 @@
+
+#include <SD.h>
+
 #include "SDT.h"
+
 #include "Bearing.h"
 #include "Button.h"
 #include "Display.h"
+#include "Encoders.h"
 #include "Menu.h"
 #include "Utility.h"
 
@@ -598,7 +603,7 @@ FLASHMEM void DrawKeyboard() {
   row = 160;
   xOffset = 50;
   keyCell = 0;
-  for (i = 0; i < 10; i++) {  // Numeric keys
+  for(i = 0; i < 10; i++) {  // Numeric keys
     horizontalSpacer = xOffset + keyCell * (keyWidth + keySpace);
     tft.drawRect(horizontalSpacer, row, keyWidth, keyHeight, RA8875_YELLOW);
     tft.setCursor(horizontalSpacer + 24, row + 5);
@@ -609,23 +614,23 @@ FLASHMEM void DrawKeyboard() {
   row = 240;
   xOffset = 70;
   keyCell = 0;
-  for (i = 0; i < 27; i++) {  // Alpha keys
+  for(i = 0; i < 27; i++) {  // Alpha keys
     horizontalSpacer = xOffset + keyCell * (keyWidth + keySpace);
     tft.drawRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_YELLOW);
     tft.setCursor(horizontalSpacer + 24, row + 7);
-    if (i == 26) {
+    if(i == 26) {
       tft.setCursor(horizontalSpacer + 20, row + 7);
       tft.print("SP");
       break;
     }
     tft.print((char)('A' + i));
     keyCell++;
-    if (i + (int)'A' == 73) {
+    if(i + (int)'A' == 73) {
       row += 60;
       xOffset = 70;
       keyCell = 0;
     }
-    if (i + 'A' == 82) {
+    if(i + 'A' == 82) {
       row += 60;
       xOffset = 70;
       keyCell = 0;
@@ -693,15 +698,15 @@ FLASHMEM void CaptureKeystrokes() {
   keyboardBuffer[0] = '\0';  // Clear buffer
   tft.setTextColor(RA8875_WHITE, RA8875_BLUE);
   DrawActiveLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
-  while (true) {
+  while(true) {
     valPin = ReadSelectedPushButton();  // Poll UI push buttons
     delay(150L);
-    if (valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
+    if(valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
       pushButtonSwitchIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
-      switch (pushButtonSwitchIndex) {
+      switch(pushButtonSwitchIndex) {
         case MENU_OPTION_SELECT:  // They selected a letter
           delay(150L);
-          if (row < 240) {
+          if(row < 240) {
             keyboardBuffer[bufferIndex] = whichLetterIndex;
           } else {
             keyboardBuffer[bufferIndex] = letters[whichLetterIndex];
@@ -713,12 +718,12 @@ FLASHMEM void CaptureKeystrokes() {
           break;
 
         case MAIN_MENU_UP:  // Go up a row
-          if (row <= 155)   // Trying to go up above numerics
+          if(row <= 155)   // Trying to go up above numerics
             break;
           DrawNormalLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
           delay(150L);
           row -= 60;
-          if (row < 240) {          // Move up to number line
+          if(row < 240) {          // Move up to number line
             whichLetterIndex = 53;  // Move to 5
             row = 155;
             xOffset = 50;
@@ -736,7 +741,7 @@ FLASHMEM void CaptureKeystrokes() {
           break;
 
         case ZOOM:                       // Go left a column
-          if (whichLetterIndex == 27) {  // For apace character
+          if(whichLetterIndex == 27) {  // For apace character
             tft.fillRect(spacing[keyCell], row + 5, keyWidth, keyHeight, RA8875_BLACK);
             tft.drawRect(spacing[keyCell], row + 5, keyWidth, keyHeight, RA8875_YELLOW);
             tft.setCursor(spacing[keyCell] + 20, row + 7);
@@ -745,8 +750,8 @@ FLASHMEM void CaptureKeystrokes() {
             whichLetterIndex--;
             DrawActiveLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
           } else {
-            if (row < 240) {       // Numberics
-              if (keyCell == 0) {  // On 0, move to 9
+            if(row < 240) {       // Numberics
+              if(keyCell == 0) {  // On 0, move to 9
                 DrawNormalLetter(row, 50, whichLetterIndex, keyWidth, keyHeight);
                 keyCell = 9;
                 whichLetterIndex = 57;
@@ -764,7 +769,7 @@ FLASHMEM void CaptureKeystrokes() {
               DrawNormalLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
               keyCell--;
               whichLetterIndex--;
-              if (keyCell == 0) {
+              if(keyCell == 0) {
                 keyCell = 9;
                 whichLetterIndex += 9;
               }
@@ -774,7 +779,7 @@ FLASHMEM void CaptureKeystrokes() {
           break;
 
         case BAND_DN:                    // Go right one column
-          if (whichLetterIndex == 27) {  // The space key
+          if(whichLetterIndex == 27) {  // The space key
             tft.fillRect(spacing[keyCell], row + 5, keyWidth, keyHeight, RA8875_BLACK);
             tft.drawRect(spacing[keyCell], row + 5, keyWidth, keyHeight, RA8875_YELLOW);
             tft.setCursor(spacing[keyCell] + 20, row + 7);
@@ -782,7 +787,7 @@ FLASHMEM void CaptureKeystrokes() {
             keyCell = 1;
             whichLetterIndex = 19;
           } else {
-            if (row < 240) {  // In numerics row?
+            if(row < 240) {  // In numerics row?
               xOffset = 50;   // Yep
             } else {
               xOffset = 0;  // Nope
@@ -791,8 +796,8 @@ FLASHMEM void CaptureKeystrokes() {
             whichLetterIndex++;
             keyCell++;
           }
-          if (keyCell > 9) {  // Falling off the end?
-            if (row < 240) {  // In numerics row?
+          if(keyCell > 9) {  // Falling off the end?
+            if(row < 240) {  // In numerics row?
               xOffset = 50;   // Yep
               whichLetterIndex = 48;
               DrawActiveLetter(row, xOffset, whichLetterIndex, keyWidth, keyHeight);
@@ -809,9 +814,9 @@ FLASHMEM void CaptureKeystrokes() {
           break;
 
         case DEMODULATION:  // Go down a row
-          if (row >= 360)
+          if(row >= 360)
             break;
-          if (row < 240) {
+          if(row < 240) {
             xOffset = 50;
             horizontalSpacer = xOffset + keyCell * (keyWidth + keySpace);  // Restore current letter
             DrawNormalLetter(row, horizontalSpacer, whichLetterIndex, keyWidth, keyHeight);
@@ -822,7 +827,7 @@ FLASHMEM void CaptureKeystrokes() {
           } else {
             DrawNormalLetter(row, spacing[keyCell], whichLetterIndex, keyWidth, keyHeight);
             row += 60;
-            if (row > 360) {
+            if(row > 360) {
               row -= 60;
               break;
             }
@@ -869,11 +874,11 @@ FLASHMEM void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterInd
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
   tft.fillRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_BLACK);
   tft.drawRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_YELLOW);
-  if (letters[whichLetterIndex] == '*') {  // Space
+  if(letters[whichLetterIndex] == '*') {  // Space
     tft.setCursor(horizontalSpacer + 20, row + 7);
     tft.print("SP");
   } else {
-    if (row < 240) {
+    if(row < 240) {
       horizontalSpacer += 22;
       tft.setCursor(horizontalSpacer, row + 7);
       tft.print((char)whichLetterIndex);
@@ -900,11 +905,11 @@ FLASHMEM void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterInd
 FLASHMEM void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
   tft.fillRect(horizontalSpacer, row + 5, keyWidth, keyHeight, RA8875_BLUE);
-  if (letters[whichLetterIndex] == '*') {  // Space
+  if(letters[whichLetterIndex] == '*') {  // Space
     tft.setCursor(horizontalSpacer + 20, row + 7);
     tft.print("SP");
   } else {
-    if (row < 240) {
+    if(row < 240) {
       tft.setCursor(horizontalSpacer + 27, row + 7);
       tft.print((char)whichLetterIndex);
     } else {
@@ -933,7 +938,7 @@ float BearingHeading(char *dxCallPrefix) {
 
   tft.clearScreen(RA8875_BLACK);
 
-  if (countryIndex != -1) {              // Did we find prefix??
+  if(countryIndex != -1) {              // Did we find prefix??
     dxLat = dxCities[countryIndex].lat;  //Yep, but I entered the
     dxLon = dxCities[countryIndex].lon;
   } else {
@@ -951,7 +956,7 @@ float BearingHeading(char *dxCallPrefix) {
   bearingDegrees = atan2(x, y) * RADIANS2DEGREES;
   bearingDegrees = fmod(bearingDegrees, 360.0);
 
-  if (bearingDegrees > 0) {
+  if(bearingDegrees > 0) {
     displayBearing = 360.0 - bearingDegrees;
   } else {
     displayBearing = bearingDegrees * -1.0;
@@ -978,22 +983,22 @@ int FindCountry(char *prefix) {
       len,
       match;
   len = strlen(prefix);
-  if (len == 1 && prefix[0] != 'B') {  // Only single letter prefix is China
+  if(len == 1 && prefix[0] != 'B') {  // Only single letter prefix is China
     return -1;
   }
 
-  while (true) {
+  while(true) {
     match = 1;
-    for (index = 0; index < len; index++) {
-      if (prefix[index] != dxCities[i].callPrefix[index]) {
+    for(index = 0; index < len; index++) {
+      if(prefix[index] != dxCities[i].callPrefix[index]) {
         match = 0;
       }
     }
-    if (match == 1) {  // All letters matched
+    if(match == 1) {  // All letters matched
       return i;
     }
     i++;
-    if (dxCities[i].callPrefix[0] == '\0') {  // Searched the entire table
+    if(dxCities[i].callPrefix[0] == '\0') {  // Searched the entire table
       return -1;
     }
   }
@@ -1060,23 +1065,23 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
   float deltaLon = (dxLon - homeLon);
   float deltaLonRadians;
 
-  if ((x >= tft.width()) || (y >= tft.height()))
+  if((x >= tft.width()) || (y >= tft.height()))
     return;
 
-  if (!SD.begin(BUILTIN_SDCARD)) {
+  if(!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
     delay(2000L);  // Given them time to read it.
     return;
   }
   // Open requested file on SD card
-  if ((bmpFile = SD.open(filename)) == false) {
+  if((bmpFile = SD.open(filename)) == false) {
     tft.setCursor(100, 300);
     tft.print("File not found");
     return;
   }
 
   // Parse BMP header
-  if (read16(bmpFile) == 0x4D42) {  // BMP signature
+  if(read16(bmpFile) == 0x4D42) {  // BMP signature
     read32(bmpFile);
     (void)read32(bmpFile);             // Read & ignore creator bytes
     bmpImageoffset = read32(bmpFile);  // Start of image data
@@ -1086,9 +1091,9 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
     bmpWidth = read32(bmpFile);
     bmpHeight = read32(bmpFile);
 
-    if (read16(bmpFile) == 1) {                          // # planes -- must be '1'
+    if(read16(bmpFile) == 1) {                          // # planes -- must be '1'
       bmpDepth = read16(bmpFile);                        // bits per pixel
-      if ((bmpDepth == 24) && (read32(bmpFile) == 0)) {  // 0 = uncompressed
+      if((bmpDepth == 24) && (read32(bmpFile) == 0)) {  // 0 = uncompressed
         goodBmp = true;                                  // Supported BMP format -- proceed!
 
         //                                                      BMP rows are padded (if needed) to 4-byte boundary
@@ -1096,7 +1101,7 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
 
         // If bmpHeight is negative, image is in top-down order.
         // This is not canon but has been observed in the wild.
-        if (bmpHeight < 0) {
+        if(bmpHeight < 0) {
           bmpHeight = -bmpHeight;
           flip = false;
         }
@@ -1104,33 +1109,33 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
         // Crop area to be loaded
         w = bmpWidth;
         h = bmpHeight;
-        if ((x + w - 1) >= tft.width()) w = tft.width() - x;
-        if ((y + 135 - 1) >= tft.height()) h = tft.height() - y;
+        if((x + w - 1) >= tft.width()) w = tft.width() - x;
+        if((y + 135 - 1) >= tft.height()) h = tft.height() - y;
 
         // Set TFT address window to clipped image bounds
         ypos = y;
-        for (row = 0; row < h; row++) {  // For each scanline...
+        for(row = 0; row < h; row++) {  // For each scanline...
           // Seek to start of scan line.  It might seem labor-
           // intensive to be doing this on every line, but this
           // method covers a lot of gritty details like cropping
           // and scanline padding.  Also, the seek only takes
           // place if the file position actually needs to change
           // (avoids a lot of cluster math in SD library).
-          if (flip)  // Bitmap is stored bottom-to-top order (normal BMP)
+          if(flip)  // Bitmap is stored bottom-to-top order (normal BMP)
             pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
           else  // Bitmap is stored top-to-bottom
             pos = bmpImageoffset + row * rowSize;
 
-          if (bmpFile.position() != pos) {  // Need seek?
+          if(bmpFile.position() != pos) {  // Need seek?
             bmpFile.seek(pos);
             buffidx = sizeof(sdbuffer);  // Force buffer reload
           }
           xpos = x;
-          for (col = 0; col < w; col++) {  // For each column...
+          for(col = 0; col < w; col++) {  // For each column...
             // Time to read more pixel data?
-            if (buffidx >= sizeof(sdbuffer)) {  // Indeed
+            if(buffidx >= sizeof(sdbuffer)) {  // Indeed
               // Push LCD buffer to the display first
-              if (lcdidx > 0) {
+              if(lcdidx > 0) {
                 tft.drawPixels(lcdbuffer, lcdidx, xpos, ypos);
                 xpos += lcdidx;
                 lcdidx = 0;
@@ -1145,7 +1150,7 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
             g = sdbuffer[buffidx++];
             r = sdbuffer[buffidx++];
             lcdbuffer[lcdidx++] = Color565(r, g, b);
-            if (lcdidx >= sizeof(lcdbuffer) || (xpos - x + lcdidx) >= w) {
+            if(lcdidx >= sizeof(lcdbuffer) || (xpos - x + lcdidx) >= w) {
               tft.drawPixels(lcdbuffer, lcdidx, xpos, ypos);
               lcdidx = 0;
               xpos += lcdidx;
@@ -1155,7 +1160,7 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
         }  // end scanline
 
         // Write any remaining data to LCD
-        if (lcdidx > 0) {
+        if(lcdidx > 0) {
           tft.drawPixels(lcdbuffer, lcdidx, xpos, ypos);
           xpos += lcdidx;
         }
@@ -1163,7 +1168,7 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
     }
   }
   bmpFile.close();
-  if (!goodBmp) {
+  if(!goodBmp) {
     tft.setCursor(100, 300);
     tft.print("BMP format not recognized.");
   }
@@ -1187,25 +1192,25 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
   rayStart = displayBearing - 8.0;
   rayEnd = displayBearing + 8.0;
 
-  if (displayBearing > 16 && displayBearing < 345) {  // Check for end-point mapping issues
+  if(displayBearing > 16 && displayBearing < 345) {  // Check for end-point mapping issues
     rayStart = -8;
     rayEnd = 9;
   } else {
-    if (displayBearing < 9) {
+    if(displayBearing < 9) {
       rayStart = 8 - displayBearing;
       rayEnd = displayBearing + 8;
     } else {
-      if (displayBearing > 344) {
+      if(displayBearing > 344) {
         rayStart = displayBearing - 8;
         rayEnd = displayBearing + 8;
       }
     }
   }
-//  if (y2 < 0) {
+//  if(y2 < 0) {
 //    y2 = fabs(y2);
 //  }
 
-  for (int i = rayStart; i < rayEnd; i++) {
+  for(int i = rayStart; i < rayEnd; i++) {
     tft.drawLineAngle(x1, y1, displayBearing + i, RAY_LENGTH, RA8875_RED, -90);
   }
   len = strlen(dxCities[countryIndex].country);
@@ -1226,7 +1231,7 @@ FLASHMEM void bmpDraw(const char *filename, int x, int y) {
 
 
   bmpFile.close();
-  if (!goodBmp) {
+  if(!goodBmp) {
     tft.setCursor(100, 300);
     tft.print("BMP format not recognized.");
   }
@@ -1316,13 +1321,13 @@ FLASHMEM void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, b
   int end_x = x + cx;
   int end_y = y + cy;
 
-  if ((x >= 0) && (y >= 0) && (end_x <= g_tft_width) && (end_y <= g_tft_height)) {
+  if((x >= 0) && (y >= 0) && (end_x <= g_tft_width) && (end_y <= g_tft_height)) {
 
 #ifdef TFT_EMULATE_FB
-    if (g_frame_buffer && g_use_efb) {
+    if(g_frame_buffer && g_use_efb) {
 
       uint16_t *pfb = &g_frame_buffer[y * g_tft_width + x];
-      while (cy--) {
+      while(cy--) {
         memcpy(pfb, pixels, cx * 2);  // output one clipped rows worth
         pfb += g_tft_width;
         pixels += cx;
@@ -1335,30 +1340,30 @@ FLASHMEM void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, b
 
     g_WRCount++;
 
-    if (waitForWRC) WaitforWRComplete();
+    if(waitForWRC) WaitforWRComplete();
     // only process if something is visible.
-  } else if ((end_x >= 0) && (end_y >= 0) && (x < g_tft_width) && (y < g_tft_height)) {
+  } else if((end_x >= 0) && (end_y >= 0) && (x < g_tft_width) && (y < g_tft_height)) {
 
     int cx_out = cx;
     int cy_out = cy;
-    if (x < 0) {
+    if(x < 0) {
       pixels += -x;  // point to first word we will use.
       cx_out += x;
       x = 0;
     }
-    if (end_x > g_tft_width) cx_out -= (end_x - g_tft_width);
-    if (y < 0) {
+    if(end_x > g_tft_width) cx_out -= (end_x - g_tft_width);
+    if(y < 0) {
       pixels += -y * cx;  // point to first word we will use.
       cy_out += y;
       y = 0;
     }
-    if (end_y > g_tft_height) cy_out -= (end_y - g_tft_height);
-    if (cx_out && cy_out) {
+    if(end_y > g_tft_height) cy_out -= (end_y - g_tft_height);
+    if(cx_out && cy_out) {
 
 #ifdef TFT_EMULATE_FB
-      if (g_frame_buffer && g_use_efb) {
+      if(g_frame_buffer && g_use_efb) {
         uint16_t *pfb = &g_frame_buffer[y * g_tft_width + x];
-        while (cy_out--) {
+        while(cy_out--) {
           memcpy(pfb, pixels, cx_out * 2);  // output one clipped rows worth
           pfb += g_tft_width;
           pixels += cx;
@@ -1367,12 +1372,12 @@ FLASHMEM void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, b
 #endif
       {
 
-        if (cy_out > 1) {
+        if(cy_out > 1) {
           //compress the buffer
           uint16_t *pixels_out = pixels;
           uint16_t *p = pixels;
           end_y = cy_out;  // reuse variable
-          while (--end_y) {
+          while(--end_y) {
             p += cx_out;       // increment to where we will copy the pixels to
             pixels_out += cx;  // increment by one full row
             memcpy(p, pixels_out, cx_out * sizeof(uint16_t));
@@ -1409,7 +1414,7 @@ FLASHMEM int InitializeSDCard() {
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_RED, RA8875_BLACK);
   tft.setCursor(100, 240);
-  if (!SD.begin(BUILTIN_SDCARD)) {
+  if(!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
     delay(2000L);  // Given them time to read it.
     return 0;
@@ -1424,7 +1429,7 @@ FLASHMEM void WaitforWRComplete() {
 #if defined(_RA8876_T3)
   // bugbug: ra8876 may use dma code, and since some of our decoders
   // want to reuse the same memory we wait for these to complete
-  while (!tft.DMAFinished())
+  while(!tft.DMAFinished())
     ;
 #endif
 }
@@ -1442,7 +1447,7 @@ FLASHMEM void BearingMaps() {
   char ptrMaps[10][50];
   int count;
 
-  if (sdCardPresent == 0) {
+  if(sdCardPresent == 0) {
     tft.setCursor(200, 300);
     tft.setTextColor(RA8875_RED, RA8875_BLACK);
     tft.println("No SD card.");
@@ -1453,13 +1458,13 @@ FLASHMEM void BearingMaps() {
   }
   count = CreateMapList(ptrMaps, &count);  // Reads the SD card for BMP files and returns ptrMaps filled in with names and return the count
 
-  if (count == 0) {  // They have a card, but no maps
+  if(count == 0) {  // They have a card, but no maps
     tft.setCursor(300, 300);
     tft.print("No Maps found");
     selectedMapIndex = -1;
     return;  // Didn't find any
   }
-  if (count == 1) {
+  if(count == 1) {
     selectedMapIndex = 0;
   } else {
     tft.clearMemory();  // Need to clear overlay too
@@ -1474,7 +1479,7 @@ FLASHMEM void BearingMaps() {
     tft.print("Select map file:");
     tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
 
-    if (!SD.begin(BUILTIN_SDCARD)) {
+    if(!SD.begin(BUILTIN_SDCARD)) {
       tft.setCursor(200, 200);
       tft.setTextColor(RA8875_RED, RA8875_BLACK);
       tft.println("initialization failed!");
@@ -1512,19 +1517,19 @@ int CreateMapList(char ptrMaps[][50], int *count) {
   File root = SD.open("/");
   index = 0;
   *count = 0;
-  while (true) {
+  while(true) {
     File entry = root.openNextFile();
-    if (!entry) {
+    if(!entry) {
       break;
     }
 
     tft.setCursor(50, 55 + temp * 30);
-    if (strstr(entry.name(), ".bmp") != NULL) {
+    if(strstr(entry.name(), ".bmp") != NULL) {
       strcpy(&ptrMaps[temp][0], entry.name());
       temp++;
     }
 
-    if (!entry.isDirectory()) {
+    if(!entry.isDirectory()) {
       index++;
     }
     *count = temp;
@@ -1549,7 +1554,7 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
   int val;
 
   delay(100L);
-  for (i = 0; i < count; i++) {  // Yep.
+  for(i = 0; i < count; i++) {  // Yep.
     tft.setCursor(50, 55 + i * 30);
     tft.print(ptrMaps[i]);
   }
@@ -1558,16 +1563,16 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
   tft.setTextColor(RA8875_BLACK, RA8875_GREEN);
   tft.print(ptrMaps[0]);
 
-  while (true) {
-    if (menuEncoderMove != 0) {         // Did they move the encoder?
+  while(true) {
+    if(menuEncoderMove != 0) {         // Did they move the encoder?
       tft.setCursor(50, 55 + temp * 30);  // Restore old highlighted name
       tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
       tft.print(ptrMaps[temp]);
       temp += (int)menuEncoderMove;
-      if (temp > count - 1) {
+      if(temp > count - 1) {
         temp = 0;  // Wrap to the first in the list
       } else {
-        if (temp < 0) {
+        if(temp < 0) {
           temp = count - 1;  // Wrap to end of list
         }
       }
@@ -1579,7 +1584,7 @@ int WhichOneToUse(char ptrMaps[][50], int count) {
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
     delay(100L);
-    if (val == MENU_OPTION_SELECT) {  // Make a choice??
+    if(val == MENU_OPTION_SELECT) {  // Make a choice??
       break;                          // Yep.
     }
   }

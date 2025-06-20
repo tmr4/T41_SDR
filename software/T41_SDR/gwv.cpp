@@ -141,7 +141,7 @@ void LoadOpVars() {
   currentFreqB = EEPROMData.currentFreqB;
   freqCorrectionFactor = EEPROMData.freqCorrectionFactor;
 
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+  for(int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
     equalizerRec[i] = EEPROMData.equalizerRec[i];
     equalizerXmt[i] = EEPROMData.equalizerXmt[i];
   }
@@ -152,7 +152,7 @@ void LoadOpVars() {
   currentMicRelease = EEPROMData.currentMicRelease;
   currentMicGain = EEPROMData.currentMicGain;
 
-  for (int i = 0; i < NUMBER_OF_SWITCHES; i++) {
+  for(int i = 0; i < NUMBER_OF_SWITCHES; i++) {
     switchValues[0] = EEPROMData.switchValues[0];
   }
 
@@ -163,7 +163,7 @@ void LoadOpVars() {
   omegaN = EEPROMData.omegaN;
   pll_fmax = EEPROMData.pll_fmax;
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     powerOutCW[i] = EEPROMData.powerOutCW[i];
     powerOutSSB[i] = EEPROMData.powerOutSSB[i];
     CWPowerCalibrationFactor[i] = EEPROMData.CWPowerCalibrationFactor[i];
@@ -174,11 +174,11 @@ void LoadOpVars() {
     IQXPhaseCorrectionFactor[i] = EEPROMData.IQXPhaseCorrectionFactor[i];
   }
 
-  for (int i = 0; i < 13; i++) {
+  for(int i = 0; i < 13; i++) {
     favoriteFreqs[i] = EEPROMData.favoriteFreqs[i];
   }
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     lastFrequencies[i][0] = EEPROMData.lastFrequencies[i][0];
     lastFrequencies[i][1] = EEPROMData.lastFrequencies[i][1];
   }
@@ -195,7 +195,7 @@ void LoadOpVars() {
 
   myLat = EEPROMData.myLat;
   myLong = EEPROMData.myLong;
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     currentNoiseFloor[i] = EEPROMData.currentNoiseFloor[i];
   }
   compressorFlag = EEPROMData.compressorFlag;

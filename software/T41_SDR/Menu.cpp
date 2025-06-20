@@ -1,4 +1,6 @@
+
 #include "SDT.h"
+
 #include "Bearing.h"
 #include "Button.h"
 #include "ButtonProc.h"
@@ -86,12 +88,12 @@ FLASHMEM void Cancel() {
 FLASHMEM void ShowMenu(const char *menu[], int where) {
   tft.setFontScale( (enum RA8875tsize) 1);
 
-  if (menuStatus == NO_MENUS_ACTIVE) {
+  if(menuStatus == NO_MENUS_ACTIVE) {
     NoActiveMenu(); // display error message if no menu selected
     Serial.println("NAM #4");
   }
 
-  switch (where) {
+  switch(where) {
     case PRIMARY_MENU:
       tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_BLUE);
       tft.setCursor(PRIMARY_MENU_X + 1, MENUS_Y);
@@ -122,14 +124,14 @@ FLASHMEM void ShowMenu(const char *menu[], int where) {
     void
 *****/
 FLASHMEM void MenuBarChange(int change) {
-  switch (menuStatus) {
+  switch(menuStatus) {
     case PRIMARY_MENU_ACTIVE:
       mainMenuIndex += change;
 
       // limit index
-      if (mainMenuIndex < 0) {
+      if(mainMenuIndex < 0) {
         mainMenuIndex = TOP_MENU_COUNT - 1;
-      } else if (mainMenuIndex == TOP_MENU_COUNT) {
+      } else if(mainMenuIndex == TOP_MENU_COUNT) {
         mainMenuIndex = 0;
       }
       ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
@@ -139,9 +141,9 @@ FLASHMEM void MenuBarChange(int change) {
       secondaryMenuIndex += change;
 
       // limit index
-      if (secondaryMenuIndex < 0) {
+      if(secondaryMenuIndex < 0) {
         secondaryMenuIndex = subMenuMaxOptions - 1;
-      } else if (secondaryMenuIndex == subMenuMaxOptions) {
+      } else if(secondaryMenuIndex == subMenuMaxOptions) {
         secondaryMenuIndex = 0;
       }
       ShowMenu(&secondaryChoices[mainMenuIndex][secondaryMenuIndex], SECONDARY_MENU);
@@ -153,7 +155,7 @@ FLASHMEM void MenuBarChange(int change) {
 }
 
 FLASHMEM void ShowMenuBar(int menu = 0, int change = 0) {
-  if (menuStatus == NO_MENUS_ACTIVE) {
+  if(menuStatus == NO_MENUS_ACTIVE) {
     menuStatus = PRIMARY_MENU_ACTIVE;
     mainMenuIndex = menu;
     ShowMenu(&topMenus[mainMenuIndex], PRIMARY_MENU);
@@ -163,7 +165,7 @@ FLASHMEM void ShowMenuBar(int menu = 0, int change = 0) {
 }
 
 FLASHMEM void MenuBarSelect() {
-  switch (menuStatus) {
+  switch(menuStatus) {
     case NO_MENUS_ACTIVE:
       #ifdef DEBUG_SW
         //NoActiveMenu();
@@ -259,13 +261,13 @@ void GetMenuValueLoop() {
 
   if(ptrMenuLoop) ptrMenuLoop();
 
-  if (change != 0) {
+  if(change != 0) {
     oldValue += change * getMenuInc;
 
     // limit value
-    if (oldValue < getMenuMin) {
+    if(oldValue < getMenuMin) {
       oldValue = getMenuMin;
-    } else if (oldValue > getMenuMax) {
+    } else if(oldValue > getMenuMax) {
       oldValue = getMenuMax;
     }
 
@@ -288,12 +290,12 @@ void GetMenuValueLoop() {
     val = MENU_OPTION_SELECT;
   } else {
     val = ReadSelectedPushButton();  // Read pin that controls all switches
-    if (val != -1 && val < (switchValues[0] + WIGGLE_ROOM)) {
+    if(val != -1 && val < (switchValues[0] + WIGGLE_ROOM)) {
       val = ProcessButtonPress(val);
     }
   }
 
-  if (val == MENU_OPTION_SELECT) {
+  if(val == MENU_OPTION_SELECT) {
     getMenuSelected = true;
     getEncoderValueFlag = false;
   }
@@ -351,13 +353,13 @@ void GetMenuOptionLoop() {
 
   if(ptrMenuLoop) ptrMenuLoop();
 
-  if (change == 0) {
+  if(change == 0) {
     // see if a change was made through menu buttons
     val = ReadSelectedPushButton();  // Read pin that controls all switches
-    if (val != -1 && val < (switchValues[0] + WIGGLE_ROOM)) {
+    if(val != -1 && val < (switchValues[0] + WIGGLE_ROOM)) {
       val = ProcessButtonPress(val);
-      if (val > -1) {                 // Valid choice?
-        switch (val) {
+      if(val > -1) {                 // Valid choice?
+        switch(val) {
           case MENU_OPTION_SELECT:
             val = MENU_OPTION_SELECT;
             break;
@@ -380,13 +382,13 @@ void GetMenuOptionLoop() {
     }
   }
 
-  if (change != 0) {
+  if(change != 0) {
     currentValue += change;
 
     // roll value at ends
-    if (currentValue < getMenuMin) {
+    if(currentValue < getMenuMin) {
       currentValue = getMenuMax - 1;
-    } else if (currentValue >= getMenuMax) {
+    } else if(currentValue >= getMenuMax) {
       currentValue = 0;
     }
 
@@ -409,7 +411,7 @@ void GetMenuOptionLoop() {
     val = MENU_OPTION_SELECT;
   }
 
-  if (val == MENU_OPTION_SELECT) {
+  if(val == MENU_OPTION_SELECT) {
     getMenuSelected = true;
     getEncoderValueFlag = false;
   }
@@ -457,7 +459,7 @@ FLASHMEM int DrawMenuDisplay() {
 
   tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_WHITE);
-  for (i = 0; i < TOP_MENU_COUNT; i++) {                                // Show primary menu list
+  for(i = 0; i < TOP_MENU_COUNT; i++) {                                // Show primary menu list
     tft.setCursor(10, i * 25 + 115);
     tft.print(topMenus[i]);
   }
@@ -466,7 +468,7 @@ FLASHMEM int DrawMenuDisplay() {
   tft.print(topMenus[mainMenuIndex]);
   i = 0;
   tft.setTextColor(DARKGREY, RA8875_BLACK);
-  while (strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {   // Show secondary choices
+  while(strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {   // Show secondary choices
     tft.setCursor(300, i * 27 + 115);
     tft.print(secondaryChoices[mainMenuIndex][i]);
     i++;
@@ -489,17 +491,17 @@ FLASHMEM int SetPrimaryMenuIndex() {
   int i;
   int val;
 
-  while (true) {
+  while(true) {
 
-    if (menuEncoderMove != 0) {             // Did they move the encoder?
+    if(menuEncoderMove != 0) {             // Did they move the encoder?
       tft.setTextColor(RA8875_WHITE);         // Yep. Repaint the old choice
       tft.setCursor(10, mainMenuIndex * 25 + 115);
       tft.print(topMenus[mainMenuIndex]);
       mainMenuIndex += menuEncoderMove;     // Change the menu index to the new value
-      if (mainMenuIndex >= TOP_MENU_COUNT) {  // Did they go past the end of the primary menu list?
+      if(mainMenuIndex >= TOP_MENU_COUNT) {  // Did they go past the end of the primary menu list?
         mainMenuIndex = 0;                    // Yep. Set to start of the list.
       } else {
-        if (mainMenuIndex < 0) {               // Did they go past the start of the list?
+        if(mainMenuIndex < 0) {               // Did they go past the start of the list?
           mainMenuIndex = TOP_MENU_COUNT - 1;  // Yep. Set to end of the list.
         }
       }
@@ -520,11 +522,11 @@ FLASHMEM int SetPrimaryMenuIndex() {
     }
     val = ReadSelectedPushButton();  // Read the ladder value
     delay(150L);
-    if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {      // Did they press Select?
+    if(val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {      // Did they press Select?
       val = ProcessButtonPress(val);                                          // Use ladder value to get menu choice
-      if (val > -1) {                                                         // Valid choice?
+      if(val > -1) {                                                         // Valid choice?
 
-        if (val == MENU_OPTION_SELECT) {                                      // They made a choice
+        if(val == MENU_OPTION_SELECT) {                                      // They made a choice
           tft.setTextColor(RA8875_WHITE);
           break;
         }
@@ -552,8 +554,8 @@ FLASHMEM int SetSecondaryMenuIndex() {
   int oldIndex = 0;
   int val;
 
-  while (true) {                                                        // How many secondary menu options?
-    if (strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {    // Have we read the last entry in secondary menu?
+  while(true) {                                                        // How many secondary menu options?
+    if(strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {    // Have we read the last entry in secondary menu?
       i++;                                                              // Nope.
     } else {
       secondaryMenuCounter = i + 1;                                       // Add 1 because index starts with 0
@@ -569,18 +571,18 @@ FLASHMEM int SetSecondaryMenuIndex() {
   tft.print(secondaryChoices[mainMenuIndex][0]);
 
   i = 0;
-  while (true) {
+  while(true) {
 
-    if (menuEncoderMove != 0) {  // Did they move the encoder?
+    if(menuEncoderMove != 0) {  // Did they move the encoder?
       tft.setTextColor(DARKGREY);  // Yep. Repaint the old choice
       tft.setCursor(300, oldIndex * 25 + 115);
       tft.print(secondaryChoices[mainMenuIndex][oldIndex]);
       i += menuEncoderMove;  // Change the menu index to the new value
 
-      if (i == secondaryMenuCounter) {  // Did they go past the end of the primary menu list?
+      if(i == secondaryMenuCounter) {  // Did they go past the end of the primary menu list?
         i = 0;                        // Yep. Set to start of the list.
       } else {
-        if (i < 0) {                  // Did they go past the start of the list?
+        if(i < 0) {                  // Did they go past the start of the list?
           i = secondaryMenuCounter - 1; // Yep. Set to end of the list.
         }
       }
@@ -592,10 +594,10 @@ FLASHMEM int SetSecondaryMenuIndex() {
     }
     val = ReadSelectedPushButton();  // Read the ladder value
     delay(200L);
-    if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
+    if(val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
       val = ProcessButtonPress(val);  // Use ladder value to get menu choice
-      if (val > -1) {                 // Valid choice?
-        if (val == MENU_OPTION_SELECT) {  // They made a choice
+      if(val > -1) {                 // Valid choice?
+        if(val == MENU_OPTION_SELECT) {  // They made a choice
           tft.setTextColor(RA8875_WHITE);
           secondaryMenuIndex = oldIndex;
           break;

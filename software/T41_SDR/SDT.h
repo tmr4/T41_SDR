@@ -1,66 +1,29 @@
 #pragma once
 
-//======================================== User section that might need to be changed ===================================
 #include "T41Config.h"
-#define VERSION "sdr_dev.1"       // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
+#define VERSION "sdr_dev.1" // Change this for updates. If you make this longer than 9 characters, brace yourself for surprises
 
-//======================================== Library include files ========================================================
-// need to verify that all these libraries are still used
-#include <Adafruit_GFX.h>
-//#include "Fonts/FreeMonoBold24pt7b.h"
-//#include "Fonts/FreeMonoBold18pt7b.h"
-//#include "Fonts/FreeMono24pt7b.h"
-//#include "Fonts/FreeMono9pt7b.h"
-#include <Audio.h>
-#include <OpenAudio_ArduinoLibrary.h>  // https://github.com/chipaudette/OpenAudio_ArduinoLibrary
-#include <TimeLib.h>                   // Part of Teensy Time library
-#include <Wire.h>
-#include <SPI.h>
-#include <SD.h>
-#include <Metro.h>
-#include <Bounce.h>
-#include <arm_math.h>
-#include <arm_const_structs.h>
-#include <si5351.h>                    // https://github.com/etherkit/Si5351Arduino
-#ifdef NO_DISPLAY
-#include "RA8875.h"
-#else
-#include <RA8875.h>                    // https://github.com/mjs513/RA8875/tree/RA8875_t4
+#include <Arduino.h>
+
+#ifndef float32_t
+typedef float float32_t;
 #endif
-#include <Rotary.h>                    // https://github.com/brianlow/Rotary
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <util/crc16.h>                // mdrhere
-#include <utility/imxrt_hw.h>          // for setting I2S freq
-#include <EEPROM.h> // ???
 
-extern bool connected;
-extern uint8_t freqData[512];
-extern uint8_t audioData[270];
+#ifndef uint8_t
+typedef __uint8_t uint8_t;
+#endif
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-#define BOGUS_PIN_READ             -1 // If no push button read
-#define FFT_LENGTH                512
-
-#define NUMBER_OF_BANDS           7
-#define BAND_80M                  0
-#define BAND_40M                  1
-#define BAND_20M                  2
-#define BAND_17M                  3
-#define BAND_15M                  4
-#define BAND_12M                  5
-#define BAND_10M                  6
-
-#define SSB_MODE                    0
-#define CW_MODE                     1
-#define DATA_MODE                    2
-
-#define OFF                         0
-#define ON                          1
+// Radio State
+#define SSB_RECEIVE_STATE 0
+#define SSB_TRANSMIT_STATE 1
+#define CW_RECEIVE_STATE 2
+#define CW_TRANSMIT_STRAIGHT_STATE 3
+#define CW_TRANSMIT_KEYER_STATE 4
+#define CALIBRATE_STATE 5
 
 // demodulation modes
 #define DEMOD_MIN                   0
@@ -75,7 +38,21 @@ extern uint8_t audioData[270];
 #define DEMOD_SAM                   8
 #define DEMOD_MAX                   8
 
-#define BUFFER_SIZE                 128
+#define NUMBER_OF_BANDS           7
+#define BAND_80M                  0
+#define BAND_40M                  1
+#define BAND_20M                  2
+#define BAND_17M                  3
+#define BAND_15M                  4
+#define BAND_12M                  5
+#define BAND_10M                  6
+
+#define SSB_MODE                  0
+#define CW_MODE                   1
+#define DATA_MODE                 2
+
+#define OFF                       0
+#define ON                        1
 
 //---- Global Teensy 4.1 Pin assignments
 #define RXTX                        22    // Transmit/Receive
@@ -89,87 +66,28 @@ extern uint8_t audioData[270];
 #endif
 //---- End Global Teensy 4.1 Pin assignments
 
-//************************************* End Global Defines ************************
-
-//************************************* Clean up stuff to fix ************************
+#define CLEAR_VAR(x) memset(x, 0, sizeof(x))
+#define SET_VAR(x,y) memset(x, y, sizeof(x))
 
 // delete once we get rid of global working variables
 #include "gwv.h"
 
-// Radio State
-#define SSB_RECEIVE_STATE 0
-#define SSB_TRANSMIT_STATE 1
-#define CW_RECEIVE_STATE 2
-#define CW_TRANSMIT_STRAIGHT_STATE 3
-#define CW_TRANSMIT_KEYER_STATE 4
-#define CALIBRATE_STATE 5
-
-//************************************* End: Clean up stuff to fix ************************
-
-// *** these need to be properly alligned for some CW functions ***
-extern byte sharedRAM1[1024 * 8] __attribute__ ((aligned (4)));;
-extern byte /*DMAMEM*/ sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));
+// radio hardware and state global variables
 
 extern int radioState, lastState;  // Used by the loop to monitor current state.
-extern long CWFreqShift;
-extern long calFreqShift;
 
-extern long NCOFreq;
+extern float32_t float_buffer_L[];
+extern float32_t float_buffer_R[];
+extern float32_t float_buffer_L_EX[];
+extern float32_t float_buffer_R_EX[];
+extern float32_t float_buffer_Temp[];
 
-extern arm_fir_interpolate_instance_f32 FIR_int1_EX_I;
-extern arm_fir_interpolate_instance_f32 FIR_int1_EX_Q;
-extern arm_fir_interpolate_instance_f32 FIR_int2_EX_I;
-extern arm_fir_interpolate_instance_f32 FIR_int2_EX_Q;
-
-extern float32_t  FIR_int1_EX_I_state[];
-extern float32_t  FIR_int1_EX_Q_state[];
-
-extern float32_t  float_buffer_L_EX[];
-extern float32_t  float_buffer_R_EX[];
-extern float32_t  float_buffer_Temp[];
-
-extern Bounce selectExitMenues;
-
-extern Rotary volumeEncoder;        // (2,  3)
-extern Rotary tuneEncoder;          // (16, 17)
-extern Rotary menuChangeEncoder;        // (14, 15)
-extern Rotary fineTuneEncoder;  // (4,  5);
-
-extern Si5351 si5351;
-
-extern const int SampleRate;
-
-extern const arm_cfft_instance_f32 *S;
-extern const arm_cfft_instance_f32 *iS;
-extern const arm_cfft_instance_f32 *maskS;
-extern const arm_cfft_instance_f32 *NR_FFT;
-extern const arm_cfft_instance_f32 *NR_iFFT;
-extern const arm_cfft_instance_f32 *spec_FFT;
-
-extern arm_biquad_casd_df1_inst_f32 biquad_lowpass1;
-extern arm_biquad_casd_df1_inst_f32 IIR_biquad_Zoom_FFT_I;
-extern arm_biquad_casd_df1_inst_f32 IIR_biquad_Zoom_FFT_Q;
-
-extern arm_fir_decimate_instance_f32 FIR_dec1_I;
-extern arm_fir_decimate_instance_f32 FIR_dec1_Q;
-extern arm_fir_decimate_instance_f32 FIR_dec2_I;
-extern arm_fir_decimate_instance_f32 FIR_dec2_Q;
-extern arm_fir_decimate_instance_f32 Fir_Zoom_FFT_Decimate_I;
-extern arm_fir_decimate_instance_f32 Fir_Zoom_FFT_Decimate_Q;
-extern arm_fir_interpolate_instance_f32 FIR_int1_I;
-extern arm_fir_interpolate_instance_f32 FIR_int1_Q;
-extern arm_fir_interpolate_instance_f32 FIR_int2_I;
-extern arm_fir_interpolate_instance_f32 FIR_int2_Q;
-extern arm_lms_norm_instance_f32 LMS_Norm_instance;
-extern arm_lms_instance_f32      LMS_instance;
-extern elapsedMicros usec;
-
-struct band {
+typedef struct {
   long freq;      // Current frequency in Hz * 100
   long fBandLow;  // Lower band edge
   long fBandHigh; // Upper band edge
   const char* name; // name of band
-  int mode;
+  int demod;
   int FHiCut;
   int FLoCut;
   int RFgain;
@@ -177,33 +95,13 @@ struct band {
   float32_t gainCorrection; // is hardware dependent and has to be calibrated ONCE and hardcoded in the band table
   int AGC_thresh;
   int16_t pixel_offset;
-};
-extern struct band bands[];
+} band;
 
-extern const uint16_t n_dec1_taps;
-extern const uint16_t n_dec2_taps;
+extern band bands[];
+
 extern int bandswitchPins[];
-extern volatile int menuEncoderMove;
-extern volatile long fineTuneEncoderMove;
-extern const float32_t DF;
-extern const float32_t DF1;           // decimation factor
-extern const float32_t n_att;         // desired stopband attenuation
 
-extern uint32_t N_BLOCKS;
-extern uint32_t FFT_length;
-
-extern float32_t bin_BW;
-extern float32_t biquad_lowpass1_coeffs[];
-extern float32_t float_buffer_L[];
-extern float32_t float_buffer_R[];
-extern float32_t /*DMAMEM*/ iFFT_buffer[];
-
-extern float32_t FIR_dec1_coeffs[];
-extern float32_t FIR_dec2_coeffs[];
-
-extern float32_t last_sample_buffer_L[];
-extern float32_t last_sample_buffer_R[];
-
-extern float temp;
-
-time_t getTeensy3Time();
+// shared memory to allow added features (FT8 for example which uses a lot of heap)
+// *** these need to be properly alligned for some CW functions ***
+extern byte sharedRAM1[1024 * 8] __attribute__ ((aligned (4)));
+extern byte /*DMAMEM*/ sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));

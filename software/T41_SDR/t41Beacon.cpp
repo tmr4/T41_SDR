@@ -1,14 +1,7 @@
-#include "SDT.h"
 
-//#include "ButtonProc.h"
-//#include "Display.h"
-//#include "Encoders.h"
-//#include "EEPROM.h"
-//#include "keyboard.h"
-//#include "InfoBox.h"
-//#include "MenuProc.h"
-//#include "mouse.h"
-//#include "Tune.h"
+#include <TimeLib.h>                   // Part of Teensy Time library
+
+#include "SDT.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data

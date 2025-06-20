@@ -1,11 +1,14 @@
+#include <Audio.h>
+#include <Metro.h>
+
 #include "SDT.h"
+
 #include "Bearing.h"
 #include "Button.h"
 #include "ButtonProc.h"
 #include "CW_Excite.h"
 #include "CWProcessing.h"
 #include "Display.h"
-#include "DSP_Fn.h"
 #include "Encoders.h"
 //#include "EEPROM.h"
 #include "Exciter.h"
@@ -189,8 +192,6 @@ const DEMOD_Descriptor DEMOD[8] = {
   { DEMOD_FT8, "(FT8)" },
 };
 
-Metro ms_500 = Metro(500);  // Set up a Metro
-
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
@@ -201,6 +202,38 @@ void DrawAudioSpectContainer();
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
+
+void InitDisplay() {
+  // set up display
+  pinMode(TFT_MOSI, OUTPUT);
+  digitalWrite(TFT_MOSI, HIGH);
+  pinMode(TFT_SCLK, OUTPUT);
+  digitalWrite(TFT_SCLK, HIGH);
+  pinMode(TFT_CS, OUTPUT);
+  digitalWrite(TFT_CS, HIGH);
+
+  // *** is this setting the spi speed??? ***
+  uint32_t iospeed_display = IOMUXC_PAD_DSE(3) | IOMUXC_PAD_SPEED(1);
+  *(digital_pin_to_info_PGM + TFT_SCLK)->pad = iospeed_display;
+  *(digital_pin_to_info_PGM + TFT_MOSI)->pad = iospeed_display;
+  *(digital_pin_to_info_PGM + TFT_CS)->pad = iospeed_display;
+
+  tft.begin(RA8875_800x480, 8, 20000000UL, 4000000UL);  // parameter list from library code
+#ifdef FOURSQRP
+  tft.setRotation(0);
+#endif
+#ifdef PROJECTSYSTEM
+  tft.setRotation(2);
+#endif
+
+  // Setup for scrolling attributes. Part of initSpectrum_RA8875() call written by Mike Lewis
+  tft.useLayers(true); // mainly used to turn on layers
+  tft.layerEffect(OR); // overlay layers
+  tft.writeTo(L2);
+  tft.clearMemory();
+  tft.writeTo(L1);
+  tft.clearMemory();
+}
 
 /*****
   Purpose: Show the program name and version number
@@ -251,13 +284,13 @@ void DrawAudioFilterLines() {
   // draw fiter indicator lines on the audio spectrum
 
   // set color of active filter bar to green
-  switch (bands[currentBand].mode) {
+  switch(bands[currentBand].demod) {
     case DEMOD_USB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
     case DEMOD_FT8_WAV:
     case DEMOD_FT8:
-      if (lowerAudioFilterActive) {
+      if(lowerAudioFilterActive) {
         filterLoColor = RA8875_GREEN;
         filterHiColor = RA8875_LIGHT_GREY;
       } else {
@@ -272,7 +305,7 @@ void DrawAudioFilterLines() {
       break;
 
     case DEMOD_LSB:
-      if (lowerAudioFilterActive) {
+      if(lowerAudioFilterActive) {
         filterLoColor = RA8875_LIGHT_GREY;
         filterHiColor = RA8875_GREEN;
       } else {
@@ -282,11 +315,11 @@ void DrawAudioFilterLines() {
       break;
 
     case DEMOD_NFM:
-      if (nfmBWFilterActive) {
+      if(nfmBWFilterActive) {
         filterLoColor = RA8875_LIGHT_GREY;
         filterHiColor = RA8875_LIGHT_GREY;
       } else {
-        if (lowerAudioFilterActive) {
+        if(lowerAudioFilterActive) {
           filterLoColor = RA8875_GREEN;
           filterHiColor = RA8875_LIGHT_GREY;
         } else {
@@ -329,7 +362,7 @@ void DrawAudioFilterLines() {
 *****/
 FASTRUN void UpdateControls(bool updateDisplay) {
   // update filters if changed
-  if (posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
+  if(posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
     SetBWFilters();
 
     //if(updateDisplay)
@@ -344,7 +377,7 @@ FASTRUN void UpdateControls(bool updateDisplay) {
 #ifdef USB_HOST_SUPPORT
   // poll USB Host at about 125 Hz
   int now = millis();
-  if (now - last_usb_read > 8) {
+  if(now - last_usb_read > 8) {
     UsbHostLoop();
     last_usb_read = now;
   }
@@ -437,9 +470,9 @@ FASTRUN void ShowSpectrum() {
   }
 
   // Draw the main Spectrum, Waterfall and Audio displays
-  for (int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
+  for(int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
     // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
-    if (x1 == 0) {
+    if(x1 == 0) {
       // Set flag so the display FFTs are calculated only once during each display refresh cycle
       updateSpectrumData = true;
     } else {
@@ -482,24 +515,27 @@ FASTRUN void ShowSpectrum() {
     }
 
     // Prevent spectrum from going below the bottom of the spectrum area
-    if (y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
-    if (y1_new_plot > SPECTRUM_BOTTOM) y1_new_plot = SPECTRUM_BOTTOM;
-    if (y_old_plot > SPECTRUM_BOTTOM) y_old_plot = SPECTRUM_BOTTOM;
-    if (y1_old_plot > SPECTRUM_BOTTOM) y1_old_plot = SPECTRUM_BOTTOM;
+    if(y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
+    if(y1_new_plot > SPECTRUM_BOTTOM) y1_new_plot = SPECTRUM_BOTTOM;
+    if(y_old_plot > SPECTRUM_BOTTOM) y_old_plot = SPECTRUM_BOTTOM;
+    if(y1_old_plot > SPECTRUM_BOTTOM) y1_old_plot = SPECTRUM_BOTTOM;
 
     // Prevent spectrum from going above the top of the spectrum area
-    if (y_new_plot < SPECTRUM_TOP_Y) y_new_plot = SPECTRUM_TOP_Y;
-    if (y1_new_plot < SPECTRUM_TOP_Y) y1_new_plot = SPECTRUM_TOP_Y;
-    if (y_old_plot < SPECTRUM_TOP_Y) y_old_plot = SPECTRUM_TOP_Y;
-    if (y1_old_plot < SPECTRUM_TOP_Y) y1_old_plot = SPECTRUM_TOP_Y;
+    if(y_new_plot < SPECTRUM_TOP_Y) y_new_plot = SPECTRUM_TOP_Y;
+    if(y1_new_plot < SPECTRUM_TOP_Y) y1_new_plot = SPECTRUM_TOP_Y;
+    if(y_old_plot < SPECTRUM_TOP_Y) y_old_plot = SPECTRUM_TOP_Y;
+    if(y1_old_plot < SPECTRUM_TOP_Y) y1_old_plot = SPECTRUM_TOP_Y;
 
     // Erase the old spectrum, and draw the new spectrum.
     tft.drawLine(SPECTRUM_LEFT_X + x1, y1_old_plot, SPECTRUM_LEFT_X + x1, y_old_plot, RA8875_BLACK);
     tft.drawLine(SPECTRUM_LEFT_X + x1, y1_new_plot, SPECTRUM_LEFT_X + x1, y_new_plot, RA8875_YELLOW);
 
+#ifdef T41_REMOTE_DISPLAY
     if(connected) {
       freqData[x1] = y_new_plot;
     }
+#endif
+
     // What is the actual spectrum at this time?  It's a combination of the old and new spectrums
     // In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum
     // This is the actual "old" spectrum!  This is required due to CW interrupts
@@ -508,15 +544,15 @@ FASTRUN void ShowSpectrum() {
 
     // update audio spectrum
     // don't overwrite right edge of audio spectrum box or audio filter lines
-    if (x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
+    if(x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
       // *** TODO: consider adding audio spectrum for transmission ***
       // erase old audio spectrum line at this position (including filter lines)
       tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
 
       // draw current audio spectrum line at this position
-      if (audioYPixel[x1] != 0) {
+      if(audioYPixel[x1] != 0) {
         // maintain spectrum within box
-        if (audioYPixel[x1] > CLIP_AUDIO_PEAK)
+        if(audioYPixel[x1] > CLIP_AUDIO_PEAK)
         {
           audioYPixel[x1] = CLIP_AUDIO_PEAK;
         }
@@ -528,9 +564,9 @@ FASTRUN void ShowSpectrum() {
     int test1;
     test1 = -y_new_plot + 230;  // Nudged waterfall towards blue
     //test1 = (int)(x1 / 50) + currentNF * 10; // test color gradient
-    if (test1 < 0) test1 = 0;
-    //if (test1 > 117) test1 = 117;
-    if (test1 > 116) test1 = 116; // *** above is out of range of gradient
+    if(test1 < 0) test1 = 0;
+    //if(test1 > 117) test1 = 117;
+    if(test1 > 116) test1 = 116; // *** above is out of range of gradient
     waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array
 
 #ifdef NO_DISPLAY
@@ -548,9 +584,11 @@ FASTRUN void ShowSpectrum() {
 
   oldNF = currentNF; // save the noise floor we used for this spectrum
 
+#ifdef T41_REMOTE_DISPLAY
   if(connected) {
     freqData[511] = pixelnew[SPECTRUM_RES - 1];
   }
+#endif
 
   // adjust noise floor if auto noise floor is active
   if(liveNoiseFloorFlag == 1) {
@@ -571,11 +609,11 @@ FASTRUN void ShowSpectrum() {
   // Use the Block Transfer Engine (BTE) to move waterfall down a line
   // copy the waterfall to layer 2, moving it down to row 2
   tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-  while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+  while(tft.readStatus())  // Make sure it is done.  Memory moves can take time.
     ;
   // copy the waterfall back to layer 1, row 2
   tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
-  while (tft.readStatus())  // Make sure it's done.
+  while(tft.readStatus())  // Make sure it's done.
     ;
 
   // write new row of data into the top row to finish the scrolling effect
@@ -585,11 +623,6 @@ FASTRUN void ShowSpectrum() {
   //if(ft8MsgSelectActive) {
   if(ft8MsgSelectActive) {
     DisplayMessages();
-  }
-
-  // update clock
-  if (ms_500.check() == 1) {
-    DisplayClock();
   }
 }
 
@@ -614,9 +647,9 @@ FLASHMEM void ShowBandwidthBarValues() {
   float hiValue = (float)(bands[currentBand].FHiCut / 1000.0f);
 
   //pixel_per_khz = 0.0055652173913043;  // Al: I factored this constant: 512/92000;
-  //pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES * 1000.0 / SampleRate) ;
+  //pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES * 1000.0 / 192000.0) ;
   //pos_left = centerLine + ((int)(bands[currentBand].FLoCut / 1000.0 * pixel_per_khz));
-  //if (pos_left < spectrum_x) {
+  //if(pos_left < spectrum_x) {
   //  pos_left = spectrum_x;
   //}
 
@@ -634,14 +667,14 @@ FLASHMEM void ShowBandwidthBarValues() {
   tft.fillRect(posLeft, FILTER_PARAMETERS_Y, 200, tft.getFontHeight(), RA8875_BLACK);
 
   // set color of active filter value to green
-  switch (bands[currentBand].mode) {
+  switch(bands[currentBand].demod) {
     case DEMOD_USB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
     case DEMOD_FT8_WAV:
     case DEMOD_FT8:
       if(!ft8MsgSelectActive) {
-        if (lowerAudioFilterActive) {
+        if(lowerAudioFilterActive) {
           loColor = RA8875_GREEN;
         } else {
           hiColor = RA8875_GREEN;
@@ -650,7 +683,7 @@ FLASHMEM void ShowBandwidthBarValues() {
       break;
 
     case DEMOD_LSB:
-      if (lowerAudioFilterActive) {
+      if(lowerAudioFilterActive) {
         hiColor = RA8875_GREEN;
       } else {
         loColor = RA8875_GREEN;
@@ -658,7 +691,7 @@ FLASHMEM void ShowBandwidthBarValues() {
       break;
 
     case DEMOD_NFM:
-      if (nfmBWFilterActive) {
+      if(nfmBWFilterActive) {
         hiColor = RA8875_GREEN;
       }
       hiValue = (float)(nfmFilterBW / 1000.0f);
@@ -675,7 +708,7 @@ FLASHMEM void ShowBandwidthBarValues() {
       break;
   }
 
-  if(bands[currentBand].mode != DEMOD_NFM) {
+  if(bands[currentBand].demod != DEMOD_NFM) {
     tft.setTextColor(loColor);
     MyDrawFloat(loValue, 1, posLeft, FILTER_PARAMETERS_Y, buff);
     tft.print("kHz");
@@ -735,7 +768,7 @@ FLASHMEM void ShowSpectrumFreqValues() {
     { -43, 21, 50, 85, 200, 200, 232, 218, 315 }
   };
 
-  grat = (float)(SampleRate / 8000.0) / (float)(1 << spectrumZoom);  // 1, 2, 4, 8, 16, 32, 64 . . . 4096
+  grat = 24.0 / (float)(1 << spectrumZoom);  // 24 = sample rate / 8
 
   tft.setTextColor(RA8875_WHITE);
   tft.setFontScale((enum RA8875tsize)0);
@@ -746,24 +779,24 @@ FLASHMEM void ShowSpectrumFreqValues() {
   freq_calc = (float)(centerFreq / NEW_SI5351_FREQ_MULT);  // get current frequency in Hz
 
   // TODO: *** this is misplaced *** shows problem with original code transitioning between VFOs
-  //if (activeVFO == VFO_A) {
+  //if(activeVFO == VFO_A) {
   //  currentFreqA = TxRxFreq;
   //} else {
   //  currentFreqB = TxRxFreq;
   //}
 
-  if (spectrumZoom == 0) {
-    freq_calc += (float32_t)SampleRate / 4.0;
+  if(spectrumZoom == 0) {
+    freq_calc += 48000.0; // intermediate freq
   }
 
   // TODO: *** these are the same ***
-  if (spectrumZoom < 5) {
+  if(spectrumZoom < 5) {
     freq_calc = roundf(freq_calc / 1000);  // round graticule frequency to the nearest kHz
-  //} else if (spectrumZoom < 5) {
+  //} else if(spectrumZoom < 5) {
   //  freq_calc = roundf(freq_calc / 100) / 10;  // round graticule frequency to the nearest 100Hz
   }
 
-  if (spectrumZoom != 0)
+  if(spectrumZoom != 0)
     centerIdx = 0;
   else
     centerIdx = -2;
@@ -778,7 +811,7 @@ FLASHMEM void ShowSpectrumFreqValues() {
 
   tft.setTextColor(RA8875_GREEN);
 
-  if (spectrumZoom == 0) {
+  if(spectrumZoom == 0) {
     tft.setCursor(centerLine - 140, SPEC_BOX_LABELS);
   } else {
     tft.setCursor(centerLine - 20, SPEC_BOX_LABELS);
@@ -791,19 +824,19 @@ FLASHMEM void ShowSpectrumFreqValues() {
      PRINT ALL OTHER FREQUENCIES (NON-CENTER)
    **************************************************************************************************/
   // snprint() extremely memory inefficient. replaced with simple str?? functions
-  for (int idx = -4; idx < 5; idx++) {
+  for(int idx = -4; idx < 5; idx++) {
     pos_help = idx2pos[spectrumZoom < 3 ? 0 : 1][idx + 4];
-    if (idx != centerIdx) {
+    if(idx != centerIdx) {
       ultoa((freq_calc + (idx * grat)), txt, DEC);
 
-      if (idx < 4) {
+      if(idx < 4) {
         tft.setCursor(SPECTRUM_LEFT_X + pos_help * xExpand + 40, SPEC_BOX_LABELS);
       } else {
         tft.setCursor(SPECTRUM_LEFT_X + (pos_help + 9) * xExpand + 59 - strlen(txt)*tft.getFontWidth(), SPEC_BOX_LABELS);
       }
 
       tft.print(txt);
-      if (idx < 4) {
+      if(idx < 4) {
         tft.drawFastVLine((SPECTRUM_LEFT_X + pos_help * xExpand + 60), SPEC_BOX_LABELS - 5, 7, RA8875_YELLOW);  // Tick marks depending on zoom
       } else {
         tft.drawFastVLine((SPECTRUM_LEFT_X + (pos_help + 9) * xExpand + 59), SPEC_BOX_LABELS - 5, 7, RA8875_YELLOW);
@@ -811,7 +844,7 @@ FLASHMEM void ShowSpectrumFreqValues() {
     }
 
     // TODO: *** ??? display is messed up for frequencies under 1000 ***
-    if (spectrumZoom > 2 || freq_calc > 1000) {
+    if(spectrumZoom > 2 || freq_calc > 1000) {
       idx++;
     }
   }
@@ -839,7 +872,7 @@ FLASHMEM void ShowOperatingStats() {
   tft.print("Center Freq");
   tft.setCursor(OPERATION_STATS_CF, OPERATION_STATS_T);
   tft.setTextColor(RA8875_LIGHT_ORANGE);
-  if (spectrumZoom == 0) {
+  if(spectrumZoom == 0) {
     tft.print(centerFreq + 48000);
   } else {
     tft.print(centerFreq);
@@ -848,7 +881,7 @@ FLASHMEM void ShowOperatingStats() {
   // print band for the active VFO
   tft.setTextColor(RA8875_LIGHT_ORANGE);
   tft.setCursor(OPERATION_STATS_BD, OPERATION_STATS_T);
-  if (activeVFO == VFO_A) {
+  if(activeVFO == VFO_A) {
     tft.print(bands[currentBandA].name);  // Show band -- 40M
   } else {
     tft.print(bands[currentBandB].name);  // Show band -- 40M
@@ -876,17 +909,17 @@ FLASHMEM void ShowOperatingStats() {
   tft.setCursor(OPERATION_STATS_DMD, OPERATION_STATS_T);
   tft.setTextColor(RA8875_WHITE);
 
-  switch (bands[currentBand].mode) {
+  switch(bands[currentBand].demod) {
     case DEMOD_USB:
     case DEMOD_LSB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
     case DEMOD_FT8:
     case DEMOD_FT8_WAV:
-      if (activeVFO == VFO_A) {
-        tft.print(DEMOD[bands[currentBandA].mode].text);
+      if(activeVFO == VFO_A) {
+        tft.print(DEMOD[bands[currentBandA].demod].text);
       } else {
-        tft.print(DEMOD[bands[currentBandB].mode].text);
+        tft.print(DEMOD[bands[currentBandB].demod].text);
       }
       break;
 
@@ -938,7 +971,7 @@ FLASHMEM void UpdateCWFilter() {
 
   tft.writeTo(L2);
   if(xmtMode == CW_MODE) {
-    switch (CWFilterIndex) {
+    switch(CWFilterIndex) {
       case 0:
         CWFilterPosition = 35.7;  // 0.84 * 42.5;
         break;
@@ -983,7 +1016,7 @@ FASTRUN void ShowFrequency() {
   char freqBuffer[15];
 
   // *** do this in the proper place if this is needed ***
-  //if (activeVFO == VFO_A) {  // Needed for edge checking
+  //if(activeVFO == VFO_A) {  // Needed for edge checking
   //  currentBand = currentBandA;
   //} else {
   //  currentBand = currentBandB;
@@ -994,8 +1027,8 @@ FASTRUN void ShowFrequency() {
 //  tft.fillRect(0, FREQUENCY_Y, SPEC_BOX_W, tft.getFontHeight(), RA8875_BLACK);
   tft.fillRect(FREQUENCY_X, FREQUENCY_Y, TIME_X - 20, tft.getFontHeight(), RA8875_BLACK);
 
-  if (activeVFO == VFO_A) {
-    if (TxRxFreq < bands[currentBandA].fBandLow || TxRxFreq > bands[currentBandA].fBandHigh) {
+  if(activeVFO == VFO_A) {
+    if(TxRxFreq < bands[currentBandA].fBandLow || TxRxFreq > bands[currentBandA].fBandHigh) {
       tft.setTextColor(RA8875_RED);  // Out of band
     } else {
       tft.setTextColor(RA8875_GREEN); // In US band
@@ -1008,7 +1041,7 @@ FASTRUN void ShowFrequency() {
     tft.setCursor(VFO_B_INACTIVE_OFFSET, FREQUENCY_Y);
     FormatFrequency(currentFreqB, freqBuffer);
   } else { // VFO_B
-    if (TxRxFreq < bands[currentBandB].fBandLow || TxRxFreq > bands[currentBandB].fBandHigh) {
+    if(TxRxFreq < bands[currentBandB].fBandLow || TxRxFreq > bands[currentBandB].fBandHigh) {
       tft.setTextColor(RA8875_RED);
     } else {
       tft.setTextColor(RA8875_GREEN);
@@ -1027,12 +1060,8 @@ FASTRUN void ShowFrequency() {
 
 // *** TODO: this only needs to be global for the beacon monitor ***
 float32_t dbm;
-//DB2OO, this variable determines the pixels per S step. In the original code it was 12.2 pixels !?
-#ifdef TCVSDR_SMETER
+// this variable determines the pixels per S step. In the original code it was 12.2 pixels !?
 const float pixels_per_s = 12;
-#else
-const float pixels_per_s = 12.2;
-#endif
 /*****
   Purpose: Display dBm
 
@@ -1047,67 +1076,44 @@ FASTRUN void DrawSmeterBar() {
   //const char *unit_label;
   int16_t smeterPad;
   float32_t dbm_calibration = 22.0;
-#ifdef TCVSDR_SMETER
   const float32_t slope = 10.0;
   const float32_t cons = -92;
-#else
-  float32_t audioLogAveSq;
-#endif
 
   // *** it's easiest for now to handle multiple display "pages" by limiting S-meter display
   // updates here to when displayScreen is set to DISPLAY_T41, messy, but it works.
   // Refinesments are possible. ***
 
-  //DB2OO, 30-AUG-23: the S-Meter bar and the dBm value were inconsistent, as they were using different base values.
+  // the S-Meter bar and the dBm value were inconsistent, as they were using different base values.
   // Moreover the bar could go over the limits of the S-meter box, as the map() function, does not constrain the values
-  // with TCVSDR_SMETER defined the S-Meter bar will be consistent with the dBm value and the S-Meter bar will always be restricted to the box
+  // S-Meter bar is consistent with the dBm value and the S-Meter bar will always be restricted to the box
   if(displayScreen == DISPLAY_T41) {
     tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
   }
-#ifdef TCVSDR_SMETER
-  //DB2OO, 9-OCT_23: dbm_calibration set to -22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
+
+  // dbm_calibration set to -22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
   // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
   dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) +
-        cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands; //DB2OO, 08-OCT-23; added rfGainAllBands
-#else
-  //DB2OO, 9-OCT-23: audioMaxSquaredAve is proportional to the input power. With rfGainAllBands=0 it is approx. 40 for -73dBm @ 14074kHz with the V010 boards and the pre-Amp fed by 12V
-  // for audioMaxSquaredAve=40 audioLogAveSq will be 26
-  audioLogAveSq = 10 * log10f_fast(audioMaxSquaredAve) + 10;
-  //DB2OO, 9-OCT-23: calculate dBm value from audioLogAveSq and ignore band gain differences and a potential attenuator like in original code
-  dbm = audioLogAveSq - 100;
+        cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands; // added rfGainAllBands
 
-//DB2OO, 9-OCT-23: this is the orginal code, that will map a 30dB difference (35-5) to 60 (635-575) pixels, i.e. 5 S steps to 5*12 pixels
-// SMETER_X is 528 --> X=635 would be 107 pixels / 12pixels per S step --> approx. S9
-//  smeterPad = map(audioLogAveSq, 5, 35, 575, 635);
-//  tft.fillRect(SMETER_X + 1, SMETER_Y + 1, smeterPad - SMETER_X, SMETER_BAR_HEIGHT, RA8875_RED);
-#endif
   // determine length of S-meter bar, limit it to the box and draw it
   smeterPad = map(dbm, -73.0-9*6.0 /*S1*/, -73.0 /*S9*/, 0, 9*pixels_per_s);
-  //DB2OO; make sure, that it does not extend beyond the field
+
+  // make sure, that it does not extend beyond the field
   smeterPad = max(0, smeterPad);
   smeterPad = min(SMETER_BAR_LENGTH, smeterPad);
   if(displayScreen == DISPLAY_T41) {
-    tft.fillRect(SMETER_X + 1, SMETER_Y + 2, smeterPad, SMETER_BAR_HEIGHT-2, RA8875_RED); //DB2OO: bar 2*1 pixel smaller than the field
+    tft.fillRect(SMETER_X + 1, SMETER_Y + 2, smeterPad, SMETER_BAR_HEIGHT-2, RA8875_RED); // bar 2*1 pixel smaller than the field
 
     tft.setTextColor(RA8875_WHITE);
   }
-
-  //DB2OO, 17-AUG-23: create PWM analog output signal on the "HW_SMETER" output. This is scaled for a 250uA  S-meter full scale,
-  // connected to HW_SMTER output via a 8.2kOhm resistor and a 4.7kOhm resistor and 10uF capacitor parallel to the S-Meter
-#ifdef HW_SMETER
-  { int hw_s;
-    hw_s = map((int)dbm-3, -73-(8*6), -73+60, 0, 228);
-    hw_s = max(0, min(hw_s, 255));
-    analogWrite(HW_SMETER, hw_s);
-  }
-#endif
 
   if(displayScreen == DISPLAY_T41) {
     //unit_label = "dBm";
     tft.setFontScale((enum RA8875tsize)0);
 
     tft.fillRect(SMETER_X + 185, SMETER_Y, 80, tft.getFontHeight(), RA8875_BLACK);  // The dB figure at end of S
-    //DB2OO, 29-AUG-23: consider no decimals in the S-meter dBm value as it is very busy with decimals
+
+    // consider no decimals in the S-meter dBm value as it is very busy with decimals
     MyDrawFloat(dbm, /*0*/ 1, SMETER_X + 184, SMETER_Y, buff);
     tft.setTextColor(RA8875_GREEN);
     tft.print("dBm");
@@ -1116,7 +1122,6 @@ FASTRUN void DrawSmeterBar() {
   if(controlDataFlag) {
     SendSmeter(smeterPad, dbm);
   }
-
 }
 
 /*****
@@ -1191,7 +1196,7 @@ FASTRUN void DrawBandwidthBar() {
   float32_t pixel_per_khz;
   int NCOFreqX;
 
-  switch (spectrumZoom) {
+  switch(spectrumZoom) {
     case 0:
       zoomMultFactor = 0.5;
       Zoom1Offset = 24000 * 0.0053333;
@@ -1215,11 +1220,11 @@ FASTRUN void DrawBandwidthBar() {
   }
   NCOFreqX = (int)(NCOFreq * 0.0053333) * zoomMultFactor - Zoom1Offset;
 
-  pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES * 1000.0 / SampleRate);
+  pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES / 192.0);
   newFilterWidth = (int)(((bands[currentBand].FHiCut - bands[currentBand].FLoCut) / 1000.0) * pixel_per_khz * 1.06);
 
   // make sure bandwidth is within zoom range
-  switch (bands[currentBand].mode) {
+  switch(bands[currentBand].demod) {
     case DEMOD_USB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
@@ -1254,7 +1259,7 @@ FASTRUN void DrawBandwidthBar() {
 
   // update bar if we haven't reset tuning, otherwise this gets recalled by that routine
   if(!resetTuningFlag) {
-    switch (bands[currentBand].mode) {
+    switch(bands[currentBand].demod) {
       case DEMOD_USB:
       case DEMOD_PSK31_WAV:
       case DEMOD_PSK31:
@@ -1342,30 +1347,22 @@ FLASHMEM void EraseSpectrumWindow() {
 *****/
 FLASHMEM void DrawSMeterContainer() {
   int i;
-  // DB2OO, 30-AUG-23: the white line must only go till S9
+  //  the white line must only go till S9
   tft.drawFastHLine(SMETER_X, SMETER_Y - 1, 9 * pixels_per_s, RA8875_WHITE);
   tft.drawFastHLine(SMETER_X, SMETER_Y + SMETER_BAR_HEIGHT+2, 9 * pixels_per_s, RA8875_WHITE);  // changed 6 to 20
 
-  for (i = 0; i < 10; i++) {                                                // Draw tick marks for S-values
-#ifdef TCVSDR_SMETER
-    //DB2OO, 30-AUG-23: draw wider tick marks in the style of the Teensy Convolution SDR
+  for(i = 0; i < 10; i++) {                                                // Draw tick marks for S-values
+    // draw wider tick marks in the style of the Teensy Convolution SDR
     tft.drawRect(SMETER_X + i * pixels_per_s, SMETER_Y - 6-(i%2)*2, 2, 6+(i%2)*2, RA8875_WHITE);
-#else
-    tft.drawFastVLine(SMETER_X + i * 12.2, SMETER_Y - 6, 7, RA8875_WHITE);
-#endif
   }
 
-  // DB2OO, 30-AUG-23: the green line must start at S9
+  //  the green line must start at S9
   tft.drawFastHLine(SMETER_X + 9*pixels_per_s, SMETER_Y - 1, SMETER_BAR_LENGTH+2-9*pixels_per_s, RA8875_GREEN);
   tft.drawFastHLine(SMETER_X + 9*pixels_per_s, SMETER_Y + SMETER_BAR_HEIGHT+2, SMETER_BAR_LENGTH+2-9*pixels_per_s, RA8875_GREEN);
 
-  for (i = 1; i <= 3; i++) {                                                     // Draw tick marks for s9+ values in 10dB steps
-#ifdef TCVSDR_SMETER
-    //DB2OO, 30-AUG-23: draw wider tick marks in the style of the Teensy Convolution SDR
+  for(i = 1; i <= 3; i++) {                                                     // Draw tick marks for s9+ values in 10dB steps
+    // draw wider tick marks in the style of the Teensy Convolution SDR
     tft.drawRect(SMETER_X + 9*pixels_per_s + i * pixels_per_s*10.0/6.0, SMETER_Y - 8+(i%2)*2, 2, 8-(i%2)*2, RA8875_GREEN);
-#else
-    tft.drawFastVLine(SMETER_X + 9*pixels_per_s + i * pixels_per_s*10.0/6.0, SMETER_Y - 6, 7, RA8875_GREEN);
-#endif
   }
 
   tft.drawFastVLine(SMETER_X, SMETER_Y - 1, SMETER_BAR_HEIGHT+3, RA8875_WHITE);
@@ -1374,7 +1371,7 @@ FLASHMEM void DrawSMeterContainer() {
   tft.setFontScale((enum RA8875tsize)0);
 
   tft.setTextColor(RA8875_WHITE);
-  //DB2OO, 30-AUG-23: moved single digits a bit to the right, to align
+  // moved single digits a bit to the right, to align
   tft.setCursor(SMETER_X - 8, SMETER_Y - 25);
   tft.print("S");
   tft.setCursor(SMETER_X + 8, SMETER_Y - 25);
@@ -1387,7 +1384,6 @@ FLASHMEM void DrawSMeterContainer() {
   tft.print("7");
   tft.setCursor(SMETER_X + 104, SMETER_Y - 25);
   tft.print("9");
-  //DB2OO, 30-AUG-23 +20dB needs to get more left
   tft.setCursor(SMETER_X + 133, SMETER_Y - 25);
   tft.print("+20dB");
 
@@ -1406,7 +1402,7 @@ FLASHMEM void DrawSMeterContainer() {
 // old factor 43.8
 FLASHMEM void DrawAudioSpectContainer() {
   tft.drawRect(AUDIO_SPEC_BOX_L, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_W, AUDIO_SPEC_BOX_H, RA8875_WHITE);
-  for (int k = 0; k < 6; k++) {
+  for(int k = 0; k < 6; k++) {
     tft.drawFastVLine(AUDIO_SPEC_BOX_L + k * 43, AUDIO_SPEC_BOTTOM, 15, RA8875_WHITE);
     tft.setCursor(AUDIO_SPEC_BOX_L - 4 + k * 43, AUDIO_SPEC_BOTTOM + 16);
     tft.print(k);
@@ -1566,9 +1562,9 @@ FASTRUN void ShowBeacon() {
   }
 
   // Draw the main Spectrum, Waterfall and Audio displays
-  for (int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
+  for(int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
     // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
-    if (x1 == 0) {
+    if(x1 == 0) {
       // Set flag so the display FFTs are calculated only once during each display refresh cycle
       updateSpectrumData = true;
     } else {
@@ -1591,16 +1587,16 @@ FASTRUN void ShowBeacon() {
     y1_old_plot = spectrumNoiseFloor - pixelold[x1 + 1] - oldNF;
 
     // Prevent spectrum from going below the bottom of the spectrum area
-    if (y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
-    if (y1_new_plot > SPECTRUM_BOTTOM) y1_new_plot = SPECTRUM_BOTTOM;
-    if (y_old_plot > SPECTRUM_BOTTOM) y_old_plot = SPECTRUM_BOTTOM;
-    if (y1_old_plot > SPECTRUM_BOTTOM) y1_old_plot = SPECTRUM_BOTTOM;
+    if(y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
+    if(y1_new_plot > SPECTRUM_BOTTOM) y1_new_plot = SPECTRUM_BOTTOM;
+    if(y_old_plot > SPECTRUM_BOTTOM) y_old_plot = SPECTRUM_BOTTOM;
+    if(y1_old_plot > SPECTRUM_BOTTOM) y1_old_plot = SPECTRUM_BOTTOM;
 
     // Prevent spectrum from going above the top of the spectrum area
-    if (y_new_plot < SPECTRUM_TOP_Y) y_new_plot = SPECTRUM_TOP_Y;
-    if (y1_new_plot < SPECTRUM_TOP_Y) y1_new_plot = SPECTRUM_TOP_Y;
-    if (y_old_plot < SPECTRUM_TOP_Y) y_old_plot = SPECTRUM_TOP_Y;
-    if (y1_old_plot < SPECTRUM_TOP_Y) y1_old_plot = SPECTRUM_TOP_Y;
+    if(y_new_plot < SPECTRUM_TOP_Y) y_new_plot = SPECTRUM_TOP_Y;
+    if(y1_new_plot < SPECTRUM_TOP_Y) y1_new_plot = SPECTRUM_TOP_Y;
+    if(y_old_plot < SPECTRUM_TOP_Y) y_old_plot = SPECTRUM_TOP_Y;
+    if(y1_old_plot < SPECTRUM_TOP_Y) y1_old_plot = SPECTRUM_TOP_Y;
 
     // Erase the old spectrum, and draw the new spectrum.
     //tft.drawLine(SPECTRUM_LEFT_X + x1, y1_old_plot, SPECTRUM_LEFT_X + x1, y_old_plot, RA8875_BLACK);
@@ -1614,14 +1610,14 @@ FASTRUN void ShowBeacon() {
 
     // update audio spectrum
     // don't overwrite right edge of audio spectrum box or audio filter lines
-    if (x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
+    if(x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
       // erase old audio spectrum line at this position (including filter lines)
       //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
 
       // draw current audio spectrum line at this position
-      if (audioYPixel[x1] != 0) {
+      if(audioYPixel[x1] != 0) {
         // maintain spectrum within box
-        if (audioYPixel[x1] > CLIP_AUDIO_PEAK)
+        if(audioYPixel[x1] > CLIP_AUDIO_PEAK)
         {
           audioYPixel[x1] = CLIP_AUDIO_PEAK;
         }
@@ -1633,9 +1629,9 @@ FASTRUN void ShowBeacon() {
     int test1;
     test1 = -y_new_plot + 230;  // Nudged waterfall towards blue
     //test1 = (int)(x1 / 50) + currentNF * 10; // test color gradient
-    if (test1 < 0) test1 = 0;
-    //if (test1 > 117) test1 = 117;
-    if (test1 > 116) test1 = 116; // *** above is out of range of gradient
+    if(test1 < 0) test1 = 0;
+    //if(test1 > 117) test1 = 117;
+    if(test1 > 116) test1 = 116; // *** above is out of range of gradient
     waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array
   }
 
@@ -1650,11 +1646,11 @@ FASTRUN void ShowBeacon() {
   // Use the Block Transfer Engine (BTE) to move waterfall down a line
   // copy the waterfall to layer 2, moving it down to row 2
   //tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-  //while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+  //while(tft.readStatus())  // Make sure it is done.  Memory moves can take time.
   //  ;
   //// copy the waterfall back to layer 1, row 2
   //tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
-  //while (tft.readStatus())  // Make sure it's done.
+  //while(tft.readStatus())  // Make sure it's done.
   //  ;
 
   // write new row of data into the top row to finish the scrolling effect
@@ -1664,10 +1660,5 @@ FASTRUN void ShowBeacon() {
   //if(ft8MsgSelectActive) {
   if(ft8MsgSelectActive) {
     DisplayMessages();
-  }
-
-  // update clock
-  if (ms_500.check() == 1) {
-    DisplayClock();
   }
 }

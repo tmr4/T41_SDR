@@ -1,10 +1,16 @@
+
+#include <arm_math.h>
+#include <arm_const_structs.h>
+
 #include "SDT.h"
+
 #include "Button.h"
-#include "Display.h"
 #include "DSP_Fn.h"
 //#include "EEPROM.h"
+#include "FFT.h"
 #include "Menu.h"
 #include "InfoBox.h"
+#include "Tune.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -81,9 +87,9 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E );
 FLASHMEM void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
   float32_t* Energy = 0;
 
-  AltNoiseBlanking(inputsamples, NB_FFT_SIZE, Energy);
+  AltNoiseBlanking(inputsamples, 256, Energy);
 
-  for (unsigned k = 0; k < NB_FFT_SIZE;  k++)
+  for(unsigned k = 0; k < 256;  k++)
   {
     outputsamples[k] = inputsamples[k];
   }
@@ -117,34 +123,28 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
   int impulse_count = 0;
   int order         = NB_taps;    //10 // lpc's order
   static float32_t last_frame_end[80]; //this takes the last samples from the previous frame to do the prediction within the boundaries
-
   arm_fir_instance_f32 LPC;
   float32_t lpcs[order + 1];                      // we reserve one more than "order" because of a leading "1"
   float32_t reverse_lpcs[order + 1];              //this takes the reversed order lpc coefficients
-  float32_t firStateF32[NB_FFT_SIZE + order];
-  float32_t tempsamp[NB_FFT_SIZE];
+  float32_t firStateF32[256 + order];
+  float32_t tempsamp[256];
   float32_t sigma2;                               //taking the variance of the inpo
   float32_t lpc_power;
   float32_t impulse_threshold;
-
+  int nr_setting = 0;
+  float32_t R[11];            // takes the autocorrelation results
+  float32_t k, alfa;
+  float32_t any[order + 1];   //some internal buffers for the levinson durben algorithm
+  float32_t Rfw[impulse_length + order]; // takes the forward predicted audio restauration
+  float32_t Rbw[impulse_length + order]; // takes the backward predicted audio restauration
+  float32_t Wfw[impulse_length], Wbw[impulse_length]; // taking linear windows for the combination of fwd and bwd
+  float32_t s;
 #ifdef debug_alternate_NR
   static int frame_count = 0; //only used for the distortion insertion - can alter be deleted
   int dist_level         = 0; //only used for the distortion insertion - can alter be deleted
 #endif
 
-  int nr_setting = 0;
-  float32_t R[11];            // takes the autocorrelation results
-  float32_t k, alfa;
-
-  float32_t any[order + 1];   //some internal buffers for the levinson durben algorithm
-
-  float32_t Rfw[impulse_length + order]; // takes the forward predicted audio restauration
-  float32_t Rbw[impulse_length + order]; // takes the backward predicted audio restauration
-  float32_t Wfw[impulse_length], Wbw[impulse_length]; // taking linear windows for the combination of fwd and bwd
-
-  float32_t s;
-
-  memset(R, 0, sizeof(float32_t) * 11);
+  memset(R, 0, sizeof(R));
 
 #ifdef debug_alternate_NR  // generate test frames to test the noise blanker function
   // using the NR-setting (0..55) to select the test frame
@@ -168,15 +168,15 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
   nr_setting = NB_test; //(int)ts.dsp_nr_strength;
 
   //*********************************from here just debug impulse / signal generation
-  if ((nr_setting > 0) && (nr_setting < 10)) // we use the vocal "a" frame
+  if((nr_setting > 0) && (nr_setting < 10)) // we use the vocal "a" frame
   {
-    //for (int i=0; i<128;i++)          // not using vocal "a" but the original signal
+    //for(int i=0; i<128;i++)          // not using vocal "a" but the original signal
     //    insamp[i]=NR_test_samp[i];
 
-    if ((frame_count > 19) && (nr_setting > 1))    // insert a distorting pulse
+    if((frame_count > 19) && (nr_setting > 1))    // insert a distorting pulse
     {
       dist_level = nr_setting;
-      if (dist_level > 5) {
+      if(dist_level > 5) {
         dist_level = dist_level - 4; // distortion level is 1...5
       }
       insamp[4] = insamp[4] + dist_level * 3000; // overlaying a short  distortion pulse +/-
@@ -184,13 +184,13 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
     }
   }
 
-  if ((nr_setting > 10) && (nr_setting < 20))             // we use the sinus frame
+  if((nr_setting > 10) && (nr_setting < 20))             // we use the sinus frame
   {
-    for (int i = 0; i < 128; i++)
-      if ((frame_count > 19) && (nr_setting > 11))        // insert a distorting pulse
+    for(int i = 0; i < 128; i++)
+      if((frame_count > 19) && (nr_setting > 11))        // insert a distorting pulse
       {
         dist_level = nr_setting - 10;
-        if (dist_level > 5) dist_level = dist_level - 4;
+        if(dist_level > 5) dist_level = dist_level - 4;
         insamp[24] = insamp[24] + dist_level * 1000;      // overlaying a short  distortion pulse +/-
         insamp[25] = insamp[25] + dist_level * 500;
         insamp[26] = insamp[26] - dist_level * 200;       // overlaying a short  distortion pulse +/-
@@ -198,7 +198,7 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
       }
   }
   frame_count++;
-  if (frame_count > 20)
+  if(frame_count > 20)
     frame_count = 0;
 
 #endif
@@ -206,14 +206,14 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
 
   //  start of test timing zone
 
-  for (int i = 0; i < impulse_length; i++) // generating 2 Windows for the combination of the 2 predictors
+  for(int i = 0; i < impulse_length; i++) // generating 2 Windows for the combination of the 2 predictors
   { // will be a constant window later!
     Wbw[i] = 1.0 * i / (impulse_length - 1);
     Wfw[impulse_length - i - 1] = Wbw[i];
   }
 
   // calculate the autocorrelation of insamp (moving by max. of #order# samples)
-  for (int i = 0; i < (order + 1); i++)
+  for(int i = 0; i < (order + 1); i++)
   {
     arm_dot_prod_f32(&insamp[0], &insamp[i], Nsam - i, &R[i]); // R is carrying the crosscorrelations
   }
@@ -225,23 +225,23 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
 
   lpcs[0] = 1;   //set lpc 0 to 1
 
-  for (int i = 1; i < order + 1; i++)
+  for(int i = 1; i < order + 1; i++)
     lpcs[i] = 0;                    // fill rest of array with zeros - could be done by memfill
 
   alfa = R[0];
 
-  for (int m = 1; m <= order; m++)
+  for(int m = 1; m <= order; m++)
   {
     s = 0.0;
-    for (int u = 1; u < m; u++)
+    for(int u = 1; u < m; u++)
       s = s + lpcs[u] * R[m - u];
 
     k = -(R[m] + s) / alfa;
 
-    for (int v = 1; v < m; v++)
+    for(int v = 1; v < m; v++)
       any[v] = lpcs[v] + k * lpcs[m - v];
 
-    for (int w = 1; w < m; w++)
+    for(int w = 1; w < m; w++)
       lpcs[w] = any[w];
 
     lpcs[m] = k;
@@ -250,15 +250,15 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
 
   // end of levinson durben algorithm
 
-  for (int o = 0; o < order + 1; o++ )           //store the reverse order coefficients separately
+  for(int o = 0; o < order + 1; o++ )           //store the reverse order coefficients separately
     reverse_lpcs[order - o] = lpcs[o];    // for the matched impulse filter
 
-  arm_fir_init_f32(&LPC, order + 1, &reverse_lpcs[0], &firStateF32[0], NB_FFT_SIZE);                                   // we are using the same function as used in freedv
+  arm_fir_init_f32(&LPC, order + 1, &reverse_lpcs[0], &firStateF32[0], 256);                                   // we are using the same function as used in freedv
   arm_fir_f32(&LPC, insamp, tempsamp, Nsam); //do the inverse filtering to eliminate voice and enhance the impulses
-  arm_fir_init_f32(&LPC, order + 1, &lpcs[0], &firStateF32[0], NB_FFT_SIZE);                                   // we are using the same function as used in freedv
+  arm_fir_init_f32(&LPC, order + 1, &lpcs[0], &firStateF32[0], 256);                                   // we are using the same function as used in freedv
   arm_fir_f32(&LPC, tempsamp, tempsamp, Nsam); // do a matched filtering to detect an impulse in our now voiceless signal
 
-  arm_var_f32(tempsamp, NB_FFT_SIZE, &sigma2); //calculate sigma2 of the original signal ? or tempsignal
+  arm_var_f32(tempsamp, 256, &sigma2); //calculate sigma2 of the original signal ? or tempsignal
   arm_power_f32(lpcs, order, &lpc_power); // calculate the sum of the squares (the "power") of the lpc's
 
   impulse_threshold = NB_thresh * sqrtf(sigma2 * lpc_power);  //set a detection level (3 is not really a final setting)
@@ -267,14 +267,14 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
   impulse_count = 0;
 
   do {        //going through the filtered samples to find an impulse larger than the threshold
-    if ((tempsamp[search_pos] > impulse_threshold) || (tempsamp[search_pos] < (-impulse_threshold)))
+    if((tempsamp[search_pos] > impulse_threshold) || (tempsamp[search_pos] < (-impulse_threshold)))
     {
       impulse_positions[impulse_count] = search_pos - order;  // save the impulse positions and correct it by the filter delay
       impulse_count++;
       search_pos += PL;                                       //  set search_pos a bit away, cause we are already repairing this area later
     }                                                         //  and the next impulse should not be that close
     search_pos++;
-  } while (( (unsigned int) search_pos < NB_FFT_SIZE - (unsigned int) boundary_blank) && ( (unsigned int) impulse_count < 20U)); // avoid upper boundary
+  } while(( (unsigned int) search_pos < 256 - (unsigned int) boundary_blank) && ( (unsigned int) impulse_count < 20U)); // avoid upper boundary
 
   //boundary handling has to be fixed later
   //as a result we now will not find any impulse in these areas
@@ -288,12 +288,12 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
   arm_negate_f32(&lpcs[1], &lpcs[1], order);
   arm_negate_f32(&reverse_lpcs[0], &reverse_lpcs[0], order);
 
-  for (int j = 0; j < impulse_count; j++)
+  for(int j = 0; j < impulse_count; j++)
   {
-    for (int k = 0; k < order; k++) // we have to copy some samples from the original signal as
+    for(int k = 0; k < order; k++) // we have to copy some samples from the original signal as
     { // basis for the reconstructions - could be done by memcopy
 
-      if ((impulse_positions[j] - PL - order + k) < 0) // this solves the prediction problem at the left boundary
+      if((impulse_positions[j] - PL - order + k) < 0) // this solves the prediction problem at the left boundary
       {
         Rfw[k] = last_frame_end[impulse_positions[j] + k]; //take the sample from the last frame
       }
@@ -305,7 +305,7 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
       Rbw[impulse_length + k] = insamp[impulse_positions[j] + PL + k + 1];
     }     //bis hier alles ok
 
-    for (int i = 0; i < impulse_length; i++) //now we calculate the forward and backward predictions
+    for(int i = 0; i < impulse_length; i++) //now we calculate the forward and backward predictions
     {
       arm_dot_prod_f32(&reverse_lpcs[0], &Rfw[i], order, &Rfw[i + order]);
       arm_dot_prod_f32(&lpcs[1], &Rbw[impulse_length - i], order, &Rbw[impulse_length - i - 1]);
@@ -315,7 +315,7 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
 
 #ifdef debug_alternate_NR
     // in debug mode do the restoration only in some cases
-    if (((nr_setting > 0) && (nr_setting < 6)) || ((nr_setting > 10) && (nr_setting < 16)))
+    if(((nr_setting > 0) && (nr_setting < 6)) || ((nr_setting > 10) && (nr_setting < 16)))
     {
       // just let the distortion pass at setting 1...5 and 11...15
       //    arm_add_f32(&Rfw[order],&Rbw[0],&insamp[impulse_positions[j]-PL],impulse_length);
@@ -330,9 +330,9 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
 #endif
   }
 
-  for (int p = 0; p < (order + PL); p++)
+  for(int p = 0; p < (order + PL); p++)
   {
-    last_frame_end[p] = insamp[NB_FFT_SIZE - 1 - order - PL + p]; // store 13 samples from the current frame to use at the next frame
+    last_frame_end[p] = insamp[256 - 1 - order - PL + p]; // store 13 samples from the current frame to use at the next frame
   }
   //end of test timing zone
 }
@@ -343,10 +343,10 @@ FLASHMEM void AltNoiseBlanking(float* insamp, int Nsam, float* E ) {
 
 FLASHMEM void AGCLoadValues() {
   float32_t tmp;
-  float32_t sample_rate = (float32_t)SampleRate / DF;
+  float32_t sample_rate = 24000.0;
 
   //calculate internal parameters
-  switch (AGCMode)
+  switch(AGCMode)
   {
     case 0:                                           //agcOFF
       break;
@@ -395,7 +395,7 @@ FLASHMEM void AGCLoadValues() {
   min_volts = out_target / (var_gain * max_gain);
 
   tmp = log10f(out_target / (max_input * var_gain * max_gain));
-  if (tmp == 0.0)
+  if(tmp == 0.0)
     tmp = 1e-16;
   slope_constant = (out_target * (1.0 - 1.0 / var_gain)) / tmp;
 
@@ -467,29 +467,29 @@ void AGC() {
   static float32_t save_volts = 0.0;
   static float32_t volts = 0.0;
 
-  if (AGCMode == 0)  // AGC OFF
+  if(AGCMode == 0)  // AGC OFF
   {
-    for (unsigned i = 0; i < FFT_length / 2; i++)
+    for(unsigned i = 0; i < 256; i++)
     {
-      iFFT_buffer[FFT_length + 2 * i + 0] = fixed_gain * iFFT_buffer[FFT_length + 2 * i + 0];
-      iFFT_buffer[FFT_length + 2 * i + 1] = fixed_gain * iFFT_buffer[FFT_length + 2 * i + 1];
+      iFFT_buffer[512 + 2 * i + 0] = fixed_gain * iFFT_buffer[512 + 2 * i + 0];
+      iFFT_buffer[512 + 2 * i + 1] = fixed_gain * iFFT_buffer[512 + 2 * i + 1];
     }
     return;
   }
 
-  for (unsigned i = 0; i < FFT_length / 2; i++)
+  for(unsigned i = 0; i < 256; i++)
   {
-    if (++out_index >= (int)ring_buffsize)
+    if(++out_index >= (int)ring_buffsize)
       out_index -= ring_buffsize;
-    if (++in_index >= ring_buffsize)
+    if(++in_index >= ring_buffsize)
       in_index -= ring_buffsize;
 
     out_sample[0] = ring[2 * out_index + 0];
     out_sample[1] = ring[2 * out_index + 1];
     abs_out_sample = abs_ring[out_index];
-    ring[2 * in_index + 0] = iFFT_buffer[FFT_length + 2 * i + 0];
-    ring[2 * in_index + 1] = iFFT_buffer[FFT_length + 2 * i + 1];
-    if (pmode == 0) // MAGNITUDE CALCULATION
+    ring[2 * in_index + 0] = iFFT_buffer[512 + 2 * i + 0];
+    ring[2 * in_index + 1] = iFFT_buffer[512 + 2 * i + 1];
+    if(pmode == 0) // MAGNITUDE CALCULATION
       abs_ring[in_index] = max(fabs(ring[2 * in_index + 0]), fabs(ring[2 * in_index + 1]));
     else
       abs_ring[in_index] = sqrtf(ring[2 * in_index + 0] * ring[2 * in_index + 0] + ring[2 * in_index + 1] * ring[2 * in_index + 1]);
@@ -497,37 +497,37 @@ void AGC() {
     fast_backaverage = fast_backmult * abs_out_sample + onemfast_backmult * fast_backaverage;
     hang_backaverage = hang_backmult * abs_out_sample + onemhang_backmult * hang_backaverage;
 
-    if ((abs_out_sample >= ring_max) && (abs_out_sample > 0.0))
+    if((abs_out_sample >= ring_max) && (abs_out_sample > 0.0))
     {
       ring_max = 0.0;
       k = out_index;
-      for (int j = 0; j < attack_buffsize; j++)
+      for(int j = 0; j < attack_buffsize; j++)
       {
-        if (++k == (int)ring_buffsize)
+        if(++k == (int)ring_buffsize)
           k = 0;
-        if (abs_ring[k] > ring_max)
+        if(abs_ring[k] > ring_max)
           ring_max = abs_ring[k];
       }
     }
-    if (abs_ring[in_index] > ring_max)
+    if(abs_ring[in_index] > ring_max)
       ring_max = abs_ring[in_index];
 
-    if (hang_counter > 0)
+    if(hang_counter > 0)
       --hang_counter;
 
-    switch (state)
+    switch(state)
     {
       case 0:
-        if (ring_max >= volts) {
+        if(ring_max >= volts) {
           volts += (ring_max - volts) * attack_mult;
         } else {
-          if (volts > pop_ratio * fast_backaverage) {
+          if(volts > pop_ratio * fast_backaverage) {
             state = 1;
             volts += (ring_max - volts) * fast_decay_mult;
           } else {
-            if (hang_enable && (hang_backaverage > hang_level)) {
+            if(hang_enable && (hang_backaverage > hang_level)) {
               state = 2;
-              hang_counter = (int)(hangtime * SampleRate / DF);
+              hang_counter = (int)(hangtime * 24000.0);
               decay_type = 1;
             } else {
               state = 3;
@@ -539,17 +539,17 @@ void AGC() {
         break;
 
       case 1:
-        if (ring_max >= volts) {
+        if(ring_max >= volts) {
           state = 0;
           volts += (ring_max - volts) * attack_mult;
         } else {
-          if (volts > save_volts) {
+          if(volts > save_volts) {
             volts += (ring_max - volts) * fast_decay_mult;
           } else {
-            if (hang_counter > 0) {
+            if(hang_counter > 0) {
               state = 2;
             } else {
-              if (decay_type == 0) {
+              if(decay_type == 0) {
                 state = 3;
                 volts += (ring_max - volts) * decay_mult;
               } else {
@@ -562,12 +562,12 @@ void AGC() {
         break;
 
       case 2:
-        if (ring_max >= volts) {
+        if(ring_max >= volts) {
           state = 0;
           save_volts = volts;
           volts += (ring_max - volts) * attack_mult;
         } else {
-          if (hang_counter == 0) {
+          if(hang_counter == 0) {
             state = 4;
             volts += (ring_max - volts) * hang_decay_mult;
           }
@@ -575,7 +575,7 @@ void AGC() {
         break;
 
       case 3:
-        if (ring_max >= volts) {
+        if(ring_max >= volts) {
           state = 0;
           save_volts = volts;
           volts += (ring_max - volts) * attack_mult;
@@ -585,7 +585,7 @@ void AGC() {
         break;
 
       case 4:
-        if (ring_max >= volts) {
+        if(ring_max >= volts) {
           state = 0;
           save_volts = volts;
           volts += (ring_max - volts) * attack_mult;
@@ -594,7 +594,7 @@ void AGC() {
         }
         break;
     }
-    if (volts < min_volts) {
+    if(volts < min_volts) {
       volts = min_volts; // no AGC action is taking place
       agc_action = 0;
     } else {
@@ -602,7 +602,7 @@ void AGC() {
     }
 
     mult = (out_target - slope_constant * min (0.0, log10f_fast(inv_max_input * volts))) / volts;
-    iFFT_buffer[FFT_length + 2 * i + 0] = out_sample[0] * mult;
-    iFFT_buffer[FFT_length + 2 * i + 1] = out_sample[1] * mult;
+    iFFT_buffer[512 + 2 * i + 0] = out_sample[0] * mult;
+    iFFT_buffer[512 + 2 * i + 1] = out_sample[1] * mult;
   }
 }

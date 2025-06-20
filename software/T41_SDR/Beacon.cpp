@@ -1,13 +1,14 @@
+
+#include <SD.h>
+#include <TimeLib.h>                   // Part of Teensy Time library
+
 #include "SDT.h"
 
 #include "Bearing.h"
 #include "ButtonProc.h"
 #include "Display.h"
-//#include "EEPROM.h"
 #include "t41Beacon.h"
 #include "Tune.h"
-
-//#include "font_ArialBold.h"
 
 // International beacon transmission schedule, see https://www.ncdxf.org/beacon/
 
@@ -35,8 +36,8 @@ int priorDemod;
 int priorFilterHi[5];
 int priorFilterLo[5];
 
-int band = 0;
-const int beaconBand[5] = { BAND_20M, BAND_17M, BAND_15M, BAND_12M, BAND_10M };
+int beaconBand = 0;
+const int beaconBands[5] = { BAND_20M, BAND_17M, BAND_15M, BAND_12M, BAND_10M };
 const char *beaconBandName[5] = { "20", "17", "15", "12", "10" };
 const int beaconFreq[5] = { 14100000, 18110000, 21150000, 24930000, 28200000 };
 bool monitorFreq[5] = { true, false, true, false, true };
@@ -92,6 +93,8 @@ float bearingDegreesBeacon, bearingDistanceBeacon, displayBearingBeacon;
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
 
+uint16_t read16(File &f);
+uint32_t read32(File &f);
 void BeaconMapDraw(const char *filename, int x, int y);
 float BeaconBearingHeading(char *dxCallPrefix);
 void DrawBeaconBearing(char *beaconPrefix, int color);
@@ -169,7 +172,7 @@ void BeaconExit() {
   // cycle back through monitored bands, restoring prior values
   for(int i = 0; i < 5; i++) {
     if(monitorFreq[i]) {
-      ChangeBand(beaconBand[i] - currentBand);
+      ChangeBand(beaconBands[i] - currentBand);
 
       // save band frequency and set it to the beacon's frequency for this band
       TxRxFreq = priorBeaconBandFreq[i];
@@ -201,8 +204,8 @@ void BeaconExit() {
 *****/
 // *** TODO: while these should always return 0-17 for a normal clock,
 //           consider bound checking to prevent an out of range exception ***
-int GetBeaconNow(int band) {
-  int index = (((hour() * 60 * 60 + minute() * 60 + second()) % 180) / 10) - band;
+int GetBeaconNow(int selectedBand) {
+  int index = (((hour() * 60 * 60 + minute() * 60 + second()) % 180) / 10) - selectedBand;
 
   return index + (index < 0 ? 18 : 0);
 }
@@ -234,12 +237,12 @@ void DisplayBeacons(int beacon20m) {
   // clear beacon traces on layer 1 by copying map on layer 2
   if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH)) {
     tft.BTE_move(0, 0, 800, 480, 0, 0, 2);
-    while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+    while(tft.readStatus())  // Make sure it is done.  Memory moves can take time.
       ;
   }
 
   // work with currently transmitting beacons
-  for (int i = 0; i < 5; i++){
+  for(int i = 0; i < 5; i++){
     int index = beacon20m - i + (beacon20m - i < 0 ? 18 : 0);
 
     if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_LIST || (BEACON_DISPLAY_OPTION == BEACON_DISPLAY_AZIMUTH))) {
@@ -311,7 +314,7 @@ void DisplayBeaconsSNR(int beacon) {
     //tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
 
     // print messages in 2 columns
-    for (int i = 0; i < 5; i++){
+    for(int i = 0; i < 5; i++){
       char f1[5], f2[5], f3[5];
       int index = beacon - i + (beacon - i < 0 ? 18 : 0);
       dtostrf(beaconSNR[index][0], 4, 1, f1);
@@ -334,7 +337,7 @@ void DisplayBeaconsSNR(int beacon) {
     // show snr results with a call sign highlight for a rolling frequency
     if(beaconFreqCount > 4) beaconFreqCount = 0;
     if(monitorFreq[beaconFreqCount]) {
-      for (int i = 0; i < 18; i++){
+      for(int i = 0; i < 18; i++){
         // *** following line gives a sample SNR highlight ***
         //int color = GetSNRColor(i - (i > 10 ? 10 : 0));
         int color = GetSNRColor(beaconSNR[i][beaconFreqCount], &index);
@@ -357,7 +360,7 @@ void DisplayBeaconsSNR(int beacon) {
   }
 
   if((BEACON_DISPLAY_OPTION == BEACON_DISPLAY_WORLD2)) {
-    for (int i = 0; i < 18; i++){
+    for(int i = 0; i < 18; i++){
       tft.setFontScale(0,1);
       // print beacon call sign
       tft.setCursor(beacons[i].x, beacons[i].y);
@@ -400,8 +403,8 @@ void DisplayBeaconsSNR(int beacon) {
     tft.setTextColor(RA8875_WHITE);
     tft.setCursor(10, 410);
     tft.print("Monitoring: ");
-    //tft.print(beaconFreq[band]); // *** TODO: consider just using band name here instead ***
-    tft.print(beaconBandName[band]);
+    //tft.print(beaconFreq[beaconBand]); // *** TODO: consider just using band name here instead ***
+    tft.print(beaconBandName[beaconBand]);
     tft.print("m");
     tft.setCursor(10, 430);
     //tft.print("Beacon: ");
@@ -415,7 +418,7 @@ void DisplayBeaconsSNR(int beacon) {
     if(beaconDataFlag) {
       beaconData[0] = 'B';
       beaconData[1] = 'M';
-      beaconData[2] = (uint8_t)band;
+      beaconData[2] = (uint8_t)beaconBand;
       beaconData[3] = (uint8_t)beacon;
       beaconData[4] = (uint8_t)audioVolume;
       beaconData[95] = ';';
@@ -436,7 +439,7 @@ void DisplayBeaconsSNR(int beacon) {
 *****/
 void autoSyncBeacon() {
   // loop until we're at a 10 boundary
-  while ((second())%10 != 0){
+  while((second())%10 != 0){
   }
 
   beaconStart =millis();
@@ -466,17 +469,17 @@ void BeaconLoop() {
   if(beaconSyncFlag) {
     if(count == 0 && changeBandFlag) {
       // change band
-      band++;
-      if(band > 4) {
-        band = 0;
+      beaconBand++;
+      if(beaconBand > 4) {
+        beaconBand = 0;
       }
 
       // are we monitoring this band?
       // just let the T41 loop bring us back here if we're not monitoring this band
-      if(monitorFreq[band]) {
+      if(monitorFreq[beaconBand]) {
         // change band if needed
-        if(beaconBand[band] != currentBand) {
-          ChangeBand(beaconBand[band] - currentBand);
+        if(beaconBands[beaconBand] != currentBand) {
+          ChangeBand(beaconBands[beaconBand] - currentBand);
         }
 
         // allow radio to stablize during the rest of this 10 second cycle
@@ -517,7 +520,7 @@ void BeaconLoop() {
       //  max += dbm;
       //}
 
-      beacon = GetBeaconNow(band);
+      beacon = GetBeaconNow(beaconBand);
       //Serial.print(snrCount); Serial.print(","); Serial.print(beacons[beacon].callSign); Serial.print(","); Serial.println(dbm);
       //Serial.print(snrCount); Serial.print(","); Serial.println(dbm);
       if(beacon != currentBeacon) {
@@ -530,9 +533,9 @@ void BeaconLoop() {
           //double value = 10.0 * log(aveSignalSquared / (NOISE_HI - NOISE_LO - 1) / aveNoiseSquared * (snrCount - NOISE_HI + NOISE_LO + 2));
           //double value = max / (NOISE_HI - NOISE_LO - 1) - min / (snrCount - NOISE_HI + NOISE_LO + 2);
 
-          beaconSNR[beacon][band] = value > 0 ? value : 0;
+          beaconSNR[beacon][beaconBand] = value > 0 ? value : 0;
         } else {
-          beaconSNR[beacon][band] = 0;
+          beaconSNR[beacon][beaconBand] = 0;
         }
 
         // highlight currently transmitting beacons
@@ -562,7 +565,7 @@ void BeaconLoop() {
       // increment count after the next beacon change
       // by this point the radio should be stableized on the band frequency
       // a little awkward but it works
-      beacon = GetBeaconNow(band);
+      beacon = GetBeaconNow(beaconBand);
       if(beacon != currentBeacon) {
         count++;
       }
@@ -572,14 +575,14 @@ void BeaconLoop() {
     priorFreq = TxRxFreq;
     priorBand = currentBand;
     priorMode = xmtMode;
-    priorDemod = bands[currentBand].mode;;
+    priorDemod = bands[currentBand].demod;
 
     // set radio state for beacon monitoring
     // cycle through the bands to preset the beacon frequencies
     // so we don't have to do it again
     for(int i = 0; i < 5; i++) {
       if(monitorFreq[i]) {
-        ChangeBand(beaconBand[i] - currentBand);
+        ChangeBand(beaconBands[i] - currentBand);
 
         // save band frequency and set it to the beacon's frequency for this band
         priorBeaconBandFreq[i] = TxRxFreq;
@@ -591,7 +594,7 @@ void BeaconLoop() {
         bands[currentBand].FHiCut = 1500;
         bands[currentBand].FLoCut = 500;
 
-        band = i; // remember the last band
+        beaconBand = i; // remember the last band
       }
     }
 
@@ -635,23 +638,23 @@ FLASHMEM void BeaconMapDraw(const char *filename, int x, int y) {
   uint32_t pos = 0;
   uint8_t lcdidx = 0;
 
-  if ((x >= tft.width()) || (y >= tft.height()))
+  if((x >= tft.width()) || (y >= tft.height()))
     return;
 
-  if (!SD.begin(BUILTIN_SDCARD)) {
+  if(!SD.begin(BUILTIN_SDCARD)) {
     tft.print("SD card cannot be initialized.");
     delay(2000L);  // Given them time to read it.
     return;
   }
   // Open requested file on SD card
-  if ((bmpFile = SD.open(filename)) == false) {
+  if((bmpFile = SD.open(filename)) == false) {
     tft.setCursor(100, 300);
     tft.print("File not found");
     return;
   }
 
   // Parse BMP header
-  if (read16(bmpFile) == 0x4D42) {  // BMP signature
+  if(read16(bmpFile) == 0x4D42) {  // BMP signature
     read32(bmpFile);
     (void)read32(bmpFile);             // Read & ignore creator bytes
     bmpImageoffset = read32(bmpFile);  // Start of image data
@@ -661,9 +664,9 @@ FLASHMEM void BeaconMapDraw(const char *filename, int x, int y) {
     bmpWidth = read32(bmpFile);
     bmpHeight = read32(bmpFile);
 
-    if (read16(bmpFile) == 1) {                          // # planes -- must be '1'
+    if(read16(bmpFile) == 1) {                          // # planes -- must be '1'
       bmpDepth = read16(bmpFile);                        // bits per pixel
-      if ((bmpDepth == 24) && (read32(bmpFile) == 0)) {  // 0 = uncompressed
+      if((bmpDepth == 24) && (read32(bmpFile) == 0)) {  // 0 = uncompressed
         goodBmp = true;                                  // Supported BMP format -- proceed!
 
         //                                                      BMP rows are padded (if needed) to 4-byte boundary
@@ -671,7 +674,7 @@ FLASHMEM void BeaconMapDraw(const char *filename, int x, int y) {
 
         // If bmpHeight is negative, image is in top-down order.
         // This is not canon but has been observed in the wild.
-        if (bmpHeight < 0) {
+        if(bmpHeight < 0) {
           bmpHeight = -bmpHeight;
           flip = false;
         }
@@ -679,33 +682,33 @@ FLASHMEM void BeaconMapDraw(const char *filename, int x, int y) {
         // Crop area to be loaded
         w = bmpWidth;
         h = bmpHeight;
-        if ((x + w - 1) >= tft.width()) w = tft.width() - x;
-        if ((y + 135 - 1) >= tft.height()) h = tft.height() - y;
+        if((x + w - 1) >= tft.width()) w = tft.width() - x;
+        if((y + 135 - 1) >= tft.height()) h = tft.height() - y;
 
         // Set TFT address window to clipped image bounds
         ypos = y;
-        for (row = 0; row < h; row++) {  // For each scanline...
+        for(row = 0; row < h; row++) {  // For each scanline...
           // Seek to start of scan line.  It might seem labor-
           // intensive to be doing this on every line, but this
           // method covers a lot of gritty details like cropping
           // and scanline padding.  Also, the seek only takes
           // place if the file position actually needs to change
           // (avoids a lot of cluster math in SD library).
-          if (flip)  // Bitmap is stored bottom-to-top order (normal BMP)
+          if(flip)  // Bitmap is stored bottom-to-top order (normal BMP)
             pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
           else  // Bitmap is stored top-to-bottom
             pos = bmpImageoffset + row * rowSize;
 
-          if (bmpFile.position() != pos) {  // Need seek?
+          if(bmpFile.position() != pos) {  // Need seek?
             bmpFile.seek(pos);
             buffidx = sizeof(sdbuffer);  // Force buffer reload
           }
           xpos = x;
-          for (col = 0; col < w; col++) {  // For each column...
+          for(col = 0; col < w; col++) {  // For each column...
             // Time to read more pixel data?
-            if (buffidx >= sizeof(sdbuffer)) {  // Indeed
+            if(buffidx >= sizeof(sdbuffer)) {  // Indeed
               // Push LCD buffer to the display first
-              if (lcdidx > 0) {
+              if(lcdidx > 0) {
                 tft.drawPixels(lcdbuffer, lcdidx, xpos, ypos);
                 xpos += lcdidx;
                 lcdidx = 0;
@@ -720,7 +723,7 @@ FLASHMEM void BeaconMapDraw(const char *filename, int x, int y) {
             g = sdbuffer[buffidx++];
             r = sdbuffer[buffidx++];
             lcdbuffer[lcdidx++] = Color565(r, g, b);
-            if (lcdidx >= sizeof(lcdbuffer) || (xpos - x + lcdidx) >= w) {
+            if(lcdidx >= sizeof(lcdbuffer) || (xpos - x + lcdidx) >= w) {
               tft.drawPixels(lcdbuffer, lcdidx, xpos, ypos);
               lcdidx = 0;
               xpos += lcdidx;
@@ -730,7 +733,7 @@ FLASHMEM void BeaconMapDraw(const char *filename, int x, int y) {
         }  // end scanline
 
         // Write any remaining data to LCD
-        if (lcdidx > 0) {
+        if(lcdidx > 0) {
           tft.drawPixels(lcdbuffer, lcdidx, xpos, ypos);
           xpos += lcdidx;
         }
@@ -738,12 +741,12 @@ FLASHMEM void BeaconMapDraw(const char *filename, int x, int y) {
 
       // copy map to layer 2
       tft.BTE_move(0, 0, 800, 480, 0, 0, 1, 2);
-      while (tft.readStatus())  // Make sure it is done.  Memory moves can take time.
+      while(tft.readStatus())  // Make sure it is done.  Memory moves can take time.
       ;
     }
   }
   bmpFile.close();
-  if (!goodBmp) {
+  if(!goodBmp) {
     tft.setCursor(100, 300);
     tft.print("BMP format not recognized.");
   }
@@ -782,25 +785,25 @@ void DrawBeaconBearing(char *beaconPrefix, int color) {
   rayStart = displayBearingBeacon - 8.0;
   rayEnd = displayBearingBeacon + 8.0;
 
-  if (displayBearingBeacon > 16 && displayBearingBeacon < 345) {  // Check for end-point mapping issues
+  if(displayBearingBeacon > 16 && displayBearingBeacon < 345) {  // Check for end-point mapping issues
     rayStart = -8;
     rayEnd = 9;
   } else {
-    if (displayBearingBeacon < 9) {
+    if(displayBearingBeacon < 9) {
       rayStart = 8 - displayBearingBeacon;
       rayEnd = displayBearingBeacon + 8;
     } else {
-      if (displayBearingBeacon > 344) {
+      if(displayBearingBeacon > 344) {
         rayStart = displayBearingBeacon - 8;
         rayEnd = displayBearingBeacon + 8;
       }
     }
   }
-  //  if (y2 < 0) {
+  //  if(y2 < 0) {
   //    y2 = fabs(y2);
   //  }
 
-  for (int i = rayStart; i < rayEnd; i++) {
+  for(int i = rayStart; i < rayEnd; i++) {
     tft.drawLineAngle(x1, y1, displayBearingBeacon + i, RAY_LENGTH, color, -90);
   }
   //len = strlen(dxCities[countryIndex].country);
@@ -829,7 +832,7 @@ float BeaconBearingHeading(char *dxCallPrefix) {
 
   countryIndex = FindCountry(dxCallPrefix);  // do coutry lookup
 
-  if (countryIndex != -1) {              // Did we find prefix??
+  if(countryIndex != -1) {              // Did we find prefix??
     dxLatBeacon = dxCities[countryIndex].lat;  //Yep, but I entered the
     dxLonBeacon = dxCities[countryIndex].lon;
   } else {
@@ -846,7 +849,7 @@ float BeaconBearingHeading(char *dxCallPrefix) {
   bearingDegreesBeacon = atan2(x, y) * RADIANS2DEGREES;
   bearingDegreesBeacon = fmod(bearingDegreesBeacon, 360.0);
 
-  if (bearingDegreesBeacon > 0) {
+  if(bearingDegreesBeacon > 0) {
     displayBearingBeacon = 360.0 - bearingDegreesBeacon;
   } else {
     displayBearingBeacon = bearingDegreesBeacon * -1.0;

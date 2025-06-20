@@ -1,8 +1,12 @@
 // modified from: https://github.com/DD4WH/Pocket_FT8
 
-//#include "locator.h"
 #include <math.h>
-#include "arm_math.h"
+
+#include "pi.h"
+
+#ifndef uint8_t
+typedef __uint8_t uint8_t;
+#endif
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -54,21 +58,21 @@ void process_locator(char locator[]) {
 	A1 = locator[0];
 	A2 = locator[1];
 	N1 = locator[2];
-	N2= locator [3];
+	N2 = locator[3];
 
-	A1_value = A1-65;
-	A2_value = A2-65;
-	N1_value = N1- 48;
+	A1_value = A1 - 65;
+	A2_value = A2 - 65;
+	N1_value = N1 - 48;
 	N2_value = N2 - 48;
 
-	Latitude_1 = (float) A2_value * 10;
-	Latitude_2 = (float) N2_value;
-	Latitude_3 = (11.0/24.0 + 1.0/48.0) - 90.0;
+	Latitude_1 = (float)A2_value * 10;
+	Latitude_2 = (float)N2_value;
+	Latitude_3 = (11.0 / 24.0 + 1.0 / 48.0) - 90.0;
 	Latitude = Latitude_1 + Latitude_2 + Latitude_3;
 
 	Longitude_1 = (float)A1_value * 20.0;
 	Longitude_2 = (float)N1_value * 2.0;
-	Longitude_3 = 11.0/12.0 +  1.0/24.0;
+	Longitude_3 = 11.0 / 12.0 +  1.0 / 24.0;
 	Longitude =  Longitude_1  +  Longitude_2 + Longitude_3 - 180.0;
 }
 

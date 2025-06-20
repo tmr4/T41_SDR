@@ -1,4 +1,7 @@
 
+#include <arm_math.h>
+#include <arm_const_structs.h>
+
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
@@ -39,9 +42,6 @@ extern float32_t aveCorrResultR;
 extern float32_t aveCorrResultL;
 
 extern float goertzelMagnitude;
-
-extern arm_fir_instance_f32 FIR_CW_DecodeL;
-extern arm_fir_instance_f32 FIR_CW_DecodeR;
 
 extern unsigned long ditLength;
 

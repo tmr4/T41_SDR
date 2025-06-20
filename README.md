@@ -9,10 +9,15 @@ I've focused on a few areas of interest to me:
 * cleaning up and making better use of the display *(within the bounds of the original software)*
 * adding new input capability *(mouse and keyboard)*
 * adding new modes *(NFM demodulation and some data modes)*
+* adding new features *(beacon monitor, CW message keyer, CAT control, remote display, USB host connection to another T41)*
 
-The structure of my version has changed sufficiently from the original.  It's unlikely that any of the features I've added can be incorporated back into the original software without some work.  Still, these show what's possible with the 4SQRP kit hardware.
+The structure of my version has changed significantly from the original.  The features I've added can't be incorporated back into the original software without some work.  Still, these show what's possible with the 4SQRP kit hardware.  I think I've reached the limit of the Teensy onboard memory.  More should be possible with added PSRAM.  I plan some experiments with that using my v12 radio, especially with those features that require a lot of memory, like FT8.  If that proves fruitful I may apply that to my 4SQRP radio as well.
 
-This is a work in progress.  Some functions from the original version are broken and will likely remain so until they are of interest to me.  Use at your own risk.
+This is a work in progress.  I finally complete my goal of simplifying the sketch and SDT.h files.  The sketch file is now a bit over 600 lines, including new functionality, compared to over 2900 in the original code.  The SDT.h header file is now a bit over 100 lines compared to about 2300 in the original code.  The new files are very readable compared to the original.
+
+This simplification isn't costless.  The original code had 25 files.  Mine now has 88, though many of those reflect added features.  The simplification also doesn't mean that the number of global variables in the code is reduced much from my cleanup effort of a year ago. Like then, most of the remaining global variables just moved to the code files most associated with them, with a extern reference in its header file so it can be include where needed. Reducing the number of global variables further will require more work, but likely isn't practical without a major restructuring of the code.  I probably won't attempt that.
+
+Some functions from the original version may be broken.  If so, they will likely remain so until they are of interest to me.  Use at your own risk.
 
 ![4SQRP T41 Teensy Pin Usage](https://github.com/tmr4/T41_SDR/blob/dev/v0.1/images/4SQRP_Teensy_Pin_Usage.png)
 

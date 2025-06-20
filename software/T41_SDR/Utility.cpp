@@ -1,9 +1,16 @@
+
+#include <Metro.h>
+#include <SD.h>
+#include <TimeLib.h>                   // Part of Teensy Time library
+
 #include "SDT.h"
+
 #include "Button.h"
 #include "Display.h"
 #include "EEPROM.h"
 #include "Filter.h"
 #include "FIR.h"
+#include "pi.h"
 #include "Tune.h"
 #include "Utility.h"
 
@@ -15,6 +22,8 @@
 #define TMS0_POWER_DOWN_MASK        (0x1U)
 #define TMS1_MEASURE_FREQ(x)        (((uint32_t)(((uint32_t)(x)) << 0U)) & 0xFFFFU)
 #define TEMPMON_ROOMTEMP    25.0f
+
+Metro ms_500 = Metro(500);  // set up a Metro to update display clock
 
 uint8_t display_dbm = DISPLAY_S_METER_DBM; // DISPLAY_S_METER_DBM or DISPLAY_S_METER_DBMHZ
 
@@ -70,7 +79,7 @@ FLASHMEM void sineTone(int numCycles) {
   float freqSideTone3 = 3000;         // Refactored 32 * 24000 / 256; //AFP 2-7-23
   //float freqSideTone4 = 375;
   freqSideTone2 = numCycles * 24000 / 256;
-  for (int kf = 0; kf < 256; kf++) { //Calc: numCycles=8, 750 hz sine wave.
+  for(int kf = 0; kf < 256; kf++) { //Calc: numCycles=8, 750 hz sine wave.
     theta = kf * 0.19634950849362;    // Simplify terms: theta = kf * 2 * PI * freqSideTone / 24000  JJP 6/28/23
     sinBuffer[kf] = sin(theta);
     cosBuffer[kf] = cos(theta);  // Used in CW_Excite.cpp
@@ -164,7 +173,7 @@ PROGMEM const float32_t atanTable[68] = {
 *****/
 /*void SinTone(long freqSideTone) { // AFP 10-25-22
   float theta;
-  for (int kf = 0; kf < 255; kf++) { //Calc 750 hz sine wave.  use 750 because it is 8 whole cycles in 256 buffer.
+  for(int kf = 0; kf < 255; kf++) { //Calc 750 hz sine wave.  use 750 because it is 8 whole cycles in 256 buffer.
     theta = kf * 2 * PI * freqSideTone / 24000;
     sinBuffer2[kf] = sin(theta);
   }
@@ -179,12 +188,12 @@ PROGMEM const float32_t atanTable[68] = {
 *****/
 void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t factor, uint32_t blocksize) {
   float32_t temp_buffer[blocksize];
-  if (factor < 0.0) {                                                             // mix a bit of I into Q
-    arm_scale_f32 (I_buffer, factor, temp_buffer, blocksize);
-    arm_add_f32 (Q_buffer, temp_buffer, Q_buffer, blocksize);
+  if(factor < 0.0) {                                                             // mix a bit of I into Q
+    arm_scale_f32(I_buffer, factor, temp_buffer, blocksize);
+    arm_add_f32(Q_buffer, temp_buffer, Q_buffer, blocksize);
   } else {                                                      // mix a bit of Q into I
-    arm_scale_f32 (Q_buffer, factor, temp_buffer, blocksize);
-    arm_add_f32 (I_buffer, temp_buffer, I_buffer, blocksize);
+    arm_scale_f32(Q_buffer, factor, temp_buffer, blocksize);
+    arm_add_f32(I_buffer, temp_buffer, I_buffer, blocksize);
   }
 } // end IQphase_correction
 
@@ -197,8 +206,8 @@ void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t facto
     void
 *****/
 float MSinc(int m, float fc) {
-  float x = m * PIH;
-  if (m == 0)
+  float x = m * HALF_PI;
+  if(m == 0)
     return 1.0f;
   else
     return sinf(x * fc) / (fc * x);
@@ -227,7 +236,7 @@ float32_t Izero(float32_t x) {
     ds *= tmp;
     summe += ds;
     di += 1.0;
-  } while (ds >= errorlimit * summe);
+  } while(ds >= errorlimit * summe);
   return (summe);
 }  // END Izero
 
@@ -279,7 +288,7 @@ float32_t AlphaBetaMag(float32_t  inphase, float32_t  quadrature) {
 
   float32_t abs_inphase = fabs(inphase);
   float32_t abs_quadrature = fabs(quadrature);
-  if (abs_inphase > abs_quadrature) {
+  if(abs_inphase > abs_quadrature) {
     return alpha * abs_inphase + beta * abs_quadrature;
   } else {
     return alpha * abs_quadrature + beta * abs_inphase;
@@ -336,24 +345,24 @@ FLASHMEM void SaveAnalogSwitchValues() {
   origRepeatDelay = EEPROMData.buttonRepeatDelay;
   EEPROMData.buttonRepeatDelay = 0;
 
-  for (index = 0; index < NUMBER_OF_SWITCHES;) {
+  for(index = 0; index < NUMBER_OF_SWITCHES;) {
     tft.setCursor(20, 100);
     tft.print(index + 1);
     tft.print(". ");
     tft.print(labels[index]);
 
-    if (buttonInterruptsEnabled) {
-      while ((value = ReadSelectedPushButton()) == -1) {
+    if(buttonInterruptsEnabled) {
+      while((value = ReadSelectedPushButton()) == -1) {
         // Wait until a button is pressed
       }
     } else {
       value = -1;
       minVal = NOTHING_TO_SEE_HERE;
-      while (true) {
+      while(true) {
         value = ReadSelectedPushButton();
-        if (value < NOTHING_TO_SEE_HERE && value > 0) {
+        if(value < NOTHING_TO_SEE_HERE && value > 0) {
           delay(100L);
-          if (value < minVal) {
+          if(value < minVal) {
             minVal = value;
           } else {
             value = minVal;
@@ -373,13 +382,13 @@ FLASHMEM void SaveAnalogSwitchValues() {
     EEPROMData.switchValues[index] = value;
 
     // Set interrupt press/release thresholds based on the Select button, which has the highest ADC value
-    if (index == 0) {
+    if(index == 0) {
       EEPROMData.buttonThresholdPressed = EEPROMData.switchValues[0] + WIGGLE_ROOM;
       EEPROMData.buttonThresholdReleased = EEPROMData.buttonThresholdPressed + WIGGLE_ROOM;
     }
 
     index++;
-    while ((value = ReadSelectedPushButton()) != -1 && value < NOTHING_TO_SEE_HERE) {
+    while((value = ReadSelectedPushButton()) != -1 && value < NOTHING_TO_SEE_HERE) {
       // Wait until the button is released
     }
   }
@@ -403,26 +412,25 @@ void DisplayClock() {
   timeBuffer[0] = '\0';
   strcpy(timeBuffer, MY_TIMEZONE);         // e.g., EST
 #ifdef TIME_24H
-  //DB2OO, 29-AUG-23: use 24h format
   itoa(hour(), temp, DEC);
 #else
   itoa(hourFormat12(), temp, DEC);
 #endif
-  if (strlen(temp) < 2) {
+  if(strlen(temp) < 2) {
     strcat(timeBuffer, "0");
   }
   strcat(timeBuffer, temp);
   strcat(timeBuffer, ":");
 
   itoa(minute(), temp, DEC);
-  if (strlen(temp) < 2) {
+  if(strlen(temp) < 2) {
     strcat(timeBuffer, "0");
   }
   strcat(timeBuffer, temp);
   strcat(timeBuffer, ":");
 
   itoa(second(), temp, DEC);
-  if (strlen(temp) < 2) {
+  if(strlen(temp) < 2) {
     strcat(timeBuffer, "0");
   }
   strcat(timeBuffer, temp);
@@ -523,13 +531,13 @@ void ShowTempAndLoad() {
 
   elapsed_micros_mean = elapsed_micros_sum / elapsed_micros_idx_t;
 
-  block_time = 128.0 / (double)SampleRate;  // one audio block is 128 samples and uses this in seconds
-  block_time = block_time * N_BLOCKS;
+  block_time = 128.0 / 192000.0;  // one audio block is 128 samples and uses this in seconds
+  block_time = block_time * 16;
 
   block_time *= 1000000.0;                                  // now in Âµseconds
   processor_load = elapsed_micros_mean / block_time * 100;  // take audio processing time divide by block_time, convert to %
 
-  if (processor_load >= 100.0) {
+  if(processor_load >= 100.0) {
     processor_load = 100.0;
     valueColor = RA8875_RED;
   }
@@ -575,7 +583,7 @@ float s_hotT_ROOM;       // !< The value of s_hotTemp minus room temperature(25Â
 float TGetTemp() {
   uint32_t nmeas;
   float tmeas;
-  while (!(TEMPMON_TEMPSENSE0 & 0x4U)) {
+  while(!(TEMPMON_TEMPSENSE0 & 0x4U)) {
     ;
   }
   /* ready to read temperature code value */
@@ -624,13 +632,13 @@ void FormatFrequency(long freq, char *freqBuffer) {
   ltoa((long)freq, outBuffer, 10);
   len = strlen(outBuffer);
 
-  switch (len) {
+  switch(len) {
     case 6:  // below 530.999 KHz
       freqBuffer[0] = outBuffer[0];
       freqBuffer[1] = outBuffer[1];
       freqBuffer[2] = outBuffer[2];
       freqBuffer[3] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 4; i < len; i++) {
+      for(i = 4; i < len; i++) {
         freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
       }
       freqBuffer[i] = '0';       // trailing 0
@@ -640,11 +648,11 @@ void FormatFrequency(long freq, char *freqBuffer) {
     case 7:  // 1.0 - 9.999 MHz
       freqBuffer[0] = outBuffer[0];
       freqBuffer[1] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 2; i < 5; i++) {
+      for(i = 2; i < 5; i++) {
         freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
       }
       freqBuffer[5] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 6; i < 9; i++) {
+      for(i = 6; i < 9; i++) {
         freqBuffer[i] = outBuffer[i - 2];  // Last 3 digit chars
       }
       freqBuffer[i] = '\0';  // Make it a string
@@ -654,64 +662,16 @@ void FormatFrequency(long freq, char *freqBuffer) {
       freqBuffer[0] = outBuffer[0];
       freqBuffer[1] = outBuffer[1];
       freqBuffer[2] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 3; i < 6; i++) {
+      for(i = 3; i < 6; i++) {
         freqBuffer[i] = outBuffer[i - 1];  // Next 3 digit chars
       }
       freqBuffer[6] = FREQ_SEP_CHARACTER;  // Add separation charcter
-      for (i = 7; i < 10; i++) {
+      for(i = 7; i < 10; i++) {
         freqBuffer[i] = outBuffer[i - 2];  // Last 3 digit chars
       }
       freqBuffer[i] = '\0';  // Make it a string
       break;
   }
-}
-
-/*****
-  Purpose: To set the I2S frequency
-
-  Parameter list:
-    int freq        the frequency to set
-
-  Return value:
-    int             the frequency or 0 if too large
-
-*****/
-FLASHMEM int SetI2SFreq(int freq) {
-  int n1;
-  int n2;
-  int c0;
-  int c2;
-  int c1;
-  double C;
-
-  // PLL between 27*24 = 648MHz und 54*24=1296MHz
-  // Fudge to handle 8kHz - El Supremo
-  if (freq > 8000) {
-    n1 = 4;  //SAI prescaler 4 => (n1*n2) = multiple of 4
-  } else {
-    n1 = 8;
-  }
-  n2 = 1 + (24000000 * 27) / (freq * 256 * n1);
-  if (n2 > 63) {
-    // n2 must fit into a 6-bit field
-#ifdef DEBUG
-    Serial.printf("ERROR: n2 exceeds 63 - %d\n", n2);
-#endif
-    return 0;
-  }
-  C = ((double)freq * 256 * n1 * n2) / 24000000;
-  c0 = C;
-  c2 = 10000;
-  c1 = C * c2 - (c0 * c2);
-  set_audioClock(c0, c1, c2, true);
-  CCM_CS1CDR = (CCM_CS1CDR & ~(CCM_CS1CDR_SAI1_CLK_PRED_MASK | CCM_CS1CDR_SAI1_CLK_PODF_MASK))
-               | CCM_CS1CDR_SAI1_CLK_PRED(n1 - 1)   // &0x07
-               | CCM_CS1CDR_SAI1_CLK_PODF(n2 - 1);  // &0x3f
-
-  CCM_CS2CDR = (CCM_CS2CDR & ~(CCM_CS2CDR_SAI2_CLK_PRED_MASK | CCM_CS2CDR_SAI2_CLK_PODF_MASK))
-               | CCM_CS2CDR_SAI2_CLK_PRED(n1 - 1)   // &0x07
-               | CCM_CS2CDR_SAI2_CLK_PODF(n2 - 1);  // &0x3f)
-  return freq;
 }
 
 /*****
@@ -799,7 +759,7 @@ int load_wav(const char* inputFile, uint32_t num_samples) {
 
   f = SD.open(inputFile, FILE_READ);
 
-  if (!f)
+  if(!f)
     return -1;
 
   f.seek(0);
@@ -882,7 +842,7 @@ bool readWave(float32_t *buf, int sizeBuf) {
   }
 
   f.read((void*)raw_data, sizeBuf * bitsPerSample / 8);
-  for (int i = 0; i < sizeBuf; i++) {
+  for(int i = 0; i < sizeBuf; i++) {
     buf[i] = raw_data[i] / 32768.0f;
     //Serial.println(buf[i]);
   }
@@ -900,5 +860,32 @@ int GetXRState() {
     // *** TODO: may need to add specific receive states if other radio states are added
     default:
       return 1;
+  }
+}
+
+/*****
+  Purpose: get/set time from Teensy rtc
+
+  from: core_pins.h (rtc functions from rtc.c)
+    class teensy3_clock_class
+    {
+    public:
+            static unsigned long get(void) __attribute__((always_inline)) { return rtc_get(); }
+            static void set(unsigned long t) __attribute__((always_inline)) { rtc_set(t); }
+            static void compensate(int adj) __attribute__((always_inline)) { rtc_compensate(adj); }
+    };
+    extern teensy3_clock_class Teensy3Clock;
+*****/
+time_t GetTeensyTime() {
+  return Teensy3Clock.get(); // returns RTC time, see above
+}
+void SetTeensyTime(time_t time) {
+  return Teensy3Clock.set(time); // sets RTC time, see above
+}
+
+void UpdateClock() {
+  // update clock
+  if(ms_500.check() == 1) {
+    DisplayClock();
   }
 }

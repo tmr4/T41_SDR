@@ -20,10 +20,6 @@ int menuBarSelected = false;
 #include "mouse.h"
 #include "Tune.h"
 
-#ifdef BUFFER_SIZE // BUFFER_SIZE conflicts in USBHost_t36.h
-#undef BUFFER_SIZE
-#endif
-
 #include <USBHost_t36.h>
 
 extern MouseController mouseController;
@@ -233,7 +229,7 @@ void MouseButtonFreqArea(int button) {
           inc = TxRxFreq % 100000000;
         }
       }
-      if(inc < SampleRate / (1 << spectrumZoom)) {
+      if(inc < 192000.0 / (1 << spectrumZoom)) {
         SetNCOFreq(NCOFreq - inc);
       } else {
         SetCenterTune(-inc);
@@ -290,7 +286,7 @@ void MouseWheelFreqArea(int wheel) {
   //inc *= wheel;
   //Serial.println(inc);
 
-  if(inc < SampleRate / (1 << spectrumZoom)) {
+  if(inc < 192000.0 / (1 << spectrumZoom)) {
     SetNCOFreq(NCOFreq + inc * wheel);
   } else {
     SetCenterTune(inc * wheel);
@@ -311,13 +307,13 @@ void MouseButtonOpStatsArea(int button) {
     ChangeMode(xmtMode + 1);
   } else if(button == 1 && cursorX > OPERATION_STATS_DMD - 5 && cursorX < OPERATION_STATS_DMD + 35) {
     // change to the next demod mode
-    ChangeDemodMode(bands[currentBand].mode + 1);
+    ChangeDemodMode(bands[currentBand].demod + 1);
   }
 }
 
 void MouseButtonSpectrumWaterfall(int button) {
   if(button == 1) {
-    if(bands[currentBand].mode == DEMOD_FT8 && (cursorY > YPIXELS - 25 * 5 - CURSOR_H / 2 - 8)) {
+    if(bands[currentBand].demod == DEMOD_FT8 && (cursorY > YPIXELS - 25 * 5 - CURSOR_H / 2 - 8)) {
       ft8MsgSelectActive = true;
       //int msg = wfRows - (YPIXELS - cursorY - CURSOR_H / 2) / 5;
       int y = YPIXELS - cursorY - CURSOR_H / 2;
@@ -334,7 +330,7 @@ void MouseButtonSpectrumWaterfall(int button) {
       // replace what was previously under the cursor
       tft.BTE_move(0, 0, 16, 32, oldCursorX, oldCursorY, 2, 2);
 
-      SetNCOFreq((cursorX + CURSOR_W / 2 - centerLine) * SampleRate / (1 << spectrumZoom) / SPECTRUM_RES);
+      SetNCOFreq((cursorX + CURSOR_W / 2 - centerLine) * 192000.0 / (1 << spectrumZoom) / SPECTRUM_RES);
 
       DrawBandwidthBar();
 
@@ -345,7 +341,7 @@ void MouseButtonSpectrumWaterfall(int button) {
 }
 
 void MouseWheelSpectrumWaterfall(int wheel) {
-  if(bands[currentBand].mode == DEMOD_FT8 && (cursorY > YPIXELS - 25 * 5 - CURSOR_H / 2 - 8)) {
+  if(bands[currentBand].demod == DEMOD_FT8 && (cursorY > YPIXELS - 25 * 5 - CURSOR_H / 2 - 8)) {
     if(num_decoded_msg > 0) {
       activeMsg += wheel;
       if(activeMsg >= num_decoded_msg) {
@@ -418,7 +414,7 @@ void MouseLoop() {
         MouseWheelSpectrumWaterfall(wheel);
       } else if(CursorInAudioSpectrum()) {
         // *** TODO: consider refactoring with similar code in EncoderMenuChangeFilterISR()
-        if (ft8MsgSelectActive) {
+        if(ft8MsgSelectActive) {
           if(num_decoded_msg > 0) {
             activeMsg += wheel;
             if(activeMsg >= num_decoded_msg) {
@@ -430,7 +426,7 @@ void MouseLoop() {
             }
           }
         } else {
-          if (bands[currentBand].mode == DEMOD_NFM && nfmBWFilterActive) {
+          if(bands[currentBand].demod == DEMOD_NFM && nfmBWFilterActive) {
             // we're adjusting NFM demod bandwidth
             filter_pos_BW = last_filter_pos_BW - 5 * wheel;
           } else {
@@ -471,9 +467,9 @@ const char *driver_names[CNT_DEVICES] = { "hidParser", "hid2" };
 bool driver_active[CNT_DEVICES] = { false, false };
 
 void ShowUpdatedDeviceListInfo() {
-  for (uint8_t i = 0; i < CNT_DEVICES; i++) {
-    if (*drivers[i] != driver_active[i]) {
-      if (driver_active[i]) {
+  for(uint8_t i = 0; i < CNT_DEVICES; i++) {
+    if(*drivers[i] != driver_active[i]) {
+      if(driver_active[i]) {
         Serial.printf("*** Device %s - disconnected ***\n", driver_names[i]);
         driver_active[i] = false;
       } else {
@@ -481,18 +477,18 @@ void ShowUpdatedDeviceListInfo() {
         driver_active[i] = true;
 
         const uint8_t *psz = drivers[i]->manufacturer();
-        if (psz && *psz) Serial.printf("  manufacturer: %s\n", psz);
+        if(psz && *psz) Serial.printf("  manufacturer: %s\n", psz);
         psz = drivers[i]->product();
-        if (psz && *psz) Serial.printf("  product: %s\n", psz);
+        if(psz && *psz) Serial.printf("  product: %s\n", psz);
         psz = drivers[i]->serialNumber();
-        if (psz && *psz) Serial.printf("  Serial: %s\n", psz);
+        if(psz && *psz) Serial.printf("  Serial: %s\n", psz);
       }
     }
   }
 
-  for (uint8_t i = 0; i < CNT_HIDDEVICES; i++) {
-    if (*hiddrivers[i] != hid_driver_active[i]) {
-      if (hid_driver_active[i]) {
+  for(uint8_t i = 0; i < CNT_HIDDEVICES; i++) {
+    if(*hiddrivers[i] != hid_driver_active[i]) {
+      if(hid_driver_active[i]) {
         Serial.printf("*** HID Device %s - disconnected ***\n", hid_driver_names[i]);
         hid_driver_active[i] = false;
       } else {
@@ -500,11 +496,11 @@ void ShowUpdatedDeviceListInfo() {
         hid_driver_active[i] = true;
 
         const uint8_t *psz = hiddrivers[i]->manufacturer();
-        if (psz && *psz) Serial.printf("  manufacturer: %s\n", psz);
+        if(psz && *psz) Serial.printf("  manufacturer: %s\n", psz);
         psz = hiddrivers[i]->product();
-        if (psz && *psz) Serial.printf("  product: %s\n", psz);
+        if(psz && *psz) Serial.printf("  product: %s\n", psz);
         psz = hiddrivers[i]->serialNumber();
-        if (psz && *psz) Serial.printf("  Serial: %s\n", psz);
+        if(psz && *psz) Serial.printf("  Serial: %s\n", psz);
       }
     }
   }

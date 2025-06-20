@@ -1,6 +1,8 @@
+
 #include "SDT.h"
 #include "AudioConfig.h"
 #include "Exciter.h"
+#include "FIR.h"
 #include "keyer.h"
 #include "Utility.h"
 
@@ -48,7 +50,7 @@ void KeyTipOn() {
 *****/
 void KeyRingOn() {
   if(keyType == 1) {
-    if (digitalRead(KEYER_DAH_INPUT_RING) == LOW && xmtMode == CW_MODE ) {
+    if(digitalRead(KEYER_DAH_INPUT_RING) == LOW && xmtMode == CW_MODE ) {
       keyPressedOn = 1;
     }
   }
@@ -84,14 +86,14 @@ void CW_ExciterIQData(int state = ON, bool ramp = false, bool pause = true, floa
       Additional scaling, if nesessary to compensate for down-stream gain variations
    **********************************************************************************/
 
-  if (bands[currentBand].mode == DEMOD_LSB) {
-    //arm_scale_f32 (float_buffer_L_EX, IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);  //Adjust level of L buffer
+  if(bands[currentBand].demod == DEMOD_LSB) {
+    //arm_scale_f32(float_buffer_L_EX, IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);  //Adjust level of L buffer
     arm_scale_f32(float_buffer_L_EX, -IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);       //Adjust level of L buffer KF5N flipped sign, original was +
     IQPhaseCorrection(float_buffer_L_EX, float_buffer_R_EX, IQXPhaseCorrectionFactor[currentBand], 256);  // Adjust phase
   } else {
-    if (bands[currentBand].mode == DEMOD_USB) {
-      //arm_scale_f32 (float_buffer_L_EX, -IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);
-      arm_scale_f32 (float_buffer_L_EX, + IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);   // KF5N flipped sign, original was minus
+    if(bands[currentBand].demod == DEMOD_USB) {
+      //arm_scale_f32(float_buffer_L_EX, -IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);
+      arm_scale_f32(float_buffer_L_EX, + IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);   // KF5N flipped sign, original was minus
       IQPhaseCorrection(float_buffer_L_EX, float_buffer_R_EX, IQXPhaseCorrectionFactor[currentBand], 256);
     }
   }

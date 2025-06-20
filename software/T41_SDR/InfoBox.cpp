@@ -1,6 +1,8 @@
+
 #include <malloc.h>
 
 #include "SDT.h"
+
 #include "Button.h"
 #include "ButtonProc.h"
 #include "CWProcessing.h"
@@ -13,6 +15,7 @@
 #include "Menu.h"
 #include "mouse.h"
 #include "Process.h"
+#include "Tune.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -227,7 +230,7 @@ void IBTuneIncFollowup(int row, int col) {
     void
 *****/
 void IBCompressionFollowup(int row, int col) {
-  if (compressorFlag == 1) {
+  if(compressorFlag == 1) {
     tft.print(" ");
     tft.print(currentMicThreshold);
   }
@@ -244,8 +247,8 @@ void IBCompressionFollowup(int row, int col) {
     void
 *****/
 void IBWPMFollowup(int row, int col) {
-  if (EEPROMData.keyType == 1) { // 1 = paddles
-    if (paddleFlip == 0) {
+  if(EEPROMData.keyType == 1) { // 1 = paddles
+    if(paddleFlip == 0) {
       tft.print("R");
     } else {
       tft.print("L");
@@ -284,7 +287,7 @@ void IBVolFollowup(int row, int col) {
 *****/
 void IBEQFollowup(int row, int col) {
   tft.setCursor(col, row);
-  if (receiveEQFlag) {
+  if(receiveEQFlag) {
     tft.setTextColor(RA8875_RED);
     tft.print("Rx");
     tft.setTextColor(RA8875_GREEN);
@@ -298,7 +301,7 @@ void IBEQFollowup(int row, int col) {
     tft.print("Off");
   }
   tft.setCursor(col + 55, row);
-  if (xmitEQFlag) {
+  if(xmitEQFlag) {
     tft.setTextColor(RA8875_RED);
     tft.print("Tx");
     tft.setTextColor(RA8875_GREEN);
@@ -325,13 +328,10 @@ void IBEQFollowup(int row, int col) {
 void IBTempFollowup(int row, int col) {
   char buff[10];
 
-  //if (elapsed_micros_idx_t > (SampleRate / 960))
-  {
-    tft.setFontScale((enum RA8875tsize)0);
-    tft.setTextColor(RA8875_GREEN);
-    MyDrawFloatP(TGetTemp(), 0, col, row, buff, 2);
-    tft.drawCircle(col + 22, row + 5, 3, RA8875_GREEN);
-  }
+  tft.setFontScale((enum RA8875tsize)0);
+  tft.setTextColor(RA8875_GREEN);
+  MyDrawFloatP(TGetTemp(), 0, col, row, buff, 2);
+  tft.drawCircle(col + 22, row + 5, 3, RA8875_GREEN);
 }
 
 /*****
@@ -350,29 +350,25 @@ void IBLoadFollowup(int row, int col) {
   double processor_load;
   double elapsed_micros_mean;
 
-  //if (elapsed_micros_idx_t > (SampleRate / 960))
-  {
-    elapsed_micros_mean = elapsed_micros_sum / elapsed_micros_idx_t;
+  elapsed_micros_mean = elapsed_micros_sum / elapsed_micros_idx_t;
 
-    block_time = 128.0 / (double)SampleRate;  // one audio block is 128 samples and uses this in seconds
-    block_time = block_time * N_BLOCKS;
+  block_time = 128.0 / 192000.0;  // one audio block is 128 samples and uses this in seconds
+  block_time = block_time * 16;
 
-    block_time *= 1000000.0;                                  // now in µseconds
-    processor_load = elapsed_micros_mean / block_time * 100;  // take audio processing time divide by block_time, convert to %
+  block_time *= 1000000.0;                                  // now in µseconds
+  processor_load = elapsed_micros_mean / block_time * 100;  // take audio processing time divide by block_time, convert to %
 
-    if (processor_load >= 100.0) {
-      processor_load = 100.0;
-      valueColor = RA8875_RED;
-    }
-
-    tft.setFontScale((enum RA8875tsize)0);
-    tft.setTextColor(valueColor);
-    MyDrawFloatP(processor_load, 0, col, row, buff, 2);
-    tft.print("%");
-    elapsed_micros_idx_t = 0;
-    elapsed_micros_sum = 0;
-    //elapsed_micros_mean = 0;
+  if(processor_load >= 100.0) {
+    processor_load = 100.0;
+    valueColor = RA8875_RED;
   }
+
+  tft.setFontScale((enum RA8875tsize)0);
+  tft.setTextColor(valueColor);
+  MyDrawFloatP(processor_load, 0, col, row, buff, 2);
+  tft.print("%");
+  elapsed_micros_idx_t = 0;
+  elapsed_micros_sum = 0;
 }
 
 /*****
@@ -385,7 +381,7 @@ void IBLoadFollowup(int row, int col) {
     void
 *****/
 void IBFT8Followup(int row, int col) {
-  if(bands[currentBand].mode == DEMOD_FT8 || bands[currentBand].mode == DEMOD_FT8_WAV) {
+  if(bands[currentBand].demod == DEMOD_FT8 || bands[currentBand].demod == DEMOD_FT8_WAV) {
     tft.setTextColor(WHITE);
     tft.setCursor(INFO_BOX_L + 5, row + 20);
 
@@ -491,14 +487,14 @@ void UpdateDecodeLockIndicator() {
   int yOffset = infoBox[IB_ITEM_DECODER].row;
 
   // ==========  CW decode "lock" indicator
-  if (combinedCoeff > 50)
+  if(combinedCoeff > 50)
   {
     tft.fillRect(IB_COL_2_X - 20, yOffset, 15, 15, RA8875_GREEN);
   }
-  else if (combinedCoeff < 50)
+  else if(combinedCoeff < 50)
   {
     CWLevelTimer = millis();
-    if (CWLevelTimer - CWLevelTimerOld > 2000)
+    if(CWLevelTimer - CWLevelTimerOld > 2000)
     {
       CWLevelTimerOld = millis();
       tft.fillRect(IB_COL_2_X - 20, yOffset, 17, 17, RA8875_BLACK);
@@ -727,10 +723,10 @@ void MouseWheelInfoBox(int wheel, int x, int y) {
         case IB_ITEM_VOL:
           audioVolume += wheel;
 
-          if (audioVolume > MAX_AUDIO_VOLUME) {
+          if(audioVolume > MAX_AUDIO_VOLUME) {
             audioVolume = MAX_AUDIO_VOLUME;
           } else {
-            if (audioVolume < MIN_AUDIO_VOLUME)
+            if(audioVolume < MIN_AUDIO_VOLUME)
               audioVolume = MIN_AUDIO_VOLUME;
           }
 

@@ -1,5 +1,6 @@
+
 #include "SDT.h"
-#include "AudioConfig.h"
+
 #include "Beacon.h"
 #include "Bearing.h"
 #include "Button.h"
@@ -53,7 +54,7 @@ FLASHMEM void CWOptions() {
 
   //Serial.println(secondaryMenuIndex);
   //Serial.println(menuBarSelected);
-  switch (secondaryMenuIndex) {
+  switch(secondaryMenuIndex) {
     case 0:  // WPM
       //SetWPM();
       // GetMenuValue(minValue, maxValue, startValue, increment, prompt, valueOffset)
@@ -92,12 +93,12 @@ FLASHMEM void CWOptions() {
 
 // *** TODO: T41EEE does this for each band ***
 FLASHMEM void RFPowerFollowup() {
-  if (xmtMode == CW_MODE) {                                                                                                                                      //AFP 10-13-22
+  if(xmtMode == CW_MODE) {                                                                                                                                      //AFP 10-13-22
     powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];  //  afp 10-21-22
 
     EEPROMData.powerOutCW[currentBand] = powerOutCW[currentBand];
   } else {
-    if (xmtMode == SSB_MODE) {
+    if(xmtMode == SSB_MODE) {
       powerOutSSB[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * SSBPowerCalibrationFactor[currentBand];  // afp 10-21-22
       EEPROMData.powerOutSSB[currentBand] = powerOutSSB[currentBand];                                                                                                //AFP 10-21-22
     }
@@ -123,7 +124,7 @@ FLASHMEM void RFGainFollowup() {
 *****/
 FLASHMEM void RFOptions() {
   //  const char *rfOptions[] = { "Power level", "Gain", "Cancel" };
-  switch (secondaryMenuIndex) {
+  switch(secondaryMenuIndex) {
     case 0: // Power Level
       //transmitPowerLevel = (float)GetEncoderValue(1, 20, transmitPowerLevel, 1, (char *)"Power: ");
       GetMenuValue(1, 20, &transmitPowerLevel, 1, "Power:", 200, NULL, NULL, &RFPowerFollowup);
@@ -148,13 +149,13 @@ FLASHMEM void RFOptions() {
 FLASHMEM void VFOSelect(int32_t index) {
   if(xmtMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
-    bands[currentBand].mode = priorDemodMode;
+    bands[currentBand].demod = priorDemodMode;
   }
 
   splitVFO = false;
   NCOFreq = 0L;
 
-  switch (index) {
+  switch(index) {
     case VFO_A:
       centerFreq = TxRxFreq = currentFreqA;
       activeVFO = VFO_A;
@@ -179,17 +180,17 @@ FLASHMEM void VFOSelect(int32_t index) {
   }
 
   if(xmtMode == DATA_MODE) {
-    priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+    priorDemodMode = bands[currentBand].demod; // save demod mode for restoration later
 
-    switch (currentDataMode) {
+    switch(currentDataMode) {
       case DEMOD_PSK31_WAV:
       case DEMOD_PSK31:
-        bands[currentBand].mode = DEMOD_PSK31;
+        bands[currentBand].demod = DEMOD_PSK31;
         break;
 
       case DEMOD_FT8:
       case DEMOD_FT8_WAV:
-        bands[currentBand].mode = DEMOD_FT8;
+        bands[currentBand].demod = DEMOD_FT8;
         syncFlag = false;
         ft8State = 1;
         UpdateInfoBoxItem(IB_ITEM_FT8);
@@ -204,7 +205,7 @@ FLASHMEM void VFOSelect(int32_t index) {
   EEPROMData.activeVFO = activeVFO;
   EEPROMWrite();
 
-  if (xmtMode == CW_MODE) {
+  if(xmtMode == CW_MODE) {
     UpdateCWFilter();
   }
 }
@@ -225,7 +226,7 @@ FLASHMEM void VFOSelect() {
 FLASHMEM void EEPROMOptions() {
   //  const char *EEPROMOpts[] = { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite",
   //                               "Copy EEPROM-->SD", "Copy SD-->EEPROM", "SD EEPROM Dump", "Cancel" };
-  switch (secondaryMenuIndex) {
+  switch(secondaryMenuIndex) {
     case 0:  // Save current values
       EEPROMWrite();
       break;
@@ -298,7 +299,7 @@ FLASHMEM void SpectrumOptions() {
   int spectrumSet = EEPROMData.currentScale;
 
   spectrumSet = secondaryMenuIndex;
-  if (strcmp(spectrumChoices[spectrumSet], "Cancel") == 0) {
+  if(strcmp(spectrumChoices[spectrumSet], "Cancel") == 0) {
     return;
   }
   currentScale = spectrumSet;  // Yep...
@@ -318,7 +319,7 @@ FLASHMEM void SpectrumOptions() {
 *****/
 FLASHMEM void EqualizerRecOptions() {
   //  const char *RecEQChoices[] = { "On", "Off", "EQSet", "Cancel" };
- switch (secondaryMenuIndex) {
+ switch(secondaryMenuIndex) {
      case 0:
       receiveEQFlag = ON;
       break;
@@ -326,7 +327,7 @@ FLASHMEM void EqualizerRecOptions() {
       receiveEQFlag = OFF;
       break;
     case 2:
-      for (int iFreq = 0; iFreq < EQUALIZER_CELL_COUNT; iFreq++) {
+      for(int iFreq = 0; iFreq < EQUALIZER_CELL_COUNT; iFreq++) {
       }
       ProcessEqualizerChoices(0, (char *)"Receive Equalizer");
       EEPROMWrite();
@@ -348,7 +349,7 @@ FLASHMEM void EqualizerRecOptions() {
 *****/
 FLASHMEM void EqualizerXmtOptions() {
   //  const char *XmtEQChoices[] = { "On", "Off", "EQSet", "Cancel" };
- switch (secondaryMenuIndex) {
+ switch(secondaryMenuIndex) {
     case 0:
       xmitEQFlag = ON;
       break;
@@ -381,7 +382,7 @@ FLASHMEM void MicGainFollowup() {
 *****/
 FLASHMEM void MicGainSet() {
   //  const char *micGainChoices[] = { "Set Mic Gain", "Cancel" };
-  switch (secondaryMenuIndex) {
+  switch(secondaryMenuIndex) {
     case 0:
       // GetMenuValue(minValue, maxValue, startValue, increment, prompt, valueOffset)
       GetMenuValue(-40, 30, &currentMicGain, 1, "Gain:", 200, NULL, NULL, &MicGainFollowup);
@@ -408,7 +409,7 @@ FLASHMEM void SetCompressionRatioFollowup() {
 
 FLASHMEM void SetCompressionAttackFollowup() {
   //currentMicAttack += ((float) menuEncoderMove * 0.1);
-  //else if (currentMicAttack < .1)
+  //else if(currentMicAttack < .1)
   //  currentMicAttack = .1;
 
   EEPROMData.currentMicAttack = currentMicAttack;
@@ -417,7 +418,7 @@ FLASHMEM void SetCompressionAttackFollowup() {
 
 FLASHMEM void SetCompressionReleaseFollowup() {
   //currentMicRelease += ((float) menuEncoderMove * 0.1);
-  //else if (currentMicRelease < 0.1)                 // 100% max
+  //else if(currentMicRelease < 0.1)                 // 100% max
   //  currentMicRelease = 0.1;
 
   EEPROMData.currentMicCompRatio = currentMicCompRatio;
@@ -436,7 +437,7 @@ FLASHMEM void SetCompressionReleaseFollowup() {
 *****/
 FLASHMEM void MicOptions() {
   //  const char *micChoices[] = { "On", "Off", "Set Threshold", "Set Comp_Ratio", "Set Attack", "Set Decay", "Cancel" };
-  switch (secondaryMenuIndex) {
+  switch(secondaryMenuIndex) {
     case 0:                // On
       compressorFlag = 1;
       UpdateInfoBoxItem(IB_ITEM_COMPRESS);
@@ -500,21 +501,22 @@ FLASHMEM void CalibrateOptions() {
     calibrateFlag = secondaryMenuIndex;
   }
 
-  switch (calibrateFlag) {
+  switch(calibrateFlag) {
     case 0:  // Calibrate Frequency  - uses WWV
       freqCorrectionFactor = GetEncoderValueLive(-200000, 200000, freqCorrectionFactor, increment, (char *)"Freq Cal: ");
-      if (freqCorrectionFactor != freqCorrectionFactorOld) {
-        si5351.init(SI5351_CRYSTAL_LOAD_10PF, Si_5351_crystal, freqCorrectionFactor);
-        si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);  // KF5N July 10 2023
-        si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);  // KF5N July 10 2023
+      if(freqCorrectionFactor != freqCorrectionFactorOld) {
+        //si5351.init(SI5351_CRYSTAL_LOAD_10PF, Si_5351_crystal, freqCorrectionFactor);
+        //si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);
+        //si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);
+        SetSI5351FreqCorFactor(freqCorrectionFactor);
         SetFreq();
         delay(10L);
         freqCorrectionFactorOld = freqCorrectionFactor;
       }
       val = ReadSelectedPushButton();
-      if (val != BOGUS_PIN_READ) {        // Any button press??
+      if(val != BOGUS_PIN_READ) {        // Any button press??
         val = ProcessButtonPress(val);    // Use ladder value to get menu choice
-        if (val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
+        if(val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
           tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 35, CHAR_HEIGHT, RA8875_BLACK);
           EEPROMWrite();
           calibrateFlag = 5;
@@ -523,9 +525,9 @@ FLASHMEM void CalibrateOptions() {
       break;
 
     case 1:  // CW PA Cal
-      if (keyPressedOn == 1 && xmtMode == CW_MODE) {
+      if(keyPressedOn == 1 && xmtMode == CW_MODE) {
         //================  CW Transmit Mode Straight Key ===========
-        if (digitalRead(KEYER_DIT_INPUT_TIP) == LOW && keyType == 0) {  //Straight Key
+        if(digitalRead(KEYER_DIT_INPUT_TIP) == LOW && keyType == 0) {  //Straight Key
           powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
           CW_ExciterIQData();
           ShowTransmitReceiveStatus();
@@ -543,9 +545,9 @@ FLASHMEM void CalibrateOptions() {
       CWPowerCalibrationFactor[currentBand] = GetEncoderValueLive(-2.0, 2.0, CWPowerCalibrationFactor[currentBand], 0.001, (char *)"CW PA Cal: ");
       powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];  // AFP 10-21-22
       val = ReadSelectedPushButton();
-      if (val != BOGUS_PIN_READ) {        // Any button press??
+      if(val != BOGUS_PIN_READ) {        // Any button press??
         val = ProcessButtonPress(val);    // Use ladder value to get menu choice
-        if (val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
+        if(val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
           tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 35, CHAR_HEIGHT, RA8875_BLACK);
           EEPROMData.CWPowerCalibrationFactor[currentBand] = CWPowerCalibrationFactor[currentBand];
           EEPROMWrite();
@@ -568,9 +570,9 @@ FLASHMEM void CalibrateOptions() {
       SSBPowerCalibrationFactor[currentBand] = GetEncoderValueLive(-2.0, 2.0, SSBPowerCalibrationFactor[currentBand], 0.001, (char *)"SSB PA Cal: ");
       powerOutSSB[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * SSBPowerCalibrationFactor[currentBand];  // AFP 10-21-22
       val = ReadSelectedPushButton();
-      if (val != BOGUS_PIN_READ) {        // Any button press??
+      if(val != BOGUS_PIN_READ) {        // Any button press??
         val = ProcessButtonPress(val);    // Use ladder value to get menu choice
-        if (val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
+        if(val == MENU_OPTION_SELECT) {  // Yep. Make a choice??
           tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH + 35, CHAR_HEIGHT, RA8875_BLACK);
           EEPROMWrite();
           calibrateFlag = 5;
@@ -605,7 +607,7 @@ FLASHMEM void CalibrateOptions() {
     void
 *****/
 FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+  for(int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
   }
   const char *eqFreq[] = { " 200", " 250", " 315", " 400", " 500", " 630", " 800",
                            "1000", "1250", "1600", "2000", "2500", "3150", "4000" };
@@ -624,11 +626,11 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
   int barBottomY;
   int val;
 
-  for (iFreq = 0; iFreq < EQUALIZER_CELL_COUNT; iFreq++) {
-    if (EQType == 0) {
+  for(iFreq = 0; iFreq < EQUALIZER_CELL_COUNT; iFreq++) {
+    if(EQType == 0) {
       yLevel[iFreq] = EEPROMData.equalizerRec[iFreq];
     } else {
-      if (EQType == 1) {
+      if(EQType == 1) {
         yLevel[iFreq] = EEPROMData.equalizerXmt[iFreq];
       }
     }
@@ -659,7 +661,7 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
   barTopY = yOrigin + (high / 2);                // 50 + (300 / 2) = 200
   barBottomY = barTopY + DEFAULT_EQUALIZER_BAR;  // Default 200 + 100
 
-  for (iFreq = 0; iFreq < EQUALIZER_CELL_COUNT; iFreq++) {
+  for(iFreq = 0; iFreq < EQUALIZER_CELL_COUNT; iFreq++) {
     tft.fillRect(xOrigin + (barWidth + 4) * iFreq, barTopY - (yLevel[iFreq] - DEFAULT_EQUALIZER_BAR), barWidth, yLevel[iFreq], RA8875_CYAN);
     tft.setCursor(xOrigin + (barWidth + 4) * iFreq, yOrigin + high - tft.getFontHeight() * 2);
     tft.print(eqFreq[iFreq]);
@@ -669,7 +671,7 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
 
   columnIndex = 0;  // Get ready to set values for columns
   newValue = 0;
-  while (columnIndex < EQUALIZER_CELL_COUNT) {
+  while(columnIndex < EQUALIZER_CELL_COUNT) {
     xOffset = xOrigin + (barWidth + 4) * columnIndex;   // Just do the math once
     tft.fillRect(xOffset,                               // Indent to proper bar...
                  barBottomY - yLevel[columnIndex] - 1,  // Start at red line
@@ -682,9 +684,9 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
                  barWidth,                          // Set bar width
                  yLevel[columnIndex],               // Draw new bar
                  RA8875_MAGENTA);
-    while (true) {
+    while(true) {
       newValue = yLevel[columnIndex];  // Get current value
-      if (menuEncoderMove != 0) {
+      if(menuEncoderMove != 0) {
 
         tft.fillRect(xOffset,                    // Indent to proper bar...
                      barBottomY - newValue - 1,  // Start at red line
@@ -703,7 +705,7 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
                      barWidth, CHAR_HEIGHT, RA8875_BLACK);
         tft.setCursor(xOffset + tft.getFontWidth() * 1.5, yOrigin + high + tft.getFontHeight() * 2);
         tft.print(yLevel[columnIndex]);
-        if (newValue < DEFAULT_EQUALIZER_BAR) {  // Repaint red center line if erased
+        if(newValue < DEFAULT_EQUALIZER_BAR) {  // Repaint red center line if erased
           tft.drawFastHLine(xOrigin - 4, yOrigin + (high / 2), wide + 4, RA8875_RED);
           ;  // Clear hole in display center
         }
@@ -713,7 +715,7 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
 
       val = ReadSelectedPushButton();  // Read the ladder value
 
-      if (val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
+      if(val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
         val = ProcessButtonPress(val);  // Use ladder value to get menu choice
         delay(100L);
 
@@ -723,11 +725,11 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
                      newValue,               // Draw new bar
                      RA8875_GREEN);
 
-        if (EQType == 0) {
+        if(EQType == 0) {
           equalizerRec[columnIndex] = newValue;
           EEPROMData.equalizerRec[columnIndex] = equalizerRec[columnIndex];
         } else {
-          if (EQType == 1) {
+          if(EQType == 1) {
             equalizerXmt[columnIndex] = newValue;
             EEPROMData.equalizerXmt[columnIndex] = equalizerXmt[columnIndex];
           }
@@ -754,7 +756,7 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
 *****/
 FLASHMEM void BearingOptions() {
   //  const char *BearingChoices[] = { "Show Map", "Set Prefix", "Cancel" };
-  switch (secondaryMenuIndex) {
+  switch(secondaryMenuIndex) {
      case 0:
       ButtonBearing();
       break;
@@ -777,7 +779,7 @@ FLASHMEM void BearingOptions() {
 *****/
 FLASHMEM void BeaconOptions() {
   //  const char *BeaconChoices[] = { "On", "Off", "Cancel" };
-  switch (secondaryMenuIndex) {
+  switch(secondaryMenuIndex) {
      case 0: // on
       BeaconInit();
       beaconFlag = true;

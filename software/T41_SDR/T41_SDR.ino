@@ -10,19 +10,17 @@
   software is planned, we would appreciate it if the interested parties contact Jack Purdum, W8TEE,
   and Al Peter, AC8GY.
 
-  Any and all other uses, written or implied, by the GPLv3 license are forbidden without written
-  permission from from Jack Purdum, W8TEE, and Al Peter, AC8GY.
-
 *********************************************************************************************/
 
 // setup() and loop() at the bottom of this file
-#include "SerialFlash.h"
+
+#include <TimeLib.h> // Part of Teensy Time library
 
 #include "SDT.h"
+
 #include "AudioConfig.h"
 #include "Bearing.h"
 #include "Button.h"
-#include "ButtonProc.h"
 #include "CWProcessing.h"
 #include "CW_Excite.h"
 #include "Display.h"
@@ -33,246 +31,86 @@
 #include "FFT.h"
 #include "Filter.h"
 #include "FIR.h"
-#include "Freq_Shift.h"
 #include "InfoBox.h"
-#include "keyer.h"
 #include "Menu.h"
-#include "MenuProc.h"
 #include "Noise.h"
+#include "Process.h"
 #include "Tune.h"
 #include "Utility.h"
 
+// special features
+#include "Beacon.h"
 #include "debug.h"
 #include "keyboard.h"
+#include "keyer.h"
 #include "locator.h"
 #include "mouse.h"
-#include "t41Control.h"
+#include "remote.h"
 #include "t41Beacon.h"
+#include "t41Control.h"
 #include "t41USBHost.h"
-#include "Beacon.h"
-#include "wsjt.h"
+//#include "wsjt.h"
+
+extern char myGrid[];
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-#define BUFFER_SINE_COUNT       8                 // Leads to a 750Hz signal
-#define HAM_BAND                1
-
-//======================================== Teensy 4.1 Pin assignments ==========================================================
+// Teensy 4.1 Pin assignments not used globally
 // Pins 0 and 1 are usually reserved for the USB COM port communications
 // On the Teensy 4.1 board, pins GND, 0-12, and pins 13-23, 3.3V, GND, and
 // Vin are "covered up" by the Audio board. However, not all of those pins are
 // actually used by the board. See: https://www.pjrc.com/store/teensy3_audio.html
-#ifdef FOURSQRP
-    #define VOLUME_ENCODER_A         2
-    #define VOLUME_ENCODER_B         3
-    #define FILTER_ENCODER_A        16
-    #define FILTER_ENCODER_B        15
-    #define FINETUNE_ENCODER_A       4
-    #ifdef PROJECTSYSTEM
-    #define FINETUNE_ENCODER_B      24 // pin 5 is TFT_CS on Project System (the pin assigned here is only meaningful when testing fine tune encoder on non-front panel systems)
-    #else
-    #define FINETUNE_ENCODER_B       5
-    #endif
-    #define TUNE_ENCODER_A          14
-    #define TUNE_ENCODER_B          17
-#else
-    #define VOLUME_ENCODER_A         2
-    #define VOLUME_ENCODER_B         3
-    #define FILTER_ENCODER_A        15
-    #define FILTER_ENCODER_B        14
-    #define FINETUNE_ENCODER_A       4
-    #define FINETUNE_ENCODER_B       5
-    #define TUNE_ENCODER_A          16
-    #define TUNE_ENCODER_B          17
-#endif
-//#define OPTO_OUTPUT                 24    // To optoisolator and keyed circuit
 // Filter Board pins
-#define FILTERPIN80M                30    // 80M filter relay
-#define FILTERPIN40M                31    // 40M filter relay
-#define FILTERPIN20M                28    // 20M filter relay
-#define FILTERPIN15M                29    // 15M filter relay
-#define PTT                         37    // Transmit/Receive
-#define BAND_MENUS                 100    // encoder2 button = button3SW
-#define BAND_PLUS                  101    // BAND+ = button2SW
-#define CHANGE_INCREMENT           102    // this is the pushbutton pin of the tune encoder
-#define CHANGE_FILTER              103    // this is the pushbutton pin of the filter encoder
-#define CHANGE_MODE                104    // Change mode
-#define CHANGE_MENU2               105    // this is the pushbutton pin of encoder 3
-#define MENU_MINUS                 106    // Menu decrement
-#define MENU_PLUS                  107    // this is the menu button pin
-#define CHANGE_NOISE               108    // this is the pushbutton pin of NR
-#define CHANGE_DEMOD               109    // this is the push button for demodulation
-#define CHANGE_ZOOM                110    // Push button for display zoom feature
-#define SET_FREQ_CURSOR            111    // Push button for frequency Cursor feature  was 39 for Al
-//======================================== End Pin Assignments =================================================================
+#define FILTERPIN80M 30    // 80M filter relay
+#define FILTERPIN40M 31    // 40M filter relay
+#define FILTERPIN20M 28    // 20M filter relay
+#define FILTERPIN15M 29    // 15M filter relay
+#define PTT          37    // Transmit/Receive
 
 //------------------------- Global Variables ----------
 
 int radioState, lastState;
-long CWFreqShift;
-long calFreqShift;
 
-// SampleRate
-//   8000, // SAMPLE_RATE_8K    // not OK
-//  11025, // SAMPLE_RATE_11K   // not OK
-//  16000, // SAMPLE_RATE_16K   // OK
-//  22050, // SAMPLE_RATE_22K   // OK
-//  32000, // SAMPLE_RATE_32K   // OK, on
-//  44100, // SAMPLE_RATE_44K   // OK
-//  48000, // SAMPLE_RATE_48K   // OK
-//  50223, // SAMPLE_RATE_50K   // NOT OK
-//  88200, // SAMPLE_RATE_88K   // OK
-//  96000, // SAMPLE_RATE_96K   // OK
-// 100000, // SAMPLE_RATE_100K  // NOT OK
-// 100466, // SAMPLE_RATE_101K  // NOT OK
-// 176400, // SAMPLE_RATE_176K  // OK
-// 192000, // SAMPLE_RATE_192K  // OK
-// 234375, // SAMPLE_RATE_234K  // NOT OK
-// 256000, // SAMPLE_RATE_256K  // NOT OK
-// 281000, // SAMPLE_RATE_281K  // NOT OK
-// 352800  // SAMPLE_RATE_353K  // NOT OK
-const int SampleRate = 192000; // SAMPLE_RATE_192K
-
-long NCOFreq;
-
-//------------------------- Local Variables ----------
-
-// *** why initialize here vs setup()
-float gain_dB = 0.0; //computed desired gain value in dB
-boolean use_HP_filter = true; //enable the software HP filter to get rid of DC?
-float knee_dBFS, comp_ratio, attack_sec, release_sec;
-
-//DB2OO, 29-AUG-23: take ITU_REGION into account for band limits
-// and changed "gainCorrection" to see the correct dBm value on all bands.
-// Calibration done with TinySA as signal generator with -73dBm levels (S9) at the FT8 frequencies
-// with V010 QSD with the 12V mod of the pre-amp
-// *** seems it would be better to treat hi/low filter values as absolute; changing this is a lot of work though ***
-struct band bands[NUMBER_OF_BANDS] = {
-//  freq      band low   band hi   name    mode         Hi   Low     Gain  type         gain     AGC   pixel
-//                                                       filter                         correct        offset
-#if defined(ITU_REGION) && ITU_REGION == 1
-    3700000,  3500000,   3800000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-    7150000,  7000000,   7200000,  "40M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-#elif defined(ITU_REGION) && ITU_REGION == 2
-    3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-    7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-
-    //3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  3000, 200,  1,    HAM_BAND,    -2.0,    20,    20,
-    //7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  3000, 200,  1,    HAM_BAND,    -2.0,    20,    20,
-    //3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  200, 3000,  1,    HAM_BAND,    -2.0,    20,    20,
-    //7150000,  7000000,   7300000, "40M",   DEMOD_LSB,  200, 3000,  1,    HAM_BAND,    -2.0,    20,    20,
-#elif defined(ITU_REGION) && ITU_REGION == 3
-    3700000,  3500000,   3900000,  "80M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-    7150000,  7000000,   7200000,  "40M",  DEMOD_LSB,  -200, -3000,  1,    HAM_BAND,    -2.0,    20,    20,
-#endif
-    14200000, 14000000, 14350000,  "20M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    2.0,     20,    20,
-    18100000, 18068000, 18168000,  "17M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    2.0,     20,    20,
-    21200000, 21000000, 21450000,  "15M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    5.0,     20,    20,
-    24920000, 24890000, 24990000,  "12M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    6.0,     20,    20,
-    28350000, 28000000, 29700000,  "10M",  DEMOD_USB,  3000, 200,    1,    HAM_BAND,    8.5,     20,    20
-};
-
-uint32_t FFT_length = FFT_LENGTH;
-
-Bounce decreaseBand = Bounce(BAND_MENUS, 50);
-Bounce increaseBand = Bounce(BAND_PLUS, 50);
-Bounce modeSwitch = Bounce(CHANGE_MODE, 50);
-Bounce decreaseMenu = Bounce(MENU_MINUS, 50);
-Bounce frequencyIncrement = Bounce(CHANGE_INCREMENT, 50);
-Bounce filterSwitch = Bounce(CHANGE_FILTER, 50);
-Bounce increaseMenu = Bounce(MENU_PLUS, 50);
-Bounce selectExitMenues = Bounce(CHANGE_MENU2, 50);
-Bounce changeNR = Bounce(CHANGE_NOISE, 50);
-Bounce demodSwitch = Bounce(CHANGE_DEMOD, 50);
-Bounce zoomSwitch = Bounce(CHANGE_ZOOM, 50);
-Bounce cursorSwitch = Bounce(SET_FREQ_CURSOR, 50);
-Bounce KeyPin2 = Bounce(KEYER_DAH_INPUT_RING, 5);
-Bounce KeyPin1 = Bounce(KEYER_DIT_INPUT_TIP, 5);
-
-Rotary volumeEncoder = Rotary(VOLUME_ENCODER_A, VOLUME_ENCODER_B);        //( 2,  3)
-Rotary tuneEncoder = Rotary(TUNE_ENCODER_A, TUNE_ENCODER_B);              //(16, 17)
-Rotary menuChangeEncoder = Rotary(FILTER_ENCODER_A, FILTER_ENCODER_B);        //(15, 14)
-Rotary fineTuneEncoder = Rotary(FINETUNE_ENCODER_A, FINETUNE_ENCODER_B);  //( 4,  5)
-
-Si5351 si5351;
-
-//Setup for EQ filters
-
-//Hilbert FIR Filters
-float32_t FIR_Hilbert_state_L[100 + 256 - 1];
-float32_t FIR_Hilbert_state_R[100 + 256 - 1];
-// CW decode Filters
-float32_t FIR_CW_DecodeL_state[64 + 256 - 1];
-float32_t FIR_CW_DecodeR_state[64 + 256 - 1];
-
-arm_fir_interpolate_instance_f32 FIR_int1_EX_I;
-arm_fir_interpolate_instance_f32 FIR_int1_EX_Q;
-arm_fir_interpolate_instance_f32 FIR_int2_EX_I;
-arm_fir_interpolate_instance_f32 FIR_int2_EX_Q;
-
-float32_t DMAMEM FIR_dec1_EX_I_state[2095];
-float32_t DMAMEM FIR_dec1_EX_Q_state[2095];
-
-float32_t DMAMEM FIR_dec2_EX_I_state[535];
-float32_t DMAMEM FIR_dec2_EX_Q_state[535];
-
-float32_t DMAMEM FIR_int2_EX_I_state[519];
-float32_t DMAMEM FIR_int2_EX_Q_state[519];
-
-float32_t DMAMEM FIR_int1_EX_I_state[279];
-float32_t DMAMEM FIR_int1_EX_Q_state[279];
-
+float32_t DMAMEM float_buffer_L[2048];
+float32_t DMAMEM float_buffer_R[2048];
 float32_t DMAMEM float_buffer_L_EX[2048];
 float32_t DMAMEM float_buffer_R_EX[2048];
 float32_t DMAMEM float_buffer_Temp[2048];
 
-byte sharedRAM1[1024 * 8];
-byte DMAMEM sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));
+/*
+typedef struct {
+  long freq;      // Current frequency in Hz
+  long fBandLow;  // Lower band edge
+  long fBandHigh; // Upper band edge
+  const char* name; // name of band
+  int demod;
+  int FHiCut;
+  int FLoCut;
+  int RFgain;
+  long calFreq; // receive IQ calibration frequency, set to 0 to skip calibration of a specific band
+  float32_t gainCorrection; // is hardware dependent and has to be calibrated ONCE and hardcoded in the band table
+  int AGC_thresh;
+  int16_t pixel_offset;
+} band;
+*/
+band bands[NUMBER_OF_BANDS] = {
+// Calibration of gainCorrection done with TinySA as signal generator with -73dBm levels (S9)
+// at the FT8 frequencies with V010 QSD with the 12V mod of the pre-amp
+// *** seems it would be better to treat hi/low filter values as absolute; changing this is a lot of work though ***
+//  freq      band low   band hi   name    demod        Hi   Low     Gain    calFreq  gain     AGC   pixel
+//                                                       filter                       correct        offset
+//  freq      fBandLow   fBandHigh name    mode        FHiCut FLoCut RFgain           gainCorrection
+    3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  -200, -3000,  1,      0,       -2.0,    20,    20,
+    7150000,  7000000,   7300000,  "40M",  DEMOD_LSB,  -200, -3000,  1,      0,       -2.0,    20,    20,
+    14200000, 14000000, 14350000,  "20M",  DEMOD_USB,  3000, 200,    1,      0,       2.0,     20,    20,
+    18100000, 18068000, 18168000,  "17M",  DEMOD_USB,  3000, 200,    1,      0,       2.0,     20,    20,
+    21200000, 21000000, 21450000,  "15M",  DEMOD_USB,  3000, 200,    1,      0,       5.0,     20,    20,
+    24920000, 24890000, 24990000,  "12M",  DEMOD_USB,  3000, 200,    1,      0,       6.0,     20,    20,
+    28350000, 28000000, 29700000,  "10M",  DEMOD_USB,  3000, 200,    1,      0,       8.5,     20,    20
+};
 
-
-const arm_cfft_instance_f32 *S;
-const arm_cfft_instance_f32 *iS;
-const arm_cfft_instance_f32 *maskS;
-const arm_cfft_instance_f32 *NR_FFT;
-const arm_cfft_instance_f32 *NR_iFFT;
-const arm_cfft_instance_f32 *spec_FFT;
-
-arm_biquad_casd_df1_inst_f32 biquad_lowpass1;
-arm_biquad_casd_df1_inst_f32 IIR_biquad_Zoom_FFT_I;
-arm_biquad_casd_df1_inst_f32 IIR_biquad_Zoom_FFT_Q;
-
-arm_fir_decimate_instance_f32 FIR_dec1_I;
-arm_fir_decimate_instance_f32 FIR_dec1_Q;
-arm_fir_decimate_instance_f32 FIR_dec2_I;
-arm_fir_decimate_instance_f32 FIR_dec2_Q;
-arm_fir_decimate_instance_f32 Fir_Zoom_FFT_Decimate_I;
-arm_fir_decimate_instance_f32 Fir_Zoom_FFT_Decimate_Q;
-arm_fir_interpolate_instance_f32 FIR_int1_I;
-arm_fir_interpolate_instance_f32 FIR_int1_Q;
-arm_fir_interpolate_instance_f32 FIR_int2_I;
-arm_fir_interpolate_instance_f32 FIR_int2_Q;
-arm_lms_norm_instance_f32 LMS_Norm_instance;
-arm_lms_instance_f32 LMS_instance;
-
-const float32_t DF1 = 4.0;             // decimation factor
-const float32_t DF2 = 2.0;             // decimation factor
-const float32_t DF = DF1 * DF2;        // decimation factor
-const float32_t n_att = 90.0;        // need here for later def's
-const float32_t n_desired_BW = 9.0;  // desired max BW of the filters
-const float32_t n_samplerate = 176.0;  // samplerate before decimation
-const float32_t n_fpass1 = n_desired_BW / n_samplerate;
-const float32_t n_fpass2 = n_desired_BW / (n_samplerate / DF1);
-const float32_t n_fstop1 = ((n_samplerate / DF1) - n_desired_BW) / n_samplerate;
-const float32_t n_fstop2 = ((n_samplerate / (DF1 * DF2)) - n_desired_BW) / (n_samplerate / DF1);
-
-const uint16_t n_dec1_taps = (1 + (uint16_t)(n_att / (22.0 * (n_fstop1 - n_fpass1))));
-const uint16_t n_dec2_taps = (1 + (uint16_t)(n_att / (22.0 * (n_fstop2 - n_fpass2))));
-
-int16_t spectrum_height = 96;
-const uint32_t IIR_biquad_Zoom_FFT_N_stages = 4;
-const uint32_t N_stages_biquad_lowpass1 = 1;
 int bandswitchPins[] = {
   FILTERPIN80M,  // 80M
   FILTERPIN40M,  // 40M
@@ -282,127 +120,21 @@ int bandswitchPins[] = {
   0,   // 12M  Note that 12M and 10M both use the 10M filter, which is always in (no relay).  KF5N September 27, 2023.
   0    // 10M
 };
-volatile int menuEncoderMove = 0;
-volatile long fineTuneEncoderMove = 0L;
 
-uint16_t temp_check_frequency;
-
-const uint32_t N_B = FFT_LENGTH / 2 / BUFFER_SIZE * (uint32_t)DF;
-uint32_t N_BLOCKS = N_B;
-long favoriteFrequencies[13];
-
-float32_t bin_BW = 1.0 / (DF * FFT_length) * SampleRate;
-float32_t biquad_lowpass1_state[N_stages_biquad_lowpass1 * 4];
-float32_t biquad_lowpass1_coeffs[5 * N_stages_biquad_lowpass1] = { 0, 0, 0, 0, 0 };
-float32_t DMAMEM float_buffer_L[BUFFER_SIZE * N_B];
-float32_t DMAMEM float_buffer_R[BUFFER_SIZE * N_B];
-float32_t DMAMEM iFFT_buffer[FFT_LENGTH * 2 + 1];
-float32_t IIR_biquad_Zoom_FFT_I_state[IIR_biquad_Zoom_FFT_N_stages * 4];
-float32_t IIR_biquad_Zoom_FFT_Q_state[IIR_biquad_Zoom_FFT_N_stages * 4];
-
-float temp;
-
-// *** moving these to associated files causes array size not an integer error ***
-const int INT1_STATE_SIZE = 24 + BUFFER_SIZE * N_B / (uint32_t)DF - 1;
-const int INT2_STATE_SIZE = 8 + BUFFER_SIZE * N_B / (uint32_t)DF1 - 1;
-const int DEC2STATESIZE = n_dec2_taps + (BUFFER_SIZE * N_B / (uint32_t)DF1) - 1;
-
-float32_t DMAMEM FIR_dec1_I_state[n_dec1_taps + (uint16_t)BUFFER_SIZE * (uint32_t)N_B - 1];
-float32_t DMAMEM FIR_dec2_I_state[DEC2STATESIZE];
-float32_t DMAMEM FIR_dec2_Q_state[DEC2STATESIZE];
-float32_t DMAMEM FIR_int2_I_state[INT2_STATE_SIZE];
-float32_t DMAMEM FIR_int2_Q_state[INT2_STATE_SIZE];
-float32_t DMAMEM FIR_dec1_Q_state[n_dec1_taps + (uint16_t)BUFFER_SIZE * (uint16_t)N_B - 1];
-float32_t DMAMEM FIR_int1_I_state[INT1_STATE_SIZE];
-float32_t DMAMEM FIR_int1_Q_state[INT1_STATE_SIZE];
-float32_t DMAMEM Fir_Zoom_FFT_Decimate_I_state[4 + BUFFER_SIZE * N_B - 1];
-float32_t DMAMEM Fir_Zoom_FFT_Decimate_Q_state[4 + BUFFER_SIZE * N_B - 1];
-float32_t DMAMEM FIR_dec1_coeffs[n_dec1_taps]; // have to include these here to avoid "size of array is not an integral constant-expression" error
-float32_t DMAMEM FIR_dec2_coeffs[n_dec2_taps];
-
-const uint32_t N_DEC_B = N_B / (uint32_t)DF;
-
-float32_t DMAMEM last_sample_buffer_L[BUFFER_SIZE * N_DEC_B];
-float32_t DMAMEM last_sample_buffer_R[BUFFER_SIZE * N_DEC_B];
-
-//-------------------------------------------------------------------------------------------------------------
-// Forwards
-//-------------------------------------------------------------------------------------------------------------
-
-void Splash();
+byte sharedRAM1[1024 * 8];
+byte DMAMEM sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
-/*****
-  Purpose: To read the local time
-
-  Parameter list:
-    void
-
-  Return value:
-    time_t                a time data point
-*****/
-time_t getTeensy3Time() {
-  return Teensy3Clock.get();
-}
-
-//#pragma GCC diagnostic ignored "-Wunused-variable"
-
-// is added in Teensyduino 1.52 beta-4, so this can be deleted !?
-
-/*****
-  Purpose: To set the real time clock
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FLASHMEM void T4_rtc_set(unsigned long t) {
-  //#if defined (T4)
-#if 0
-  // stop the RTC
-  SNVS_HPCR &= ~(SNVS_HPCR_RTC_EN | SNVS_HPCR_HP_TS);
-  while (SNVS_HPCR & SNVS_HPCR_RTC_EN); // wait
-  // stop the SRTC
-  SNVS_LPCR &= ~SNVS_LPCR_SRTC_ENV;
-  while (SNVS_LPCR & SNVS_LPCR_SRTC_ENV); // wait
-  // set the SRTC
-  SNVS_LPSRTCLR = t << 15;
-  SNVS_LPSRTCMR = t >> 17;
-  // start the SRTC
-  SNVS_LPCR |= SNVS_LPCR_SRTC_ENV;
-  while (!(SNVS_LPCR & SNVS_LPCR_SRTC_ENV)); // wait
-  // start the RTC and sync it to the SRTC
-  SNVS_HPCR |= SNVS_HPCR_RTC_EN | SNVS_HPCR_HP_TS;
-#endif
-}
-
-
-// Teensy 4.0, 4.1
-/*****
-  Purpose: to collect array inits in one place
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FLASHMEM void InitializeDataArrays() {
-  int LP_F_help;
-
-  //DB2OO, 11-SEP-23: don't use the fixed sizes, but use the caculated ones, otherwise a code change will create very difficult to find problems
 #define CLEAR_VAR(x) memset(x, 0, sizeof(x))
-
+FLASHMEM void InitializeDataArrays() {
   CLEAR_VAR(buffer_spec_FFT);
   CLEAR_VAR(FFT_spec);
   CLEAR_VAR(FFT_spec_old);
-  CLEAR_VAR(pixelnew);
-  CLEAR_VAR(pixelold);
+  SET_VAR(pixelnew, SPECTRUM_BOTTOM);
+  SET_VAR(pixelold, SPECTRUM_BOTTOM);
   CLEAR_VAR(pixelCurrent);
   CLEAR_VAR(NR_FFT_buffer);
   CLEAR_VAR(NR_output_audio_buffer);
@@ -425,179 +157,17 @@ FLASHMEM void InitializeDataArrays() {
   CLEAR_VAR(LMS_NormCoeff_f32);
   CLEAR_VAR(LMS_nr_delay);
 
-  /****************************************************************************************
-     set filter bandwidth
-  ****************************************************************************************/
-  // *** this is going to get done in call to CalcFilters() in setup.  Do we really need it here as well? ***
-  CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SampleRate / DF);
-
-  /****************************************************************************************
-     init complex FFTs
-  ****************************************************************************************/
-  switch (FFT_length) {
-    case 2048:
-      S = &arm_cfft_sR_f32_len2048;
-      iS = &arm_cfft_sR_f32_len2048;
-      maskS = &arm_cfft_sR_f32_len2048;
-      break;
-    case 1024:
-      S = &arm_cfft_sR_f32_len1024;
-      iS = &arm_cfft_sR_f32_len1024;
-      maskS = &arm_cfft_sR_f32_len1024;
-      break;
-    case 512:
-      S = &arm_cfft_sR_f32_len512;
-      iS = &arm_cfft_sR_f32_len512;
-      maskS = &arm_cfft_sR_f32_len512;
-      break;
-  }
-
-  spec_FFT = &arm_cfft_sR_f32_len512;  //Changed specification to 512 instance
-  NR_FFT = &arm_cfft_sR_f32_len256;
-  NR_iFFT = &arm_cfft_sR_f32_len256;
-
-  /****************************************************************************************
-     Calculate the FFT of the FIR filter coefficients once to produce the FIR filter mask
-  ****************************************************************************************/
-  InitFilterMask();
-
-  /****************************************************************************************
-     Set sample rate
-  ****************************************************************************************/
-  SetI2SFreq(SampleRate);
-
-  biquad_lowpass1.numStages = N_stages_biquad_lowpass1;  // set number of stages
-  biquad_lowpass1.pCoeffs = biquad_lowpass1_coeffs;      // set pointer to coefficients file
-
-  for (unsigned i = 0; i < 4 * N_stages_biquad_lowpass1; i++) {
-    biquad_lowpass1_state[i] = 0.0;  // set state variables to zero
-  }
-  biquad_lowpass1.pState = biquad_lowpass1_state;  // set pointer to the state variables
-
-  /****************************************************************************************
-     set filter bandwidth of IIR filter
-  ****************************************************************************************/
-  // also adjust IIR AM filter
-  // calculate IIR coeffs
-  LP_F_help = bands[currentBand].FHiCut;
-  if (LP_F_help < -bands[currentBand].FLoCut)
-    LP_F_help = -bands[currentBand].FLoCut;
-  SetIIRCoeffs((float32_t)LP_F_help, 1.3, (float32_t)SampleRate / DF, 0);  // 1st stage
-  for (int i = 0; i < 5; i++) {                                                     // fill coefficients into the right file
-    biquad_lowpass1_coeffs[i] = coefficient_set[i];
-  }
-
-  /****************************************************************************************
-     Initiate decimation and interpolation FIR filters
-  ****************************************************************************************/
-  // Decimation filter 1, M1 = DF1
-  CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, (float32_t)SampleRate);
-
-  if(arm_fir_decimate_init_f32(&FIR_dec1_I, n_dec1_taps, (uint32_t)DF1, FIR_dec1_coeffs, FIR_dec1_I_state, BUFFER_SIZE * N_BLOCKS)) {
-    while(1);
-  }
-
-  if(arm_fir_decimate_init_f32(&FIR_dec1_Q, n_dec1_taps, (uint32_t)DF1, FIR_dec1_coeffs, FIR_dec1_Q_state, BUFFER_SIZE * N_BLOCKS)) {
-    while(1);
-  }
-
-  // Decimation filter 2, M2 = DF2
-  CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
-  if(arm_fir_decimate_init_f32(&FIR_dec2_I, n_dec2_taps, (uint32_t)DF2, FIR_dec2_coeffs, FIR_dec2_I_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while(1);
-  }
-
-  if(arm_fir_decimate_init_f32(&FIR_dec2_Q, n_dec2_taps, (uint32_t)DF2, FIR_dec2_coeffs, FIR_dec2_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while(1);
-  }
-
-  // Interpolation filter 1, L1 = 2
-  // not sure whether I should design with the final sample rate ??
-  // yes, because the interpolation filter is AFTER the upsampling, so it has to be in the target sample rate!
-  CalcFIRCoeffs(FIR_int1_coeffs, 48, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, SampleRate / 4.0);
-  //    if(arm_fir_interpolate_init_f32(&FIR_int1_I, (uint32_t)DF2, 16, FIR_int1_coeffs, FIR_int1_I_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF)) {
-  if(arm_fir_interpolate_init_f32(&FIR_int1_I, (uint8_t)DF2, 48, FIR_int1_coeffs, FIR_int1_I_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF)) {
-    while(1);
-  }
-  //    if(arm_fir_interpolate_init_f32(&FIR_int1_Q, (uint32_t)DF2, 16, FIR_int1_coeffs, FIR_int1_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF)) {
-  if(arm_fir_interpolate_init_f32(&FIR_int1_Q, (uint8_t)DF2, 48, FIR_int1_coeffs, FIR_int1_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF)) {
-    while(1);
-  }
-
-  // Interpolation filter 2, L2 = 4
-  // not sure whether I should design with the final sample rate ??
-  // yes, because the interpolation filter is AFTER the upsampling, so it has to be in the target sample rate!
-  CalcFIRCoeffs(FIR_int2_coeffs, 32, (float32_t)(n_desired_BW * 1000.0), n_att, 0, 0.0, (float32_t)SampleRate);
-
-  if(arm_fir_interpolate_init_f32(&FIR_int2_I, (uint8_t)DF1, 32, FIR_int2_coeffs, FIR_int2_I_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while (1);
-  }
-  //    if(arm_fir_interpolate_init_f32(&FIR_int2_Q, (uint32_t)DF1, 16, FIR_int2_coeffs, FIR_int2_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-  if(arm_fir_interpolate_init_f32(&FIR_int2_Q, (uint8_t)DF1, 32, FIR_int2_coeffs, FIR_int2_Q_state, BUFFER_SIZE * N_BLOCKS / (uint32_t)DF1)) {
-    while (1);
-  }
-
-  SetDecIntFilters();  // here, the correct bandwidths are calculated and set accordingly
-
-  /****************************************************************************************
-     Zoom FFT: Initiate decimation and interpolation FIR filters AND IIR filters
-  ****************************************************************************************/
-  float32_t Fstop_Zoom = 0.5 * (float32_t)SampleRate / (1 << spectrumZoom);
-
-  CalcFIRCoeffs(Fir_Zoom_FFT_Decimate_coeffs, 4, Fstop_Zoom, 60, 0, 0.0, (float32_t)SampleRate);
-
-  // Attention: max decimation rate is 128 !
-  //  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_I, 4, 1 << spectrumZoom, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_I_state, BUFFER_SIZE * N_BLOCKS)) {
-  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_I, 4, 128, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_I_state, BUFFER_SIZE * N_BLOCKS)) {
-    while (1)
-      ;
-  }
-  // same coefficients, but specific state variables
-  //  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_Q, 4, 1 << spectrumZoom, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_Q_state, BUFFER_SIZE * N_BLOCKS)) {
-  if (arm_fir_decimate_init_f32(&Fir_Zoom_FFT_Decimate_Q, 4, 128, Fir_Zoom_FFT_Decimate_coeffs, Fir_Zoom_FFT_Decimate_Q_state, BUFFER_SIZE * N_BLOCKS)) {
-    while (1)
-      ;
-  }
-
-  IIR_biquad_Zoom_FFT_I.numStages = IIR_biquad_Zoom_FFT_N_stages;  // set number of stages
-  IIR_biquad_Zoom_FFT_Q.numStages = IIR_biquad_Zoom_FFT_N_stages;  // set number of stages
-  for (unsigned i = 0; i < 4 * IIR_biquad_Zoom_FFT_N_stages; i++) {
-    IIR_biquad_Zoom_FFT_I_state[i] = 0.0;  // set state variables to zero
-    IIR_biquad_Zoom_FFT_Q_state[i] = 0.0;  // set state variables to zero
-  }
-  IIR_biquad_Zoom_FFT_I.pState = IIR_biquad_Zoom_FFT_I_state;  // set pointer to the state variables
-  IIR_biquad_Zoom_FFT_Q.pState = IIR_biquad_Zoom_FFT_Q_state;  // set pointer to the state variables
-
-  // this sets the coefficients for the ZoomFFT decimation filter
-  // according to the desired magnification mode
-  // for 0 the mag_coeffs will a NULL  ptr, since the filter is not going to be used in this  mode!
-  IIR_biquad_Zoom_FFT_I.pCoeffs = mag_coeffs[spectrumZoom];
-  IIR_biquad_Zoom_FFT_Q.pCoeffs = mag_coeffs[spectrumZoom];
-
-  ZoomFFTPrep();
-
-  SpectralNoiseReductionInit();
+  // initialize various filters
+  UpdateFFTFilterMask();
+  InitAMDemodBiquadFilter();
+  InitFFTFilter();
+  InitSpectralNoiseReduction();
   InitLMSNoiseReduction();
+  InitFIRFilter();
 
-  temp_check_frequency = 0x03U;  //updates the temp value at a RTC/3 clock rate
-  //0xFFFF determines a 2 second sample rate period
-
-  //initTempMon(temp_check_frequency, lowAlarmTemp, highAlarmTemp, panicAlarmTemp);
-  initTempMon(temp_check_frequency, 25U, 85U, 90U);  // 85U = 42 degrees C?
-  // this starts the measurements
-  TEMPMON_TEMPSENSE0 |= 0x2U;
+  sineTone(8); // prepare 750Hz signal buffer
 }
 
-
-/*****
-  Purpose: The initial screen display on startup. Expect this to be customized
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
 FLASHMEM void Splash() {
   int centerTxt;
   int line1_Y = YPIXELS / 10;
@@ -665,22 +235,26 @@ FLASHMEM void Splash() {
 /*****
   Purpose: perform a soft reset of the radio
               This resets the user modifiable radio settings to the startup state
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SoftReset() {
   // can't use any working variables until after this, we can get rid of this when we use EEPROMData
   LoadOpVars();
 
+  splitVFO = false;
+
+  // encoder globals
+  getEncoderValueFlag = false;
+  volumeChangeFlag = false;
+  resetTuningFlag = false;
+  fineTuneFlag = false;
+  posFilterEncoder = 0;
+  lastFilterEncoder = 1; // force initial update
+  filter_pos_BW = 0;
+  last_filter_pos_BW = 0;
+
   SetKeyPowerUp();  // Use keyType and paddleFlip to configure key GPIs
   SetDitLength(currentWPM);
   SetTransmitDitLength();
-  CWFreqShift = 750;
-  calFreqShift = 0;
   menuEncoderMove = 0;
   fineTuneEncoderMove = 0L;
 
@@ -689,16 +263,6 @@ FLASHMEM void SoftReset() {
   mainMenuIndex = 0;             // Changed from middle to first. Do Menu Down to get to Calibrate quickly
   secondaryMenuIndex = -1;       // -1 means haven't determined secondary menu
   menuStatus = NO_MENUS_ACTIVE;  // Blank menu field
-
-  knee_dBFS = -15.0;   // Is this variable actually used???
-  comp_ratio = 5.0;
-  attack_sec = .1;
-  release_sec = 2.0;
-
-#ifdef USE_MIC_COMPRESSION
-  comp1.setPreGain_dB(-10);  //set the gain of the Left-channel gain processor
-  comp2.setPreGain_dB(-10);  //set the gain of the Right-channel gain processor
-#endif
 
   // set T41 last state different from radio state indicating a state change
   // so receiver will be configured on the first pass through loop()
@@ -719,64 +283,16 @@ FLASHMEM void SoftReset() {
   SetBandRelay(HIGH);
 }
 
-void ARMCorrTest(){
-  float32_t a[5] = {0.58, 0.95, 0.0, -0.95, -0.58};
-  float32_t b[5] = {0.58, 0.95, 0.0, -0.95, -0.58};
-  float32_t c[5] = {-0.58, -0.95, 0.0, 0.95, 0.58};
-  float32_t d[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  char buff[10];
-
-  arm_correlate_f32(a, 5, b, 5, d);
-
-  for(int i = 0; i < 8; i++) {
-    dtostrf(d[i], 6, 2, buff);
-    Serial.print("i: "); Serial.print(i+1); Serial.println(buff);
-    d[i] = 0;
-  }
-  Serial.println("");
-
-  arm_correlate_f32(a, 5, c, 5, d);
-
-  for(int i = 0; i < 8; i++) {
-    dtostrf(d[i], 6, 2, buff);
-    Serial.print("i: "); Serial.print(i+1); Serial.println(buff);
-    //d[i] = 0;
-  }
-  Serial.println("");
-}
-
-#include <FlexSerial.h>
-FlexSerial FlexSerial1(26, 27); // pin 26 receive, pin 27 transmit; Works!
-
-extern AudioConnection patchCord9;
-extern AudioConnection patchCord10;
-volatile unsigned int tmpChannel = 0;
-volatile unsigned int tmpGain = 1;
-
-/*****
-  Purpose: program entry point that sets the environment for program
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
 FLASHMEM void setup() {
   Serial.begin(9600);
 
-  // setup comms with ESP32
-  //FlexSerial1.begin(115200);
-  //Serial.println("Beginning I2C (m) on T41 T4.1...");
-  //Wire2.begin();
+  // set system time
+  // see: https://github.com/PaulStoffregen/Time
+  setSyncProvider(GetTeensyTime); // get the time from the RTC
+  setTime(now()); // set system time
+  SetTeensyTime(now()); // reset the RTC to current time
 
-  setSyncProvider(getTeensy3Time);  // get TIME from real time clock with 3V backup battery
-  setTime(now());
-  Teensy3Clock.set(now());  // set the RTC
-  T4_rtc_set(Teensy3Clock.get());
-
-  AudioSetup();
-
+  // set up Teensy pins that aren't handled elsewhere
   pinMode(FILTERPIN15M, OUTPUT);
   pinMode(FILTERPIN20M, OUTPUT);
   pinMode(FILTERPIN40M, OUTPUT);
@@ -786,95 +302,29 @@ FLASHMEM void setup() {
   digitalWrite(MUTE, LOW);
   pinMode(PTT, INPUT_PULLUP);
   pinMode(BUSY_ANALOG_PIN, INPUT);
-  pinMode(FILTER_ENCODER_A, INPUT);
-  pinMode(FILTER_ENCODER_B, INPUT);
-  //pinMode(OPTO_OUTPUT, OUTPUT);
+
   pinMode(KEYER_DIT_INPUT_TIP, INPUT_PULLUP);
   pinMode(KEYER_DAH_INPUT_RING, INPUT_PULLUP);
-  pinMode(TFT_MOSI, OUTPUT);
-  digitalWrite(TFT_MOSI, HIGH);
-  pinMode(TFT_SCLK, OUTPUT);
-  digitalWrite(TFT_SCLK, HIGH);
-  pinMode(TFT_CS, OUTPUT);
-  digitalWrite(TFT_CS, HIGH);
-
-  arm_fir_init_f32(&FIR_Hilbert_L, 100, FIR_Hilbert_coeffs_45, FIR_Hilbert_state_L, 256);
-  arm_fir_init_f32(&FIR_Hilbert_R, 100, FIR_Hilbert_coeffs_neg45, FIR_Hilbert_state_R, 256);
-  arm_fir_init_f32(&FIR_CW_DecodeL, 64, CW_Filter_Coeffs2, FIR_CW_DecodeL_state, 256);  //AFP 10-25-22
-  arm_fir_init_f32(&FIR_CW_DecodeR, 64, CW_Filter_Coeffs2, FIR_CW_DecodeR_state, 256);
-  arm_fir_decimate_init_f32(&FIR_dec1_EX_I, 48, 4, coeffs192K_10K_LPF_FIR, FIR_dec1_EX_I_state, 2048);
-  arm_fir_decimate_init_f32(&FIR_dec1_EX_Q, 48, 4, coeffs192K_10K_LPF_FIR, FIR_dec1_EX_Q_state, 2048);
-  arm_fir_decimate_init_f32(&FIR_dec2_EX_I, 24, 2, coeffs48K_8K_LPF_FIR, FIR_dec2_EX_I_state, 512);
-  arm_fir_decimate_init_f32(&FIR_dec2_EX_Q, 24, 2, coeffs48K_8K_LPF_FIR, FIR_dec2_EX_Q_state, 512);
-  arm_fir_interpolate_init_f32(&FIR_int1_EX_I, 2, 48, coeffs48K_8K_LPF_FIR, FIR_int1_EX_I_state, 256);
-  arm_fir_interpolate_init_f32(&FIR_int1_EX_Q, 2, 48, coeffs48K_8K_LPF_FIR, FIR_int1_EX_Q_state, 256);
-  arm_fir_interpolate_init_f32(&FIR_int2_EX_I, 4, 32, coeffs192K_10K_LPF_FIR, FIR_int2_EX_I_state, 512);
-  arm_fir_interpolate_init_f32(&FIR_int2_EX_Q, 4, 32, coeffs192K_10K_LPF_FIR, FIR_int2_EX_Q_state, 512);
-
-  //***********************  EQ Gain Settings ************
-  uint32_t iospeed_display = IOMUXC_PAD_DSE(3) | IOMUXC_PAD_SPEED(1);
-  *(digital_pin_to_info_PGM + 13)->pad = iospeed_display;  //clk
-  *(digital_pin_to_info_PGM + 11)->pad = iospeed_display;  //MOSI
-  *(digital_pin_to_info_PGM + TFT_CS)->pad = iospeed_display;
-
-  tuneEncoder.begin(true);
-  volumeEncoder.begin(true);
-  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_A), EncoderVolumeISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(VOLUME_ENCODER_B), EncoderVolumeISR, CHANGE);
-  menuChangeEncoder.begin(true);
-  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_A), EncoderMenuChangeFilterISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(FILTER_ENCODER_B), EncoderMenuChangeFilterISR, CHANGE);
-  fineTuneEncoder.begin(true);
-  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_A), EncoderFineTuneISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_B), EncoderFineTuneISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(KEYER_DIT_INPUT_TIP), KeyTipOn, CHANGE);
   attachInterrupt(digitalPinToInterrupt(KEYER_DAH_INPUT_RING), KeyRingOn, CHANGE);
 
-  tft.begin(RA8875_800x480, 8, 20000000UL, 4000000UL);  // parameter list from library code
-#ifdef FOURSQRP
-  tft.setRotation(0);
-#endif
-  #ifdef PROJECTSYSTEM
-  tft.setRotation(2);
-#endif
-
-  // Setup for scrolling attributes. Part of initSpectrum_RA8875() call written by Mike Lewis
-  tft.useLayers(true); // mainly used to turn on layers
-  tft.layerEffect(OR); // overlay layers
-  tft.writeTo(L2);
-  tft.clearMemory();
-  tft.writeTo(L1);
-  tft.clearMemory();
-
+  EnableButtonInterrupts();
+  EncodersInit();
+  InitDisplay();
   Splash();
 
   sdCardPresent = InitializeSDCard();  // Is there an SD card that can be initialized?
-
   EEPROMStartup();
-
+  sdCardPresent = SDPresentCheck();
 #ifdef DEBUG
   EEPROMShow();
 #endif
 
-  // Enable switch matrix button interrupts (from T41EEE.3)
-  EnableButtonInterrupts();
-
   delay(100L);
 
-  /****************************************************************************************
-     start local oscillator Si5351
-  ****************************************************************************************/
-  si5351.reset();
-  si5351.init(SI5351_CRYSTAL_LOAD_10PF, Si_5351_crystal, freqCorrectionFactor);
-  si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB); //  Allows CLK1 and CLK2 to exceed 100 MHz simultaneously.
-  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);
-  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);
-
+  InitSI5351();
+  AudioSetup();
   InitializeDataArrays();
-
-  sineTone(BUFFER_SINE_COUNT);  // Set to 8
-
-  sdCardPresent = SDPresentCheck();
 
   SoftReset();
 
@@ -893,117 +343,27 @@ FLASHMEM void setup() {
   //memCheck = true;
   PrimeMallInfo();
 
-  char myGrid[] = "CM87";
   set_Station_Coordinates(myGrid);
 
 #ifdef NO_DISPLAY
-  //T41ControlSetup();
+  T41ControlSetup();
 #endif
   //T41BeaconSetup();
   //WSJTControlSetup();
-  //ARMCorrTest();
   //T41ControlSetup();
 
   KeyerSetup(); // testing only
-/*
-  StartAudioStats();
-  for(int i = 0; i < 1000; i++) {
-#ifdef USE_MIXERS
-    //modeSelectInL.gain(tmpChannel, tmpGain);
-    //modeSelectInR.gain(tmpChannel, tmpGain);
-    //modeSelectInL.gain(tmpChannel, tmpGain);
-    //modeSelectInR.gain(tmpChannel, tmpGain);
-#else
-    patchCord9.disconnect();
-    patchCord10.disconnect();
-    patchCord9.connect();
-    patchCord10.connect();
-#endif
-  }
-  EndAudioStats();
-*/
+
+  // initialize Teensy temperature monitor
+  // temp_check_frequency = 0x03U;  //updates the temp value at a RTC/3 clock rate
+  // 0xFFFF determines a 2 second sample rate period
+  //initTempMon(temp_check_frequency, lowAlarmTemp, highAlarmTemp, panicAlarmTemp);
+  initTempMon(0x03U, 25U, 85U, 90U);  // 85U = 42 degrees C?
+  // this starts the measurements
+  TEMPMON_TEMPSENSE0 |= 0x2U;
 }
 
-elapsedMicros usec = 0;  // Automatically increases as time passes; no ++ necessary.
-//double old_elapsed_micros_idx_t = 0;
-//unsigned long last_usb_read = 0;
-
-// temporary for remote head
-bool connected = false;
-uint8_t freqData[512];
-uint8_t audioData[270];
-int fCount = 0;
-
-#define I2C_DEV_ADDR_ESP32 0x55
-
-uint8_t combData[SPECTRUM_RES + 6 + AUDIO_SPEC_BOX_W + 1 + 4]; // FDyyy[512 bytes of freq spectrum data];AD[270 bytes of audio spectrum data]; where yyy = 255 - max
-
-int delayTime = 10;
-//int delayTime = 20;
-int limit = 32;  // delay 0 gives 32 byte blocks but misses last 32 bytes of first 256 bytes and all but 32 bytes of second 256 bytes of 518 package
-                 // delay 5 gives 32 byte blocks passes first 256 bytes ok but misses at least two 32 byte blocks of second 256 bytes
-                 // delay 10 gives 32 byte blocks and successful transfer of 518 byte package
-                 //, but fails sometimes with 791 byte package
-
-//int delayTime = 40;
-//int limit = 128;  // delay 20 gives 128 byte blocks but misses last 128 bytes of 512 byte package
-                  // delay 30 gives 128 byte blocks and successful transfer of 518 byte package with 0-255 data (fails to send last 6 bytes with random data)
-
-//int delayTime = 50;
-//int limit = 256; // delay 20 gives max 112 byte blocks and much missing data, longer delay doesn't help
-
-void T41SendData(uint8_t *data, int len) {
-  if(len < limit) {
-    Wire2.beginTransmission(I2C_DEV_ADDR_ESP32);
-    Wire2.write(data, len);
-    Wire2.endTransmission(true);
-  } else {
-    int total = 0;
-    while(total < len) {
-      Wire2.beginTransmission(I2C_DEV_ADDR_ESP32);
-      Wire2.write(&data[total], len - total < limit ? len - total : limit);
-      Wire2.endTransmission(true);
-      delay(delayTime);
-      total += limit;
-    }
-  }
-}
-
-void SendSpectrumData(uint8_t *freqData, uint8_t *audioData) {
-  // set up combData for freq and audio spectrum command
-  sprintf((char*)combData, "FD%03d", 0); // set 255 - max to 0 for testing
-  combData[517] = ';';
-  combData[518] = 'A';
-  combData[519] = 'D';
-  combData[SPECTRUM_RES + 6 + AUDIO_SPEC_BOX_W] = ';';
-  combData[791] = 'S';
-  combData[792] = 'D';
-  combData[793] = 530 + random(1, 30);
-  combData[794] = ';';
-
-  for (int i = 0; i < SPECTRUM_RES; i++) {
-    combData[i + 5] = freqData[i];
-  }
-
-  for (int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
-    combData[i + 517 + 2 + 1] = audioData[i];
-  }
-
-  T41SendData(combData, SPECTRUM_RES + 6 + AUDIO_SPEC_BOX_W + 1 + 4);
-}
-
-/*****
-  Purpose: Code here executes forever, or until: 1) power is removed, 2) user does a reset, 3) a component
-           fails, or 4) the cows come home.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FASTRUN void loop()
-{
+FASTRUN void loop() {
   int pushButtonSwitchIndex = -1;
   int valPin;
   int oldVal = HIGH;
@@ -1012,19 +372,6 @@ FASTRUN void loop()
 #ifdef AUDIO_STATS
   StartAudioStats();
 #endif
-
-  if(!connected && FlexSerial1.available()) {
-    char command = FlexSerial1.read();
-    Serial.print("got command "); Serial.println(command);
-    switch(command) {
-      case 'C': // connected
-        connected = true;
-        break;
-
-      default:
-        break;
-    }
-  }
 
   if(memCheck) {
     if(++loopCounter == 100) {
@@ -1043,7 +390,7 @@ FASTRUN void loop()
 
   // check for UI button press and process accordingly
   valPin = ReadSelectedPushButton();
-  if (valPin != BOGUS_PIN_READ) {
+  if(valPin != BOGUS_PIN_READ) {
     pushButtonSwitchIndex = ProcessButtonPress(valPin);
     ExecuteButtonPress(pushButtonSwitchIndex);
   }
@@ -1101,16 +448,17 @@ FASTRUN void loop()
 
     case SSB_TRANSMIT_STATE:
 #ifdef USE_MIC_COMPRESSION
-      if (compressorFlag == 1) {
-        SetupMicCompressors(use_HP_filter, (float)currentMicThreshold, comp_ratio, attack_sec, release_sec);  // Cast currentMicThreshold to float.  KF5N, October 31, 2023
-      } else if (compressorFlag == 0) {
-        SetupMicCompressors(use_HP_filter, 0.0, comp_ratio, 0.01, 0.01);
+      if(compressorFlag == 1) {
+        SetupMicCompressors((float)currentMicThreshold, .1, 2.0);
+      } else if(compressorFlag == 0) {
+        SetupMicCompressors(0.0, 0.01, 0.01);
       }
 #endif
       digitalWrite(RXTX, HIGH); // xmit on
 
       while(digitalRead(PTT) == LOW) {
         ExciterIQData();
+        UpdateClock();
       }
 
       digitalWrite(RXTX, LOW); // xmit off
@@ -1210,9 +558,13 @@ FASTRUN void loop()
   // save radio state for next loop
   lastState = radioState;
 
+#ifdef T41_REMOTE_DISPLAY
+  RemoteLoop();
+#endif
+
 #ifdef HOST_KEYBOARD_MOUSE_SUPPORT
   // just for testing
-  if (elapsed_micros_idx_t > 200) {
+  if(elapsed_micros_idx_t > 200) {
     //PrintKeyboardBuffer();
   }
 
@@ -1230,53 +582,28 @@ FASTRUN void loop()
   T41ControlLoop();
 #endif
 
-  if(connected) {
-/*
-    uint8_t max = 0;
-
-    // create fake frequency spectrum and send it to remote head
-    for(int i = 0; i < 512; i++) {
-      freqData[i] = 230 - random(1, 40);
-      //freqData[i] = i;
-      if(freqData[i] > max) max = freqData[i];
-    }
-    //FlexSerial1.print("S");
-    //delay(10);
-    //SendFreqSpectrumData(freqData, max);
-
-    // create fake audio spectrum and send it to remote head
-    max = 0;
-    for(int i = 0; i < 270; i++) {
-      audioData[i] = 60 - random(1, 30);
-      //audioData[i] = i;
-      if(audioData[i] > max) max = audioData[i];
-    }
-    //SendAudioSpectrumData(data);
-*/
-    SendSpectrumData(freqData, audioData);
-    Serial.printf("sent spectrum data: %d\n", ++fCount);
-  }
-
   // update memory usage about every second
-  if (elapsed_micros_idx_t > 100) {
+  if(elapsed_micros_idx_t > 100) {
     // Stack is more informative when called from within a function that might be stressing the stack
     UpdateInfoBoxItem(IB_ITEM_STACK);
     UpdateInfoBoxItem(IB_ITEM_HEAP);
   }
 
   // update load/temp about every 15 seconds
-  if (elapsed_micros_idx_t > 1400) {
+  if(elapsed_micros_idx_t > 1400) {
     //Serial.println(millis());
     UpdateInfoBoxItem(IB_ITEM_TEMP);
     UpdateInfoBoxItem(IB_ITEM_LOAD);
   }
 
-  if (volumeChangeFlag == true) {
+  if(volumeChangeFlag == true) {
     volumeChangeFlag = false;
     UpdateInfoBoxItem(IB_ITEM_VOL);
   }
 
-#ifdef DEBUG_LOOP
+  UpdateClock();
+
+  #ifdef DEBUG_LOOP
   ExitLoop();
 #endif
 
@@ -1286,5 +613,4 @@ FASTRUN void loop()
   // PC control app.  These may not be needed if that app isn't used.
   delay(12);
 #endif
-
 }

@@ -13,9 +13,6 @@ This software is made available under the GNU GPLv3 license agreement. If commer
 software is planned, we would appreciate it if the interested parties contact Jack Purdum, W8TEE,
 and Al Peter, AC8GY.
 
-Any and all other uses, written or implied, by the GPLv3 license are forbidden without written
-permission from from Jack Purdum, W8TEE, and Al Peter, AC8GY.
-  
 =========================================
 END OF T41-EP NOTICES AND INFORMATION
 

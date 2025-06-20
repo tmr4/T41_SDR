@@ -1,7 +1,13 @@
+
+#include <EEPROM.h>
+#include <SD.h>
+
 #include "SDT.h"
+
 #include "Button.h"
 #include "Display.h"
 #include "EEPROM.h"
+#include "Encoders.h"
 #include "Filter.h"
 #include "Menu.h"
 #include "Tune.h"
@@ -16,7 +22,7 @@
 #define MAX_SD_ITEMS        184     // Number of discrete data items written to EEPROM
 #define MAX_FAVORITES        13     // Max number of favorite frequencies stored in EEPROM
 
-//DB2OO, 29-AUG-23: Don't use the overall VERSION for the EEPROM structure version information, but use a combination of an EEPROM_VERSION with the size of the EEPROMData variable.
+// Don't use the overall VERSION for the EEPROM structure version information, but use a combination of an EEPROM_VERSION with the size of the EEPROMData variable.
 // The "EEPROM_VERSION" should only be changed, if the structure config_t EEPROMData has changed!
 // For V049.1 the new version in EEPROM will be "V049_808", for V049.2 it will be "V049_812"
 #define EEPROM_VERSION  "V049"
@@ -190,7 +196,7 @@ static char* EEPROMSetVersion(void) {
   strncpy(version_size, EEPROM_VERSION, sizeof(version_size));
   l = strlen(version_size);
   //enough space to append '_' and 4 characters for size
-  if ((sizeof(version_size)-l) > 5) {
+  if((sizeof(version_size)-l) > 5) {
     version_size[l] = '_';
     itoa(sizeof(EEPROMData), version_size+l+1, 10);
   }
@@ -272,8 +278,8 @@ FLASHMEM void EEPROMShow() {
   Serial.print("freqCorrectionFactor            = ");
   Serial.println(EEPROMData.freqCorrectionFactor);
   Serial.println("----- Equalizer Parameters -----");
-  for (i = 0; i < EQUALIZER_CELL_COUNT; i++) {
-    if (i < 10) {
+  for(i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+    if(i < 10) {
       Serial.print(" ");
     }
     Serial.print("               equalizerRec[");
@@ -282,8 +288,8 @@ FLASHMEM void EEPROMShow() {
     Serial.println(EEPROMData.equalizerRec[i]);
   }
   Serial.println(" ");
-  for (i = 0; i < EQUALIZER_CELL_COUNT; i++) {
-    if (i < 10) {
+  for(i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+    if(i < 10) {
       Serial.print(" ");
     }
     Serial.print("               equalizerXmt[");
@@ -303,8 +309,8 @@ FLASHMEM void EEPROMShow() {
   Serial.print("currentMicGain                  = ");
   Serial.println(EEPROMData.currentMicGain);
   Serial.println("----- Switch Matrix Values -----");
-  for (i = 0; i < NUMBER_OF_SWITCHES; i++) {
-    if (i < 10) {
+  for(i = 0; i < NUMBER_OF_SWITCHES; i++) {
+    if(i < 10) {
       Serial.print(" ");
     }
     Serial.print("               switchValues[");
@@ -326,28 +332,28 @@ FLASHMEM void EEPROMShow() {
   Serial.print("pll_fmax                        = ");
   Serial.println(EEPROMData.pll_fmax);
   Serial.println("----- Power Out Calibration Parameters -----");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("                  powerOutCW[");
     Serial.print(i);
     Serial.print("] = ");
     Serial.println(EEPROMData.powerOutCW[i], 5);  //AFP 10-13-22
   }
   Serial.println(" ");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("                 powerOutSSB[");
     Serial.print(i);
     Serial.print("] = ");
     Serial.println(EEPROMData.powerOutSSB[i], 5);
   }
   Serial.println(" ");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("            CWPowerCalFactor[");
     Serial.print(i);
     Serial.print("] = ");
     Serial.println(EEPROMData.CWPowerCalibrationFactor[i], 5);
   }
   Serial.println(" ");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("           SSBPowerCalFactor[");
     Serial.print(i);
     Serial.print("] = ");
@@ -355,28 +361,28 @@ FLASHMEM void EEPROMShow() {
   }
   Serial.println(" ");
   Serial.println("----- I/Q Calibration Parameters -----");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print(" IQAmplitudeCorrectionFactor[");
     Serial.print(i);
     Serial.print("] = ");
     Serial.println(EEPROMData.IQAmpCorrectionFactor[i], 3);
   }
   Serial.println(" ");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("     IQPhaseCorrectionFactor[");
     Serial.print(i);
     Serial.print("] = ");
     Serial.println(EEPROMData.IQPhaseCorrectionFactor[i], 3);
   }
   Serial.println(" ");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("IQXAmplitudeCorrectionFactor[");
     Serial.print(i);
     Serial.print("] = ");
     Serial.println(EEPROMData.IQXAmpCorrectionFactor[i], 3);
   }
   Serial.println(" ");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("    IQXPhaseCorrectionFactor[");
     Serial.print(i);
     Serial.print("] = ");
@@ -384,32 +390,32 @@ FLASHMEM void EEPROMShow() {
   }
   Serial.println(" ");
   Serial.println("----- Favorite Frequencies -----");
-  for (i = 0; i < MAX_FAVORITES; i++) {
-    if (i < 10) {
+  for(i = 0; i < MAX_FAVORITES; i++) {
+    if(i < 10) {
       Serial.print(" ");
     }    Serial.print("              favoriteFreqs[");
     Serial.print(i);
     Serial.print("] = ");
-    if (i < 4) {
+    if(i < 4) {
       Serial.print(" ");
     }
     Serial.println(EEPROMData.favoriteFreqs[i]);
   }
   Serial.println("----- Last Frequencies -----");
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("          lastFrequencies[");
     Serial.print(i);
     Serial.print("][0] = ");
-    if (i < 2) {
+    if(i < 2) {
       Serial.print(" ");
     }
     Serial.println(EEPROMData.lastFrequencies[i][0]);
   }
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("          lastFrequencies[");
     Serial.print(i);
     Serial.print("][1] = ");
-    if (i < 2) {
+    if(i < 2) {
       Serial.print(" ");
     }
     Serial.println(EEPROMData.lastFrequencies[i][1]);
@@ -443,7 +449,7 @@ FLASHMEM void EEPROMShow() {
 
   Serial.println(" ");  // JJP 7-3-23
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     Serial.print("        currentNoiseFloor[");
     Serial.print(i);
     Serial.print("]    = ");
@@ -467,7 +473,7 @@ FLASHMEM void EEPROMShow() {
 FLASHMEM void EEPROMStuffFavorites(unsigned long current[]) {
   int i;
 
-  for (i = 0; i < MAX_FAVORITES; i++) {
+  for(i = 0; i < MAX_FAVORITES; i++) {
     current[i] = EEPROMData.favoriteFreqs[i];
   }
 }
@@ -497,13 +503,13 @@ FLASHMEM void SetFavoriteFrequency() {
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
   tft.print(EEPROMData.favoriteFreqs[index]);
-  while (true) {
-    if (menuEncoderMove != 0) {  // Changed encoder?
+  while(true) {
+    if(menuEncoderMove != 0) {  // Changed encoder?
       index += menuEncoderMove;  // Yep
-      if (index < 0) {
+      if(index < 0) {
         index = MAX_FAVORITES - 1;  // Wrap to last one
       } else {
-        if (index > MAX_FAVORITES)
+        if(index > MAX_FAVORITES)
           index = 0;  // Wrap to first one
       }
       tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
@@ -515,11 +521,11 @@ FLASHMEM void SetFavoriteFrequency() {
     val = ReadSelectedPushButton();  // Read pin that controls all switches
     val = ProcessButtonPress(val);
     delay(150L);
-    if (val == MENU_OPTION_SELECT) {  // Make a choice??
+    if(val == MENU_OPTION_SELECT) {  // Make a choice??
       EraseMenus();
       EEPROMData.favoriteFreqs[index] = TxRxFreq;
 
-      if (activeVFO == VFO_A) {
+      if(activeVFO == VFO_A) {
         currentFreqA = TxRxFreq;
       } else {
         currentFreqB = TxRxFreq;
@@ -554,13 +560,13 @@ FLASHMEM void GetFavoriteFrequency() {
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
   tft.setCursor(SECONDARY_MENU_X, MENUS_Y);
   tft.print(EEPROMData.favoriteFreqs[index]);
-  while (true) {
-    if (menuEncoderMove != 0) {  // Changed encoder?
+  while(true) {
+    if(menuEncoderMove != 0) {  // Changed encoder?
       index += menuEncoderMove;  // Yep
-      if (index < 0) {
+      if(index < 0) {
         index = MAX_FAVORITES - 1;  // Wrap to last one
       } else {
-        if (index > MAX_FAVORITES)
+        if(index > MAX_FAVORITES)
           index = 0;  // Wrap to first one
       }
       tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT, RA8875_MAGENTA);
@@ -574,34 +580,34 @@ FLASHMEM void GetFavoriteFrequency() {
     delay(150L);
 
     centerFreq = EEPROMData.favoriteFreqs[index];  // current frequency  AFP 09-27-22
-    if (centerFreq >= bands[BAND_80M].fBandLow && centerFreq <= bands[BAND_80M].fBandHigh) {
+    if(centerFreq >= bands[BAND_80M].fBandLow && centerFreq <= bands[BAND_80M].fBandHigh) {
       currentBand2 = BAND_80M;
-    } else if (centerFreq >= bands[BAND_80M].fBandHigh && centerFreq <= 7000000L) {  // covers 5MHz WWV AFP 11-03-22
+    } else if(centerFreq >= bands[BAND_80M].fBandHigh && centerFreq <= 7000000L) {  // covers 5MHz WWV AFP 11-03-22
       currentBand2 = BAND_80M;
-    } else if (centerFreq >= bands[BAND_40M].fBandLow && centerFreq <= bands[BAND_40M].fBandHigh) {
+    } else if(centerFreq >= bands[BAND_40M].fBandLow && centerFreq <= bands[BAND_40M].fBandHigh) {
       currentBand2 = BAND_40M;
-    } else if (centerFreq >= bands[BAND_40M].fBandHigh && centerFreq <= 14000000L) {  // covers 10MHz WWV AFP 11-03-22
+    } else if(centerFreq >= bands[BAND_40M].fBandHigh && centerFreq <= 14000000L) {  // covers 10MHz WWV AFP 11-03-22
       currentBand2 = BAND_40M;
-    } else if (centerFreq >= bands[BAND_20M].fBandLow && centerFreq <= bands[BAND_20M].fBandHigh) {
+    } else if(centerFreq >= bands[BAND_20M].fBandLow && centerFreq <= bands[BAND_20M].fBandHigh) {
       currentBand2 = BAND_20M;
-    } else if (centerFreq >= 14000000L && centerFreq <= 18000000L) {  // covers 15MHz WWV AFP 11-03-22
+    } else if(centerFreq >= 14000000L && centerFreq <= 18000000L) {  // covers 15MHz WWV AFP 11-03-22
       currentBand2 = BAND_20M;
-    } else if (centerFreq >= bands[BAND_17M].fBandLow && centerFreq <= bands[BAND_17M].fBandHigh) {
+    } else if(centerFreq >= bands[BAND_17M].fBandLow && centerFreq <= bands[BAND_17M].fBandHigh) {
       currentBand2 = BAND_17M;
-    } else if (centerFreq >= bands[BAND_15M].fBandLow && centerFreq <= bands[BAND_15M].fBandHigh) {
+    } else if(centerFreq >= bands[BAND_15M].fBandLow && centerFreq <= bands[BAND_15M].fBandHigh) {
       currentBand2 = BAND_15M;
-    } else if (centerFreq >= bands[BAND_12M].fBandLow && centerFreq <= bands[BAND_12M].fBandHigh) {
+    } else if(centerFreq >= bands[BAND_12M].fBandLow && centerFreq <= bands[BAND_12M].fBandHigh) {
       currentBand2 = BAND_12M;
-    } else if (centerFreq >= bands[BAND_10M].fBandLow && centerFreq <= bands[BAND_10M].fBandHigh) {
+    } else if(centerFreq >= bands[BAND_10M].fBandLow && centerFreq <= bands[BAND_10M].fBandHigh) {
       currentBand2 = BAND_10M;
     }
     currentBand = currentBand2;
 
 
-    if (val == MENU_OPTION_SELECT) {  // Make a choice??
-      switch (activeVFO) {
+    if(val == MENU_OPTION_SELECT) {  // Make a choice??
+      switch(activeVFO) {
         case VFO_A:
-          if (currentBandA == NUMBER_OF_BANDS) {  // Incremented too far?
+          if(currentBandA == NUMBER_OF_BANDS) {  // Incremented too far?
             currentBandA = 0;                     // Yep. Roll to list front.
           }
           currentBandA = currentBand2;
@@ -610,7 +616,7 @@ FLASHMEM void GetFavoriteFrequency() {
           break;
 
         case VFO_B:
-          if (currentBandB == NUMBER_OF_BANDS) {  // Incremented too far?
+          if(currentBandB == NUMBER_OF_BANDS) {  // Incremented too far?
             currentBandB = 0;                     // Yep. Roll to list front.
           }                                       // Same for VFO B
           currentBandB = currentBand2;
@@ -619,7 +625,7 @@ FLASHMEM void GetFavoriteFrequency() {
           break;
       }
     }
-    if (val == MENU_OPTION_SELECT) {
+    if(val == MENU_OPTION_SELECT) {
 
       //EraseSpectrumDisplayContainer();
       //DrawSpectrumFrame();
@@ -634,7 +640,7 @@ FLASHMEM void GetFavoriteFrequency() {
       //digitalWrite(bandswitchPins[currentBand], LOW);
       //ShowSpectrumdBScale();
       //ShowSpectrum();
-      //bands[currentBand].mode = currentBand;
+      //bands[currentBand].demod = currentBand;
       return;
     }
   }
@@ -679,22 +685,12 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.currentBand = 1;    // 4 bytes
   EEPROMData.currentBandA = 1;   // 4 bytes
   EEPROMData.currentBandB = 1;   // 4 bytes
-  //DB2OO, 23-AUG-23 7.1MHz for Region 1
-#if defined(ITU_REGION) && ITU_REGION==1
-  EEPROMData.currentFreqA = 7100000;
-#else
   EEPROMData.currentFreqA = 7200000;
-#endif
   EEPROMData.currentFreqB = 7030000;
-  //DB2OO, 23-AUG-23: with TCXO needs to be 0
-#ifdef TCXO_25MHZ
-  EEPROMData.freqCorrectionFactor = 0; //68000;
-#else
   //Conventional crystal with freq offset needs a correction factor
   EEPROMData.freqCorrectionFactor = 68000;
-#endif
 
-  for (int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+  for(int i = 0; i < EQUALIZER_CELL_COUNT; i++) {
     EEPROMData.equalizerRec[i] = 100;  // 4 bytes each
   }
   // Use transmit equalizer profile in struct initializer list in SDT.h.  KF5N November 2, 2023
@@ -703,7 +699,6 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.currentMicCompRatio = 8.0;  // Changed to 8.0 from 5.0 based on Neville's tests.  KF5N November 2, 2023
   EEPROMData.currentMicAttack = 0.1;
   EEPROMData.currentMicRelease = 0.1;    // Changed to 0.1 from 2.0 based on Neville's tests.  KF5N November 2, 2023
-  //DB2OO, 23-AUG-23: MicGain 20
   EEPROMData.currentMicGain = 20;
 
   EEPROMData.switchValues[0] = 924;
@@ -810,16 +805,6 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.favoriteFreqs[11] = 10000000L;
   EEPROMData.favoriteFreqs[12] = 15000000L;
 
-  //DB2OO, 23-AUG-23: Region 1 freqs (from https://qrper.com/qrp-calling-frequencies/)
-#if defined(ITU_REGION) && ITU_REGION==1
-  EEPROMData.lastFrequencies[0][0] = 3690000L; //3985000L;   // 80 Phone
-  EEPROMData.lastFrequencies[1][0] = 7090000L; //7200000L;   // 40
-  EEPROMData.lastFrequencies[2][0] = 14285000L;  // 50
-  EEPROMData.lastFrequencies[3][0] = 18130000L;  // 17
-  EEPROMData.lastFrequencies[4][0] = 21285000L; //21385000L;  // 15
-  EEPROMData.lastFrequencies[5][0] = 24950000L;  // 12
-  EEPROMData.lastFrequencies[6][0] = 28365000L; //28385800L;  // 10
-#else
   EEPROMData.lastFrequencies[0][0] = 3985000L;   // 80 Phone
   EEPROMData.lastFrequencies[1][0] = 7200000L;   // 40
   EEPROMData.lastFrequencies[2][0] = 14285000L;  // 50
@@ -827,7 +812,6 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.lastFrequencies[4][0] = 21385000L;  // 15
   EEPROMData.lastFrequencies[5][0] = 24950000L;  // 12
   EEPROMData.lastFrequencies[6][0] = 28385800L;  // 10
-#endif
 
   EEPROMData.lastFrequencies[0][1] = 3560000L;   // 80 CW
   EEPROMData.lastFrequencies[1][1] = 7030000L;   // 40
@@ -850,7 +834,7 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.myLat = MY_LAT;
   EEPROMData.myLong = MY_LON;
 
-  for (int i = 0; i < NUMBER_OF_BANDS; i++) {
+  for(int i = 0; i < NUMBER_OF_BANDS; i++) {
     EEPROMData.currentNoiseFloor[i] = 0;
   }
 
@@ -875,26 +859,26 @@ FLASHMEM int CopySDToEEPROM() {
   int index = 0;
   int lineCount = 0;
 
-  if (!SD.begin(BUILTIN_SDCARD)) {  // SD failed
+  if(!SD.begin(BUILTIN_SDCARD)) {  // SD failed
     // don't do anything more:
     return 0;  // Go home and report it
   }
 
   File file = SD.open("SDEEPROMData.txt", FILE_READ);  // Try to open file...
-  if (file == 0) {
+  if(file == 0) {
     return 0;  // Could not get a file handle, so go home and report it
   }
-  //  while (file.available() > 0) {
-  while (true) {
-    while (true) {
+  //  while(file.available() > 0) {
+  while(true) {
+    while(true) {
       character = file.read();
-      if (character == EOF || lineCount > MAX_SD_ITEMS) {
+      if(character == EOF || lineCount > MAX_SD_ITEMS) {
         file.close();
         EEPROM.put(EEPROM_BASE_ADDRESS, EEPROMData);  // KF5N
         return 1;
       }
       line[index++] = character;
-      if ((character == '\n')) {       // Have we read the complete line?
+      if((character == '\n')) {       // Have we read the complete line?
         line[index - 2] = '\0';        // Overwrite newline and semicolon, we have the complete line as string
         target = strstr(line, " = ");  // Look for token
         strcpy(temp, target + 3);      // Skip past the token
@@ -903,7 +887,7 @@ FLASHMEM int CopySDToEEPROM() {
     }
     index = 0;
 
-    switch (lineCount) {                           // This is a hack, but it works
+    switch(lineCount) {                           // This is a hack, but it works
       case 0:                                      // Version
         strcpy(EEPROMData.versionSettings, temp);  // Real assignment from header file
         break;
@@ -1497,7 +1481,7 @@ FLASHMEM int CopyEEPROMToSD() {
   int i;
 
   File file = SD.open("SDEEPROMData.txt", O_RDWR);  // Get a file handle
-  if (!file) {                                      // Can't open the file
+  if(!file) {                                      // Can't open the file
     return 0;                                       // Go home
   }
   file.seek(0L);  // Reset to BOF so we don't append
@@ -1621,7 +1605,7 @@ FLASHMEM int CopyEEPROMToSD() {
   strcat(buffer, temp);
   file.println(buffer);
 
-  for (i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+  for(i = 0; i < EQUALIZER_CELL_COUNT; i++) {
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.equalizerRec[");  // long data type
     strcat(buffer, digits);
@@ -1630,7 +1614,7 @@ FLASHMEM int CopyEEPROMToSD() {
     strcat(buffer, temp);
     file.println(buffer);
   }
-  for (i = 0; i < EQUALIZER_CELL_COUNT; i++) {
+  for(i = 0; i < EQUALIZER_CELL_COUNT; i++) {
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.equalizerXmt[");  // long data type
     strcat(buffer, digits);
@@ -1660,7 +1644,7 @@ FLASHMEM int CopyEEPROMToSD() {
   strcat(buffer, temp);
   file.println(buffer);
 
-  for (i = 0; i < NUMBER_OF_SWITCHES; i++) {        // switch values
+  for(i = 0; i < NUMBER_OF_SWITCHES; i++) {        // switch values
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.switchValues[");
     strcat(buffer, digits);
@@ -1695,7 +1679,7 @@ FLASHMEM int CopyEEPROMToSD() {
   strcat(buffer, temp);
   file.println(buffer);
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // powerOutCW
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // powerOutCW
     itoa(i, digits, DEC);
     strcpy(buffer, "powerOutCW[");
     strcat(buffer, digits);
@@ -1705,7 +1689,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // powerOutSSB
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // powerOutSSB
     itoa(i, digits, DEC);
     strcpy(buffer, "powerOutSSB[");
     strcat(buffer, digits);
@@ -1715,7 +1699,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // CW Calibration factor
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // CW Calibration factor
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.CWPowerCalibrationFactor[");
     strcat(buffer, digits);
@@ -1725,7 +1709,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // SSB Calibration factor
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // SSB Calibration factor
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.SSBPowerCalibrationFactor[");
     strcat(buffer, digits);
@@ -1735,7 +1719,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // IQ Amp Correction factor
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // IQ Amp Correction factor
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.IQAmpCorrectionFactor[");
     strcat(buffer, digits);
@@ -1745,7 +1729,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // IQ Phase Correction factor
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // IQ Phase Correction factor
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.IQPhaseCorrectionFactor[");
     strcat(buffer, digits);
@@ -1755,7 +1739,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // IQX Amp Correction factor
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // IQX Amp Correction factor
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.IQXAmpCorrectionFactor[");
     strcat(buffer, digits);
@@ -1765,7 +1749,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // IQX Phase Correction factor
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // IQX Phase Correction factor
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.IQXPhaseCorrectionFactor[");
     strcat(buffer, digits);
@@ -1775,7 +1759,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < MAX_FAVORITES; i++) {  // Last frequencies
+  for(i = 0; i < MAX_FAVORITES; i++) {  // Last frequencies
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.favoriteFreqs[");
     strcat(buffer, digits);
@@ -1785,7 +1769,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // Last frequencies
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // Last frequencies
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.lastFrequencies[");
     strcat(buffer, digits);
@@ -1795,7 +1779,7 @@ FLASHMEM int CopyEEPROMToSD() {
     file.println(buffer);
   }
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // Last frequencies
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // Last frequencies
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.lastFrequencies[");
     strcat(buffer, digits);
@@ -1848,7 +1832,7 @@ FLASHMEM int CopyEEPROMToSD() {
   strcat(buffer, temp);
   file.println(buffer);
 
-  for (i = 0; i < NUMBER_OF_BANDS; i++) {  // Noise floor
+  for(i = 0; i < NUMBER_OF_BANDS; i++) {  // Noise floor
     itoa(i, digits, DEC);
     strcpy(buffer, "EEPROMData.currentNoiseFloor[");
     strcat(buffer, digits);
@@ -1881,7 +1865,7 @@ FLASHMEM void SDEEPROMDump() {
   char c;
   int lines = 0;
 
-  if (!SD.begin(BUILTIN_SDCARD)) {
+  if(!SD.begin(BUILTIN_SDCARD)) {
     Serial.print("SD card cannot be initialized.");
   }
   // open the file.
@@ -1889,15 +1873,15 @@ FLASHMEM void SDEEPROMDump() {
   File dataFile = SD.open("SDEEPROMData.txt");
 
   // if the file is available, write to it:
-  if (dataFile) {
-    //     while (dataFile.available()) {
+  if(dataFile) {
+    //     while(dataFile.available()) {
     //      Serial.write(dataFile.read());
-    while (true) {
+    while(true) {
       c = dataFile.read();
-      if (c == 26 || lines > MAX_SD_ITEMS) {  // EOF Marker
+      if(c == 26 || lines > MAX_SD_ITEMS) {  // EOF Marker
         break;
       }
-      if (c == '\n') {
+      if(c == '\n') {
         lines++;
       }
       Serial.print(c);
@@ -1934,7 +1918,7 @@ FLASHMEM void EEPROMStartup() {
   // If all else fails, then the user should execute a FLASH erase.
 
   // The case where struct sizes are the same, indicating no changes to the struct.  Nothing more to do, return.
-  if (eepromStructSize == stackStructSize) {
+  if(eepromStructSize == stackStructSize) {
     EEPROMRead();  // Read the EEPROM data into active memory.
     return;        // Done, begin radio operation.
   }
@@ -1947,7 +1931,7 @@ FLASHMEM void EEPROMStartup() {
 
   EEPROMWrite();  // Write the EEPROMData struct to non-volatile memory.
 
-#ifdef DEBUG1
+#ifdef DEBUG_EEPROM
   SDEEPROMDump();  // Call this to observe EEPROM struct data
 #endif
 }

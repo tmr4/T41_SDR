@@ -1,25 +1,16 @@
+
 #include "SDT.h"
 #include "AudioConfig.h"
 #include "Exciter.h"
 //#include "EEPROM.h"
 #include "Filter.h"
+#include "FIR.h"
 #include "Menu.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
-
-arm_fir_instance_f32 FIR_Hilbert_L;
-arm_fir_instance_f32 FIR_Hilbert_R;
-
-arm_fir_decimate_instance_f32 FIR_dec1_EX_I;
-arm_fir_decimate_instance_f32 FIR_dec1_EX_Q;
-arm_fir_decimate_instance_f32 FIR_dec2_EX_I;
-arm_fir_decimate_instance_f32 FIR_dec2_EX_Q;
-
-int16_t *sp_L2;
-int16_t *sp_R2;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -45,36 +36,19 @@ int16_t *sp_R2;
     7.  Output the data stream thruogh the DACs at 192KHz
 *****/
 void ExciterIQData() {
-  uint32_t N_BLOCKS_EX = 16;
+  int16_t *sp_L, *sp_R;
 
-  /**********************************************************************************  AFP 12-31-20
-        Get samples from queue buffers
-        Teensy Audio Library stores ADC data in two buffers size=128, Q_in_L and Q_in_R as initiated from the audio lib.
-        Then the buffers are  read into two arrays sp_L and sp_R in blocks of 128 up to N_BLOCKS.  The arrarys are
-        of size BUFFER_SIZE*N_BLOCKS.  BUFFER_SIZE is 128.
-        N_BLOCKS = FFT_L / 2 / BUFFER_SIZE * (uint32_t)DF; // should be 16 with DF == 8 and FFT_L = 512
-        BUFFER_SIZE*N_BLOCKS = 2024 samples
-     **********************************************************************************/
-  // are there at least N_BLOCKS buffers in each channel available ?
-  if ( (uint32_t) Q_in_L_Ex.available() > N_BLOCKS_EX + 0 && (uint32_t) Q_in_R_Ex.available() > N_BLOCKS_EX + 0 ) {
-
+  // process samples from queue buffer if there are at least 16 buffers available
+  if((uint32_t) Q_in_L_Ex.available() > 16) {
     // get audio samples from the audio  buffers and convert them to float
-    // read in 32 blocks á 128 samples in I and Q
-    for (unsigned i = 0; i < N_BLOCKS_EX; i++) {
-      sp_L2 = Q_in_L_Ex.readBuffer();
-      sp_R2 = Q_in_R_Ex.readBuffer();
+    for(unsigned i = 0; i < 16; i++) {
+      // read in 16 blocks á 128 samples into the left channel, we'll duplicate this later
+      sp_L = Q_in_L_Ex.readBuffer();
 
-      /**********************************************************************************  AFP 12-31-20
-          Using arm_Math library, convert to float one buffer_size.
-          Float_buffer samples are now standardized from > -1.0 to < 1.0
-      **********************************************************************************/
-      arm_q15_to_float (sp_L2, &float_buffer_L_EX[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
-      arm_q15_to_float (sp_R2, &float_buffer_R_EX[BUFFER_SIZE * i], BUFFER_SIZE); // convert int_buffer to float 32bit
+      // convert to float one buffer_size, samples are now standardized from > -1.0 to < 1.0
+      arm_q15_to_float (sp_L, &float_buffer_L_EX[128 * i], 128);
       Q_in_L_Ex.freeBuffer();
-      Q_in_R_Ex.freeBuffer();
     }
-
-    float exciteMaxL = 0;
 
     /**********************************************************************************  AFP 12-31-20
               Decimation is the process of downsampling the data stream and LP filtering
@@ -83,63 +57,39 @@ void ExciterIQData() {
               192KHz/8 = 24KHz, with 8xsmaller sample sizes
      **********************************************************************************/
 
-    // 192KHz effective sample rate here
+    // reduce sample rate and size by decimation by 8
+    // decimate in two stages to maintain spectrum order
+    // 192kHz effective sample rate here
     // decimation-by-4 in-place!
-    arm_fir_decimate_f32(&FIR_dec1_EX_I, float_buffer_L_EX, float_buffer_L_EX, BUFFER_SIZE * N_BLOCKS_EX );
-    arm_fir_decimate_f32(&FIR_dec1_EX_Q, float_buffer_R_EX, float_buffer_R_EX, BUFFER_SIZE * N_BLOCKS_EX );
+    arm_fir_decimate_f32(&FIR_dec1_EX_I, float_buffer_L_EX, float_buffer_L_EX, 2048);
+
     // 48KHz effective sample rate here
     // decimation-by-2 in-place
     arm_fir_decimate_f32(&FIR_dec2_EX_I, float_buffer_L_EX, float_buffer_L_EX, 512);
-    arm_fir_decimate_f32(&FIR_dec2_EX_Q, float_buffer_R_EX, float_buffer_R_EX, 512);
 
-    //============================  Transmit EQ  ========================  AFP 10-02-22
-    if (xmitEQFlag == ON ) {
+    // perform transmit EQ if activated
+    if(xmitEQFlag == ON ) {
       DoExciterEQ();
     }
-    //============================ End Receive EQ  AFP 10-02-22
 
+    arm_copy_f32(float_buffer_L_EX, float_buffer_R_EX, 256);
 
-    arm_copy_f32 (float_buffer_L_EX, float_buffer_R_EX, 256);
-
-    // =========================    End CW Xmit
     //--------------  Hilbert Transformers
-
-    /**********************************************************************************
-             R and L channels are processed though the two Hilbert Transformers, L at 0 deg and R at 90 deg
-             Tthe result are the quadrature data streans, I and Q necessary for Phasing calculations to
-             create the SSB signals.
-             Two Hilbert Transformers are used to preserve eliminate the relative time delays created during processing of the data
-    **********************************************************************************/
     arm_fir_f32(&FIR_Hilbert_L, float_buffer_L_EX, float_buffer_L_EX, 256);
     arm_fir_f32(&FIR_Hilbert_R, float_buffer_R_EX, float_buffer_R_EX, 256);
 
-    /**********************************************************************************
-              Additional scaling, if nesessary to compensate for down-stream gain variations
-     **********************************************************************************/
-
-    if (bands[currentBand].mode == DEMOD_LSB) { //AFP 12-27-21
-      //arm_scale_f32 (float_buffer_L_EX, -IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);
-      arm_scale_f32 (float_buffer_L_EX, + IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);     // Flip SSB sideband KF5N, minus sign was original
-      IQPhaseCorrection(float_buffer_L_EX, float_buffer_R_EX, IQXPhaseCorrectionFactor[currentBandA], 256);
+    // apply IQ calibration factors
+    // *** TODO: v49.2k has currentBandA, why? ***
+    if(bands[currentBand].demod == DEMOD_LSB) {
+      arm_scale_f32(float_buffer_L_EX, + IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);     // Flip SSB sideband KF5N, minus sign was original
     }
-    else if (bands[currentBand].mode == DEMOD_USB) { //AFP 12-27-21
-      //arm_scale_f32 (float_buffer_L_EX, + IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);     // Flip SSB sideband KF5N, minus sign was original
-      arm_scale_f32 (float_buffer_L_EX, - IQXAmpCorrectionFactor[currentBandA], float_buffer_L_EX, 256);    // Flip SSB sideband KF5N
-      IQPhaseCorrection(float_buffer_L_EX, float_buffer_R_EX, IQXPhaseCorrectionFactor[currentBandA], 256);
+    else if(bands[currentBand].demod == DEMOD_USB) {
+      arm_scale_f32(float_buffer_L_EX, - IQXAmpCorrectionFactor[currentBand], float_buffer_L_EX, 256);    // Flip SSB sideband KF5N
     }
-    arm_scale_f32 (float_buffer_R_EX, 1.00, float_buffer_R_EX, 256);
+    IQPhaseCorrection(float_buffer_L_EX, float_buffer_R_EX, IQXPhaseCorrectionFactor[currentBand], 256);
 
-    exciteMaxL = 0;
-    for (int k = 0; k < 256; k++) {
-      if (float_buffer_L_EX[k] > exciteMaxL) {
-        exciteMaxL = float_buffer_L_EX[k];
-      }
-    }
 
-    /**********************************************************************************
-              Interpolate (upsample the data streams by 8X to create the 192KHx sample rate for output
-              Requires a LPF FIR 48 tap 10KHz and 8KHz
-     **********************************************************************************/
+    // return to 192kHz, interpolate by a factor of 8, once again in two steps to preserve the spectrum order
     //24KHz effective sample rate here
     arm_fir_interpolate_f32(&FIR_int1_EX_I, float_buffer_L_EX, float_buffer_Temp, 256);
 
@@ -151,20 +101,18 @@ void ExciterIQData() {
     arm_fir_interpolate_f32(&FIR_int2_EX_Q, float_buffer_Temp, float_buffer_R_EX, 512);
 
     //  192KHz effective sample rate here
-    arm_scale_f32(float_buffer_L_EX, 20, float_buffer_L_EX, 2048); //Scale to compensate for losses in Interpolation
+    // scale to compensate for losses during interpolation
+    arm_scale_f32(float_buffer_L_EX, 20, float_buffer_L_EX, 2048);
     arm_scale_f32(float_buffer_R_EX, 20, float_buffer_R_EX, 2048);
 
-    /**********************************************************************************  AFP 12-31-20
-      CONVERT TO INTEGER AND PLAY AUDIO
-    **********************************************************************************/
-
-    for (unsigned  i = 0; i < N_BLOCKS_EX; i++) {  //N_BLOCKS_EX=16  BUFFER_SIZE=128 16x128=2048
-      sp_L2 = Q_out_L_Ex.getBuffer();
-      sp_R2 = Q_out_R_Ex.getBuffer();
-      arm_float_to_q15 (&float_buffer_L_EX[BUFFER_SIZE * i], sp_L2, BUFFER_SIZE);
-      arm_float_to_q15 (&float_buffer_R_EX[BUFFER_SIZE * i], sp_R2, BUFFER_SIZE);
-      Q_out_L_Ex.playBuffer(); // play it !
-      Q_out_R_Ex.playBuffer(); // play it !
+    // convert to integer values and output
+    for(unsigned  i = 0; i < 16; i++) {
+      sp_L = Q_out_L_Ex.getBuffer();
+      sp_R = Q_out_R_Ex.getBuffer();
+      arm_float_to_q15 (&float_buffer_L_EX[128 * i], sp_L, 128);
+      arm_float_to_q15 (&float_buffer_R_EX[128 * i], sp_R, 128);
+      Q_out_L_Ex.playBuffer();
+      Q_out_R_Ex.playBuffer();
     }
   }
 }

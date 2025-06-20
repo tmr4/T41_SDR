@@ -1,10 +1,29 @@
+
 #include "SDT.h"
+
 #include "ButtonProc.h"
-#include "Display.h"
 #include "EEPROM.h"
 #include "Filter.h"
 #include "FIR.h"
+#include "pi.h"
+#include "Process.h"
+#include "Tune.h"
 #include "Utility.h"
+
+extern float32_t EQ_Band1Coeffs[];
+extern float32_t EQ_Band2Coeffs[];
+extern float32_t EQ_Band3Coeffs[];
+extern float32_t EQ_Band4Coeffs[];
+extern float32_t EQ_Band5Coeffs[];
+extern float32_t EQ_Band6Coeffs[];
+extern float32_t EQ_Band7Coeffs[];
+extern float32_t EQ_Band8Coeffs[];
+extern float32_t EQ_Band9Coeffs[];
+extern float32_t EQ_Band10Coeffs[];
+extern float32_t EQ_Band11Coeffs[];
+extern float32_t EQ_Band12Coeffs[];
+extern float32_t EQ_Band13Coeffs[];
+extern float32_t EQ_Band14Coeffs[];
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
@@ -15,7 +34,6 @@
 
 int nfmFilterBW = 12000;
 
-uint32_t m_NumTaps = (FFT_LENGTH / 2) + 1;
 float32_t recEQ_LevelScale[14];
 
 // EQ Buffers
@@ -34,11 +52,7 @@ float32_t DMAMEM EQ12_float_buffer_L[256];
 float32_t DMAMEM EQ13_float_buffer_L[256];
 float32_t DMAMEM EQ14_float_buffer_L[256];
 
-float32_t DMAMEM FIR_Coef_I[(FFT_LENGTH / 2) + 1];
-float32_t DMAMEM FIR_Coef_Q[(FFT_LENGTH / 2) + 1];
-float32_t DMAMEM FIR_int1_coeffs[48];
-float32_t DMAMEM FIR_int2_coeffs[32];
-float32_t DMAMEM FIR_filter_mask[FFT_LENGTH * 2] __attribute__((aligned(4)));
+float32_t DMAMEM FIR_filter_mask[1024] __attribute__((aligned(4)));
 
 float32_t rec_EQ_Band1_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //declare and zero biquad state variables
 float32_t rec_EQ_Band2_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -106,16 +120,67 @@ arm_biquad_cascade_df2T_instance_f32 S14_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band14_st
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: DoReceiveEQ
-  
+  Purpose: set_IIR_coeffs
+
   Parameter list:
     void
-  
+
+  Return value:
+    void
+*****/
+FLASHMEM void SetIIRCoeffs(float32_t *coefficient_set, float32_t f0, float32_t Q, float32_t sample_rate, uint8_t filter_type) {
+
+  /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    Cascaded biquad (notch, peak, lowShelf, highShelf) [DD4WH, april 2016]
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+  // DSP Audio-EQ-cookbook for generating the coeffs of the filters on the fly
+  // www.musicdsp.org/files/Audio-EQ-Cookbook.txt  [by Robert Bristow-Johnson]
+  // https://www.w3.org/2011/audio/audio-eq-cookbook.html
+  // the ARM algorithm assumes the biquad form
+  // y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] + a1 * y[n-1] + a2 * y[n-2]
+  //
+  // However, the cookbook formulae by Robert Bristow-Johnson AND the Iowa Hills IIR Filter designer
+  // use this formula:
+  //
+  // y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
+  //
+  // Therefore, we have to use negated a1 and a2 for use with the ARM function
+  if(f0 > sample_rate / 2.0) f0 = sample_rate / 2.0;
+  float32_t w0 = f0 * (TWO_PI / sample_rate);
+  float32_t sinW0 = sinf(w0);
+  float32_t alpha = sinW0 / (Q * 2.0);
+  float32_t cosW0 = cosf(w0);
+  float32_t scale = 1.0 / (1.0 + alpha);
+
+  if(filter_type == 0) { // lowpass coeffs
+
+    coefficient_set[0] = ((1.0 - cosW0) / 2.0) * scale;   /* b0 */
+    coefficient_set[1] = (1.0 - cosW0) * scale;           /* b1 */
+    coefficient_set[2] = coefficient_set[0];              /* b2 */
+    coefficient_set[3] = (2.0 * cosW0) * scale;           // negated    a1
+    coefficient_set[4] = (-1.0 + alpha) * scale;          // negated    a2
+  } else if(filter_type == 2) {
+    // ??
+  } else if(filter_type == 3) {   // notch
+    coefficient_set[0] =  1.0;                            /* b0 */
+    coefficient_set[1] =  - 2.0 * cosW0;                  /* b1 */
+    coefficient_set[2] =  1.0;                            /* b2 */
+    coefficient_set[3] =  2.0 * cosW0 * scale;            // negated    a1
+    coefficient_set[4] =  alpha - 1.0;                    // negated    a2
+  }
+}
+
+/*****
+  Purpose: DoReceiveEQ
+
+  Parameter list:
+    void
+
   Return value:
     void
 *****/
 void DoReceiveEQ() {
-  for (int i = 0; i < 14; i++) {
+  for(int i = 0; i < 14; i++) {
     recEQ_LevelScale[i] = (float)EEPROMData.equalizerRec[i] / 100.0;
   }
   arm_biquad_cascade_df2T_f32(&S1_Rec, float_buffer_L, EQ1_float_buffer_L, 256);
@@ -174,7 +239,7 @@ void DoReceiveEQ() {
     void
 *****/
 void DoExciterEQ() {
-  for (int i = 0; i < 14; i++) {
+  for(int i = 0; i < 14; i++) {
     equalizerXmt[i] = (float)EEPROMData.equalizerXmt[i] / 100.0;
   }
   arm_biquad_cascade_df2T_f32(&S1_Xmt,  float_buffer_L_EX, EQ1_float_buffer_L, 256);
@@ -224,24 +289,20 @@ void DoExciterEQ() {
 }
 
 /*****
-  Purpose: calculates decimation, interpolation and audio filters  
-  
+  Purpose: calculates decimation, interpolation and audio filters
+
   Parameter list:
     void
-  
+
   Return value:
     void
 *****/
 void CalcFilters() {
-  if (bands[currentBand].mode == DEMOD_NFM && nfmBWFilterActive) {
+  if(bands[currentBand].demod == DEMOD_NFM && nfmBWFilterActive) {
 
   } else {
-    CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, m_NumTaps, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, (float)SampleRate / DF);
-    InitFilterMask();
-
-    for (int i = 0; i < 5; i++) {
-      biquad_lowpass1_coeffs[i] = coefficient_set[i];
-    }
+    CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, 256 + 1, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, 24000.0);
+    UpdateFFTFilterMask();
 
     // and adjust decimation and interpolation filters
     SetDecIntFilters();
@@ -249,7 +310,7 @@ void CalcFilters() {
 }
 
 /*****
-  Purpose: InitFilterMask()
+  Purpose: UpdateFFTFilterMask()
 
   Parameter list:
     void
@@ -257,23 +318,24 @@ void CalcFilters() {
   Return value:
     void
 *****/
-void InitFilterMask() {
+void UpdateFFTFilterMask() {
+  const arm_cfft_instance_f32* maskS = &arm_cfft_sR_f32_len512;
 
   /****************************************************************************************
      Calculate the FFT of the FIR filter coefficients once to produce the FIR filter mask
   ****************************************************************************************/
-  // the FIR has exactly m_NumTaps and a maximum of (FFT_length / 2) + 1 taps = coefficients, so we have to add (FFT_length / 2) -1 zeros before the FFT
-  // in order to produce a FFT_length point input buffer for the FFT
+  // the FIR has exactly 256 + 1 taps = coefficients, so we have to add 256 -1 zeros before the FFT
+  // in order to produce a 512 point input buffer for the FFT
   // copy coefficients into real values of first part of buffer, rest is zero
 
-  for (unsigned i = 0; i < m_NumTaps; i++) {
+  for(unsigned i = 0; i < 256 + 1; i++) {
     // try out a window function to eliminate ringing of the filter at the stop frequency
     //             sd.FFT_Samples[i] = (float32_t)((0.53836 - (0.46164 * arm_cos_f32(PI*2 * (float32_t)i / (float32_t)(FFT_IQ_BUFF_LEN-1)))) * sd.FFT_Samples[i]);
-    FIR_filter_mask[i * 2] = FIR_Coef_I [i];
-    FIR_filter_mask[i * 2 + 1] = FIR_Coef_Q [i];
+    FIR_filter_mask[i * 2] = FIR_Coef_I[i];
+    FIR_filter_mask[i * 2 + 1] = FIR_Coef_Q[i];
   }
 
-  for (unsigned i = FFT_length + 1; i < FFT_length * 2; i++) {
+  for(unsigned i = 512 + 1; i < 1024; i++) {
     FIR_filter_mask[i] = 0.0;
   }
 
@@ -281,51 +343,6 @@ void InitFilterMask() {
   // perform FFT (in-place), needs only to be done once (or every time the filter coeffs change)
   arm_cfft_f32(maskS, FIR_filter_mask, 0, 1);
 
-} // end init_filter_mask
-
-/*****
-  Purpose: void control_filter_f()
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-void UpdateBWFilters() {
-  // low Fcut must never be larger than high Fcut and vice versa
-
-  switch (bands[currentBand].mode) {
-    case DEMOD_USB:
-    case DEMOD_PSK31_WAV:
-    case DEMOD_PSK31:
-    case DEMOD_FT8:
-    case DEMOD_FT8_WAV:
-      if (bands[currentBand].FLoCut < 0) bands[currentBand].FLoCut = 200;
-      break;
-
-    case DEMOD_LSB:
-      if (bands[currentBand].FHiCut > 0) bands[currentBand].FHiCut = -200;
-      break;
-
-    case DEMOD_AM:
-    case DEMOD_SAM:
-      bands[currentBand].FLoCut = - bands[currentBand].FHiCut;
-      break;
-
-    case DEMOD_NFM:
-      if (bands[currentBand].FLoCut < 0) bands[currentBand].FLoCut = 200;
-      //if(nfmBWFilterActive) {
-      //  nfmFilterBW = 0;
-      //} else {
-      //  // could have FLoCut be adjustable as well with three filter button presses
-      //  // but should have an idication of which is active, perhaps by color
-      //  //bands[currentBand].FLoCut = - bands[currentBand].FHiCut;
-      //}
-      break;
-  }
-
-  CalcFilters();
 }
 
 /*****
@@ -338,8 +355,10 @@ void UpdateBWFilters() {
   Return value:
     void
 *****/
-FLASHMEM void SetupMode() {
-  switch(bands[currentBand].mode) {
+FLASHMEM void SetupDemodFilterBW() {
+  //float temp;
+
+  switch(bands[currentBand].demod) {
     case DEMOD_USB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
@@ -351,7 +370,7 @@ FLASHMEM void SetupMode() {
       bands[currentBand].FHiCut =  3000;
       bands[currentBand].FLoCut = 200;
       break;
-    
+
     case DEMOD_LSB:
       //temp = bands[currentBand].FHiCut;
       //bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
@@ -380,59 +399,5 @@ FLASHMEM void SetupMode() {
       break;
   }
 
-  //UpdateBWFilters();
   CalcFilters();
-}
-
-/*****
-  Purpose: SetDecIntFilters()
-
-  Parameter list:
-    void
-    
-  Return value:
-    void
-*****/
-void SetDecIntFilters() {
-  /****************************************************************************************
-     Recalculate decimation and interpolation FIR filters
-  ****************************************************************************************/
-  int filter_BW_highest = bands[currentBand].FHiCut;
-  int LP_F_help;
-
-  if (filter_BW_highest < - bands[currentBand].FLoCut) {
-    filter_BW_highest = - bands[currentBand].FLoCut;
-  }
-  LP_F_help = filter_BW_highest;
-
-  if (LP_F_help > 10000) {
-    LP_F_help = 10000;
-  }
-
-  CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate));
-  CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
-
-  CalcFIRCoeffs(FIR_int1_coeffs, 48, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
-  CalcFIRCoeffs(FIR_int2_coeffs, 32, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)SampleRate);
-  bin_BW = 1.0 / (DF * FFT_length) * (float32_t)SampleRate;
-}
-
-/*****
-  Purpose: Set the decimate coefs for the specified BW
-
-  Parameter list:
-    int filter_BW - desired bandwidth
-
-  Return value:
-    void
-*****/
-void SetDecIntFilters(int filter_BW) {
-  int LP_F_help = filter_BW;
-
-  //if (LP_F_help > 10000) {
-  //  LP_F_help = 10000;
-  //}
-
-  CalcFIRCoeffs(FIR_dec1_coeffs, n_dec1_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate));
-  CalcFIRCoeffs(FIR_dec2_coeffs, n_dec2_taps, (float32_t)(LP_F_help), n_att, 0, 0.0, (float32_t)(SampleRate / DF1));
 }

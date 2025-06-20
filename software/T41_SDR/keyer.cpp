@@ -1,12 +1,14 @@
+
 #include "SDT.h"
+
 #include "AudioConfig.h"
 #include "CWProcessing.h"
 #include "CW_Excite.h"
 #include "Display.h"
-#include "FIR.h"
 #include "InfoBox.h"
 #include "keyboard.h"
 #include "keyer.h"
+#include "pi.h"
 #include "Tune.h"
 #include "Utility.h"
 
@@ -222,13 +224,13 @@ void SendCode(char code) {
 
   // Find the sentinel. Loop looks for first 1 which marks the start of the letter:   0b11000 = 'B'
   for(i = 7; i >= 0; i--) {
-    if (code & (1 << i)) break;
+    if(code & (1 << i)) break;
   }
 
   // Now look at rest of binary value: 0b1000 = B after reading sentinel
   for(i--; i >= 0; i--) {
     cwDelayTimer = millis();
-    if (code & (1 << i)) {
+    if(code & (1 << i)) {
       // send a dah
       Dah();
     } else {
@@ -256,18 +258,18 @@ void SendCode(char code) {
   void
 *****/
 void Send(char chr) {
-  if (isalpha(chr)) {
-    if (islower(chr)) {
+  if(isalpha(chr)) {
+    if(islower(chr)) {
       chr = toupper(chr);
     }
     SendCode(letterTable[chr - 'A']);  // Make into a zero-based array index
     return;
-  } else if (isdigit(chr)) {
+  } else if(isdigit(chr)) {
     SendCode(numberTable[chr - '0']);  // Same deal here...
     return;
   }
 
-  switch (chr) {  // Non-alpha and non-digit characters
+  switch(chr) {  // Non-alpha and non-digit characters
     case '\r':
     case '\n':
     case '!':
@@ -347,7 +349,7 @@ void SendMessage(char *msg) {
 
   cwDelayTimer = millis();
 
-  while (*msg != '\0') {
+  while(*msg != '\0') {
     Send(*msg++);
   }
 

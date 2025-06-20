@@ -64,7 +64,7 @@ void onReceive(int len) {
   if(rhConnected) {
     //Serial.printf("Received from T41_RH[%d]: ", len);
     //if(Wire.available()) Serial.print("Received from T41_RH: ");
-    //while (Wire.available()) {
+    //while(Wire.available()) {
     for(int i = 0; i < len; i++) {
       // put data in buffer
       i2cBuf[bufIn] = Wire.read();

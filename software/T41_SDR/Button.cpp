@@ -1,4 +1,5 @@
 #include "SDT.h"
+
 #include "Beacon.h"
 #include "Button.h"
 #include "ButtonProc.h"
@@ -111,16 +112,16 @@ void ButtonISR() {
   buttonFilterRegister = buttonFilterRegister - (buttonFilterRegister >> BUTTON_FILTER_SHIFT) + analogRead(BUSY_ANALOG_PIN);
   filteredADCValue = (int)(buttonFilterRegister >> BUTTON_FILTER_SHIFT);
 
-  switch (buttonState) {
+  switch(buttonState) {
     case BUTTON_STATE_UP:
-      if (filteredADCValue <= buttonThresholdPressed) {
+      if(filteredADCValue <= buttonThresholdPressed) {
         buttonElapsed = 0;
         buttonState = BUTTON_STATE_DEBOUNCE;
       }
       break;
 
     case BUTTON_STATE_DEBOUNCE:
-      if (buttonElapsed < BUTTON_DEBOUNCE_DELAY) {
+      if(buttonElapsed < BUTTON_DEBOUNCE_DELAY) {
         buttonElapsed += BUTTON_USEC_PER_ISR;
       } else {
         buttonADCOut = buttonADCPressed = filteredADCValue;
@@ -130,10 +131,10 @@ void ButtonISR() {
       break;
 
     case BUTTON_STATE_PRESSED:
-      if (filteredADCValue >= buttonThresholdReleased) {
+      if(filteredADCValue >= buttonThresholdReleased) {
         buttonState = BUTTON_STATE_UP;
-        } else if (buttonRepeatDelay != 0) {  // buttonRepeatDelay of 0 disables repeat
-          if (buttonElapsed < buttonRepeatDelay) {
+        } else if(buttonRepeatDelay != 0) {  // buttonRepeatDelay of 0 disables repeat
+          if(buttonElapsed < buttonRepeatDelay) {
             buttonElapsed += BUTTON_USEC_PER_ISR;
           } else {
             buttonADCOut = buttonADCPressed;
@@ -148,16 +149,16 @@ void ButtonISR() {
   buttonFilterRegister = buttonFilterRegister - (buttonFilterRegister >> BUTTON_FILTER_SHIFT) + analogRead(BUSY_ANALOG_PIN);
   filteredADCValue = (int)(buttonFilterRegister >> BUTTON_FILTER_SHIFT);
 
-  switch (buttonState) {
+  switch(buttonState) {
     case BUTTON_STATE_UP:
-      if (filteredADCValue <= buttonThresholdPressed) {
+      if(filteredADCValue <= buttonThresholdPressed) {
         buttonElapsed = 0;
         buttonState = BUTTON_STATE_DEBOUNCE;
       }
       break;
 
     case BUTTON_STATE_DEBOUNCE:
-      if (buttonElapsed < BUTTON_DEBOUNCE_DELAY) {
+      if(buttonElapsed < BUTTON_DEBOUNCE_DELAY) {
         buttonElapsed += BUTTON_USEC_PER_ISR;
       } else {
         buttonADCOut = buttonADCPressed = filteredADCValue;
@@ -168,12 +169,12 @@ void ButtonISR() {
       break;
 
     case BUTTON_STATE_PRESSED:
-      if (filteredADCValue >= buttonThresholdReleased) {
+      if(filteredADCValue >= buttonThresholdReleased) {
         buttonState = BUTTON_STATE_UP;
         //buttonState = BUTTON_STATE_RELEASE_DEBOUNCE;
       } else {
-        if (buttonRepeatDelay != 0) {  // buttonRepeatDelay of 0 disables repeat
-          if (buttonElapsed < buttonRepeatDelay) {
+        if(buttonRepeatDelay != 0) {  // buttonRepeatDelay of 0 disables repeat
+          if(buttonElapsed < buttonRepeatDelay) {
             buttonElapsed += BUTTON_USEC_PER_ISR;
           } else {
             buttonADCOut = buttonADCPressed;
@@ -184,7 +185,7 @@ void ButtonISR() {
       break;
 
     case BUTTON_STATE_RELEASE_DEBOUNCE:
-      if (buttonElapsed < BUTTON_DEBOUNCE_RELEASE_DELAY) {
+      if(buttonElapsed < BUTTON_DEBOUNCE_RELEASE_DELAY) {
         buttonElapsed += BUTTON_USEC_PER_ISR;
       } else {
         buttonADCOut = buttonADCPressed;
@@ -227,7 +228,7 @@ FLASHMEM void EnableButtonInterrupts() {
 int ProcessButtonPress(int valPin) {
   int switchIndex;
 
-  if (valPin == BOGUS_PIN_READ) {  // Not valid press
+  if(valPin == BOGUS_PIN_READ) {  // Not valid press
 #ifdef DEBUG_SW
 //  NoActiveMenu();
   Serial.println("NAM BOGUS_PIN_READ");
@@ -235,7 +236,7 @@ int ProcessButtonPress(int valPin) {
     return -1;
   }
 
-  if (valPin == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {
+  if(valPin == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {
 #ifdef DEBUG_SW
   NoActiveMenu();
   Serial.println("NAM #2");
@@ -243,8 +244,8 @@ int ProcessButtonPress(int valPin) {
     return -1;
   }
 
-  for (switchIndex = 0; switchIndex < NUMBER_OF_SWITCHES; switchIndex++) {
-    if (abs(valPin - EEPROMData.switchValues[switchIndex]) < WIGGLE_ROOM)  // ...because ADC does return exact values every time
+  for(switchIndex = 0; switchIndex < NUMBER_OF_SWITCHES; switchIndex++) {
+    if(abs(valPin - EEPROMData.switchValues[switchIndex]) < WIGGLE_ROOM)  // ...because ADC does return exact values every time
     {
       return switchIndex;
     }
@@ -266,7 +267,7 @@ int ReadSelectedPushButton() {
   minPinRead = 0;
   int buttonReadOld = 1023;
 
-  if (buttonInterruptsEnabled) {
+  if(buttonInterruptsEnabled) {
     noInterrupts();
     buttonRead = buttonADCOut;
 
@@ -279,7 +280,7 @@ int ReadSelectedPushButton() {
     buttonADCOut = BUTTON_OUTPUT_UP;
     interrupts();
   } else {
-    while (abs(minPinRead - buttonReadOld) > 3) {  // do averaging to smooth out the button response
+    while(abs(minPinRead - buttonReadOld) > 3) {  // do averaging to smooth out the button response
       minPinRead = analogRead(BUSY_ANALOG_PIN);
 
       buttonRead = .1 * minPinRead + (1 - .1) * buttonReadOld;  // See expected values in next function.
@@ -287,11 +288,11 @@ int ReadSelectedPushButton() {
     }
   }
 
-  if (buttonRead > EEPROMData.switchValues[0] + WIGGLE_ROOM) {
+  if(buttonRead > EEPROMData.switchValues[0] + WIGGLE_ROOM) {
     return -1;
   }
   minPinRead = buttonRead;
-  if (!buttonInterruptsEnabled) {
+  if(!buttonInterruptsEnabled) {
     delay(100L);
   }
 
@@ -313,11 +314,11 @@ FLASHMEM void ExecuteButtonPress(int val) {
   Serial.print("ExecuteButtonPress TOP: val = ");
   Serial.println(val);
 #endif
-  switch (val) {
+  switch(val) {
     case MENU_OPTION_SELECT:  // 0
 
       if(USE_FULL_MENU) {
-        if (val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
+        if(val == MENU_OPTION_SELECT && menuStatus == NO_MENUS_ACTIVE) {  // Pressed Select with no primary/secondary menu selected
 #ifdef DEBUG_SW
   //NoActiveMenu();
   Serial.print("NAM #0: val = ");
@@ -328,13 +329,13 @@ FLASHMEM void ExecuteButtonPress(int val) {
           menuStatus = PRIMARY_MENU_ACTIVE;
         }
 
-        if (menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
+        if(menuStatus == PRIMARY_MENU_ACTIVE) {  // Doing primary menu
           ErasePrimaryMenu();
           functionPtr[mainMenuIndex]();  // These are processed in MenuProc.cpp
           menuStatus = SECONDARY_MENU_ACTIVE;
           secondaryMenuIndex = -1;  // Reset secondary menu
         } else {
-          if (menuStatus == SECONDARY_MENU_ACTIVE) {  // Doing primary menu
+          if(menuStatus == SECONDARY_MENU_ACTIVE) {  // Doing primary menu
             menuStatus = PRIMARY_MENU_ACTIVE;
             mainMenuIndex = 0;
           }
@@ -398,7 +399,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
 
     case DEMODULATION:  // 7
       // change to the next demod mode
-      ChangeDemodMode(bands[currentBand].mode + 1);
+      ChangeDemodMode(bands[currentBand].demod + 1);
       break;
 
     case SET_MODE:  // 8
@@ -453,12 +454,12 @@ FLASHMEM void ExecuteButtonPress(int val) {
 
     case UNUSED_1:  // 16
       if(xmtMode == DATA_MODE) {
-        switch (bands[currentBand].mode) {
+        switch(bands[currentBand].demod) {
           case DEMOD_PSK31:
             // try to load wav file
             if(setupPSK31Wav()) {
               // switch to play a wav file
-              bands[currentBand].mode = DEMOD_PSK31_WAV;
+              bands[currentBand].demod = DEMOD_PSK31_WAV;
               currentDataMode = DEMOD_PSK31_WAV;
               ShowOperatingStats();
             }
@@ -468,7 +469,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
             // try to load wav file
             if(setupFT8Wav()) {
               // switch to play a wav file
-              bands[currentBand].mode = DEMOD_FT8_WAV;
+              bands[currentBand].demod = DEMOD_FT8_WAV;
               currentDataMode = DEMOD_FT8_WAV;
               ShowOperatingStats();
               syncFlag = true;
@@ -483,7 +484,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
             break;
         }
       } else {
-        if (calOnFlag == 0) {
+        if(calOnFlag == 0) {
           ButtonFrequencyEntry();
         }
       }

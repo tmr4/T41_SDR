@@ -1,7 +1,11 @@
+
 #include "SDT.h"
+
 #include "Demod.h"
 #include "Display.h"
 #include "FIR.h"
+#include "FFT.h"
+#include "pi.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -12,8 +16,8 @@
 // wdsp Warren Pratt, 2016
 int zeta_help = 65;
 float32_t zeta = (float32_t)zeta_help / 100.0;  // PLL step response: smaller, slower response 1.0 - 0.1
-float32_t omega_min = TPI * -pll_fmax * 1 / 24000;
-float32_t omega_max = TPI * pll_fmax * 1 / 24000;
+float32_t omega_min = TWO_PI * -pll_fmax * 1 / 24000;
+float32_t omega_max = TWO_PI * pll_fmax * 1 / 24000;
 float32_t g1 = 1.0 - exp(-2.0 * omegaN * zeta * 1 / 24000);
 float32_t g2 = -g1 + 2.0 * (1 - exp(-omegaN * zeta * 1 / 24000) * cosf(omegaN * 1 / 24000 * sqrtf(1.0 - zeta * zeta)));
 float32_t phzerror = 0.0;
@@ -64,7 +68,7 @@ void AMDecodeSAM() {
   tft.setTextColor(RA8875_WHITE);
   // tft.fill//Rect(OPERATION_STATS_L + 125 + 155, OPERATION_STATS_T, tft.getFontWidth() * 11, tft.getFontHeight(), RA8875_BLUE);
     tft.print("(SAM) ");  //AFP 11-01-22
-  for (unsigned i = 0; i < FFT_length / 2 ; i++)
+  for(unsigned i = 0; i < 256; i++)
   {
     float32_t Sin, Cos;
     float32_t ai, bi, aq, bq;
@@ -75,17 +79,17 @@ void AMDecodeSAM() {
     Sin = arm_sin_f32(phzerror);
     Cos = arm_cos_f32(phzerror);
 
-    ai = Cos * iFFT_buffer[FFT_length + i * 2];
-    bi = Sin * iFFT_buffer[FFT_length + i * 2];
-    aq = Cos * iFFT_buffer[FFT_length + i * 2 + 1];
-    bq = Sin * iFFT_buffer[FFT_length + i * 2 + 1];
+    ai = Cos * iFFT_buffer[512 + i * 2];
+    bi = Sin * iFFT_buffer[512 + i * 2];
+    aq = Cos * iFFT_buffer[512 + i * 2 + 1];
+    bq = Sin * iFFT_buffer[512 + i * 2 + 1];
 
     corr[0] = +ai + bq;
     corr[1] = -bi + aq;
 
     audio = (ai - bi) + (aq + bq);
 
-    if (fade_leveler)
+    if(fade_leveler)
     {
       dc = mtauR * dc + onem_mtauR * audio;
       dc_insert = mtauI * dc_insert + onem_mtauI * corr[0];
@@ -94,7 +98,7 @@ void AMDecodeSAM() {
 
     float_buffer_L[i] = audio;
 
-    if (fade_leveler)
+    if(fade_leveler)
     {
       dcu = mtauR * dcu + onem_mtauR * audiou;
       dc_insertu = mtauI * dc_insertu + onem_mtauI * corr[0];
@@ -105,17 +109,17 @@ void AMDecodeSAM() {
 
     del_out = fil_out;
     omega2 = omega2 + g2 * det;
-    if (omega2 < omega_min) omega2 = omega_min;
-    else if (omega2 > omega_max) omega2 = omega_max;
+    if(omega2 < omega_min) omega2 = omega_min;
+    else if(omega2 > omega_max) omega2 = omega_max;
     fil_out = g1 * det + omega2;
     phzerror = phzerror + del_out;
 
     //wrap round 2PI, modulus
-    while (phzerror >= TPI) phzerror -= TPI;
-    while (phzerror < 0.0) phzerror += TPI;
+    while(phzerror >= TWO_PI) phzerror -= TWO_PI;
+    while(phzerror < 0.0) phzerror += TWO_PI;
   }
 
-  //arm_copy_f32(float_buffer_L, float_buffer_R, FFT_length);
+  //arm_copy_f32(float_buffer_L, float_buffer_R, 512);
   //}
   //        SAM_display_count++;
   //        if(SAM_display_count > 50) // to display the exact carrier frequency that the PLL is tuned to
@@ -124,14 +128,14 @@ void AMDecodeSAM() {
   // we calculate carrier offset here and the display function is
   // then called in main loop every 100ms
   //{ // to make this smoother, a simple lowpass/exponential averager here . . .
-  SAM_carrier = 0.08 * (omega2 * 24000) / (2 * TPI);
+  SAM_carrier = 0.08 * (omega2 * 24000) / (2 * TWO_PI);
   SAM_carrier = SAM_carrier + 0.92 * SAM_lowpass;
   SAM_carrier_freq_offset =  (int)10*SAM_carrier;
   SAM_carrier_freq_offset=0.9*SAM_carrier_freq_offsetOld+0.1*SAM_carrier_freq_offset;
   //            SAM_display_count = 0;
   SAM_lowpass = SAM_carrier;
 
-  if (SAM_carrier_freq_offset != SAM_carrier_freq_offsetOld) {
+  if(SAM_carrier_freq_offset != SAM_carrier_freq_offsetOld) {
     tft.fillRect(OPERATION_STATS_L + 125 + 200, OPERATION_STATS_T, tft.getFontWidth() * 8, tft.getFontHeight(), RA8875_BLUE);
     tft.print(0.20024*SAM_carrier_freq_offset, 1); //AFP 11-01-22
   }
@@ -146,17 +150,17 @@ void AMDecodeSAM() {
     void
 *****/
 float ApproxAtan2(float y, float x) {
-  if (x != 0.0f)
+  if(x != 0.0f)
   {
-    if (fabsf(x) > fabsf(y))
+    if(fabsf(x) > fabsf(y))
     {
       const float z = y / x;
-      if (x > 0.0f)
+      if(x > 0.0f)
       {
         // atan2(y,x) = atan(y/x) if x > 0
         return ApproxAtan(z);
       }
-      else if (y >= 0.0f)
+      else if(y >= 0.0f)
       {
         // atan2(y,x) = atan(y/x) + PI if x < 0, y >= 0
         return ApproxAtan(z) + PI;
@@ -170,27 +174,27 @@ float ApproxAtan2(float y, float x) {
     else // Use property atan(y/x) = PI/2 - atan(x/y) if |y/x| > 1.
     {
       const float z = x / y;
-      if (y > 0.0f)
+      if(y > 0.0f)
       {
         // atan2(y,x) = PI/2 - atan(x/y) if |y/x| > 1, y > 0
-        return -ApproxAtan(z) + TPI;
+        return -ApproxAtan(z) + TWO_PI;
       }
       else
       {
         // atan2(y,x) = -PI/2 - atan(x/y) if |y/x| > 1, y < 0
-        return -ApproxAtan(z) - TPI;
+        return -ApproxAtan(z) - TWO_PI;
       }
     }
   }
   else
   {
-    if (y > 0.0f) // x = 0, y > 0
+    if(y > 0.0f) // x = 0, y > 0
     {
-      return TPI;
+      return TWO_PI;
     }
-    else if (y < 0.0f) // x = 0, y < 0
+    else if(y < 0.0f) // x = 0, y < 0
     {
-      return -TPI;
+      return -TWO_PI;
     }
   }
   return 0.0f; // x,y = 0. Could return NaN instead.
@@ -201,7 +205,7 @@ float ApproxAtan2(float y, float x) {
 complexf fmdemod_quadri_novect_cf(complexf* input, float* output, int input_size, complexf last_sample)
 {
     output[0]=fmdemod_quadri_K*(iof(input,0)*(qof(input,0)-last_sample.q)-qof(input,0)*(iof(input,0)-last_sample.i))/(iof(input,0)*iof(input,0)+qof(input,0)*qof(input,0));
-    for (int i=1; i<input_size; i++) //@fmdemod_quadri_novect_cf
+    for(int i=1; i<input_size; i++) //@fmdemod_quadri_novect_cf
     {
         float qnow=qof(input,i);
         float qlast=qof(input,i-1);
@@ -222,7 +226,7 @@ void nfmdemod(float32_t* input, float32_t* output, int input_size) {
   static float32_t last_sample_q = 0;
 
   output[0]=fmdemod_quadri_K*(input[0] * (input[1] - last_sample_q) - input[1] * (input[0] - last_sample_i))/(input[0] * input[0] + input[1] * input[1]);
-  for (int i = 1; i < input_size; i++) {
+  for(int i = 1; i < input_size; i++) {
     float qnow = input[i * 2 + 1];
     float qlast = input[(i - 1) * 2 + 1];
     float inow = input[i * 2];
@@ -256,17 +260,17 @@ float32_t fmdemod_quadri_novect_cf(float32_t  inow, float32_t  qnow) {
 
 /*
 octave>
-	
-function mkdeemph(sr,tapnum,norm_freq) 
+
+function mkdeemph(sr,tapnum,norm_freq)
 	% Make NFM deemphasis filter. Parameters: samplerate, filter length, frequency to normalize at (filter gain will be 0dB at this frequency)
-	normalize_at_freq = @(vect,freq) vect/dot(vect,sin(2*pi*freq*[0:1/sr:size(vect)(1)/sr])); 
+	normalize_at_freq = @(vect,freq) vect/dot(vect,sin(2*pi*freq*[0:1/sr:size(vect)(1)/sr]));
 	freqvect=[0,200, 200,400, 400,3700, 3700,sr/2];
 	coeffs=firls(tapnum,freqvect/(sr/2),[0,0,0,1,1,0.1,0,0]);
 	coeffs=normalize_at_freq(coeffs,norm_freq);
 	freqz(coeffs);
 	printf("%g, ",coeffs);
 	printf("\n")
-end 
+end
 */
 /*
 
@@ -297,7 +301,7 @@ int deemphasis_nfm_ff (float* input, float* output, int input_size, int sample_r
 sr=24000
 tapnum=79
 norm_freq=500
-normalize_at_freq = @(vect,freq) vect/dot(vect,sin(2*pi*freq*[0:1/sr:size(vect)(1)/sr])); 
+normalize_at_freq = @(vect,freq) vect/dot(vect,sin(2*pi*freq*[0:1/sr:size(vect)(1)/sr]));
 freqvect=[0,200, 200,400, 400,3700, 3700,sr/2];
 coeffs=firls(tapnum,freqvect/(sr/2),[0,0,0,1,1,0.1,0,0]);
 coeffs=normalize_at_freq(coeffs,norm_freq);
@@ -308,14 +312,14 @@ printf("\n")
 // to generate the following coefficients for a sample rate of 24000
 // the online calculator wasn't able to handle the function but worked ok with hard coded values
 
-0.000481913, -0.000816211, -0.00205384, -0.00264474, -0.00258229, -0.00247939, -0.00305299, -0.00448116, -0.00620366, -0.00737591, -0.00761292, -0.00737176, -0.0075984, -0.00890065, -0.0109592, -0.0127338, -0.0133493, -0.0129165, -0.0125289, -0.013351, -0.0155348, -0.0179452, -0.0190498, -0.0183068, -0.016827, -0.0165808, -0.0186455, -0.0219659, -0.0238965, -0.0223995, -0.0182146, -0.0149414, -0.0163342, -0.0223751, -0.0271497, -0.020849, 0.00446391, 0.0485999, 0.100768, 0.143223, 0.159583, 0.143223, 0.100768, 0.0485999, 0.00446391, -0.020849, -0.0271497, -0.0223751, -0.0163342, -0.0149414, -0.0182146, -0.0223995, -0.0238965, -0.0219659, -0.0186455, -0.0165808, -0.016827, -0.0183068, -0.0190498, -0.0179452, -0.0155348, -0.013351, -0.0125289, -0.0129165, -0.0133493, -0.0127338, -0.0109592, -0.00890065, -0.0075984, -0.00737176, -0.00761292, -0.00737591, -0.00620366, -0.00448116, -0.00305299, -0.00247939, -0.00258229, -0.00264474, -0.00205384, -0.000816211, 0.000481913, 
+0.000481913, -0.000816211, -0.00205384, -0.00264474, -0.00258229, -0.00247939, -0.00305299, -0.00448116, -0.00620366, -0.00737591, -0.00761292, -0.00737176, -0.0075984, -0.00890065, -0.0109592, -0.0127338, -0.0133493, -0.0129165, -0.0125289, -0.013351, -0.0155348, -0.0179452, -0.0190498, -0.0183068, -0.016827, -0.0165808, -0.0186455, -0.0219659, -0.0238965, -0.0223995, -0.0182146, -0.0149414, -0.0163342, -0.0223751, -0.0271497, -0.020849, 0.00446391, 0.0485999, 0.100768, 0.143223, 0.159583, 0.143223, 0.100768, 0.0485999, 0.00446391, -0.020849, -0.0271497, -0.0223751, -0.0163342, -0.0149414, -0.0182146, -0.0223995, -0.0238965, -0.0219659, -0.0186455, -0.0165808, -0.016827, -0.0183068, -0.0190498, -0.0179452, -0.0155348, -0.013351, -0.0125289, -0.0129165, -0.0133493, -0.0127338, -0.0109592, -0.00890065, -0.0075984, -0.00737176, -0.00761292, -0.00737591, -0.00620366, -0.00448116, -0.00305299, -0.00247939, -0.00258229, -0.00264474, -0.00205384, -0.000816211, 0.000481913,
 
 I also got the following as a check:
 //mkdeemph(11025,79,500)
 -0.00103853, -0.000836244, -0.00159516, 0.0003133, 0.000779497, 0.000303457, 0.00266777, 0.00327929, 0.00292913, 0.00557135, 0.0060497, 0.00552063, 0.00813664, 0.00807828, 0.00697331, 0.00920894, 0.00816718, 0.00609763, 0.00766544, 0.00525786, 0.00196495, 0.00277562, -0.00121968, -0.00575421, -0.00547422, -0.0110798, -0.0165593, -0.0161744, -0.0232899, -0.0290528, -0.027393, -0.0361026, -0.0409327, -0.0357863, -0.0473975, -0.0479012, -0.0321382, -0.0551507, -0.0149708, 0.199631, 0.347392, 0.199631, -0.0149708, -0.0551507, -0.0321382, -0.0479012, -0.0473975, -0.0357863, -0.0409327, -0.0361026, -0.027393, -0.0290528, -0.0232899, -0.0161744, -0.0165593, -0.0110798, -0.00547422, -0.00575421, -0.00121968, 0.00277562, 0.00196495, 0.00525786, 0.00766544, 0.00609763, 0.00816718, 0.00920894, 0.00697331, 0.00807828, 0.00813664, 0.00552063, 0.0060497, 0.00557135, 0.00292913, 0.00327929, 0.00266777, 0.000303457, 0.000779497, 0.0003133, -0.00159516, -0.000836244, -0.00103853,
 
 //mkdeemph(8000,79,500)
-0.000138165, 0.00014018, -0.000449489, 9.59462e-05, -0.00142064, -0.000364014, -0.00251133, -0.00102864, -0.00327923, -0.00150912, -0.0032115, -0.0013541, -0.0018918, -0.000217383, 0.000815149, 0.00196878, 0.00461698, 0.00487091, 0.00873936, 0.00773166, 0.012, 0.00947357, 0.0130147, 0.00892168, 0.0105021, 0.0051025, 0.00362056, -0.00244863, -0.00774686, -0.0134435, -0.0228388, -0.0267019, -0.0400478, -0.0400529, -0.0571495, -0.0497424, -0.0716895, -0.0448243, -0.0814492, 0.1458, 0.47875, 0.1458, -0.0814492, -0.0448243, -0.0716895, -0.0497424, -0.0571495, -0.0400529, -0.0400478, -0.0267019, -0.0228388, -0.0134435, -0.00774686, -0.00244863, 0.00362056, 0.0051025, 0.0105021, 0.00892168, 0.0130147, 0.00947357, 0.012, 0.00773166, 0.00873936, 0.00487091, 0.00461698, 0.00196878, 0.000815149, -0.000217383, -0.0018918, -0.0013541, -0.0032115, -0.00150912, -0.00327923, -0.00102864, -0.00251133, -0.000364014, -0.00142064, 9.59462e-05, -0.000449489, 0.00014018, 0.000138165, 
+0.000138165, 0.00014018, -0.000449489, 9.59462e-05, -0.00142064, -0.000364014, -0.00251133, -0.00102864, -0.00327923, -0.00150912, -0.0032115, -0.0013541, -0.0018918, -0.000217383, 0.000815149, 0.00196878, 0.00461698, 0.00487091, 0.00873936, 0.00773166, 0.012, 0.00947357, 0.0130147, 0.00892168, 0.0105021, 0.0051025, 0.00362056, -0.00244863, -0.00774686, -0.0134435, -0.0228388, -0.0267019, -0.0400478, -0.0400529, -0.0571495, -0.0497424, -0.0716895, -0.0448243, -0.0814492, 0.1458, 0.47875, 0.1458, -0.0814492, -0.0448243, -0.0716895, -0.0497424, -0.0571495, -0.0400529, -0.0400478, -0.0267019, -0.0228388, -0.0134435, -0.00774686, -0.00244863, 0.00362056, 0.0051025, 0.0105021, 0.00892168, 0.0130147, 0.00947357, 0.012, 0.00773166, 0.00873936, 0.00487091, 0.00461698, 0.00196878, 0.000815149, -0.000217383, -0.0018918, -0.0013541, -0.0032115, -0.00150912, -0.00327923, -0.00102864, -0.00251133, -0.000364014, -0.00142064, 9.59462e-05, -0.000449489, 0.00014018, 0.000138165,
 
 *** these don't match those from predefined.h ***
 */
@@ -352,7 +356,7 @@ float fmdemod_atan_cf(complexf* input, float *output, int input_size, float last
     //GCC most likely won't vectorize nor atan, nor atan2.
     //For more comments, look at: https://github.com/simonyiszk/minidemod/blob/master/minidemod-wfm-atan.c
     float phase, dphase;
-    for (int i=0; i<input_size; i++) //@fmdemod_atan_novect
+    for(int i=0; i<input_size; i++) //@fmdemod_atan_novect
     {
         phase=argof(input,i);
         dphase=phase-last_phase;
@@ -373,7 +377,7 @@ void fmdemod_atan_cf(float32_t* input, float32_t* output, int input_size) {
   float32_t x, y;
 
   //output
-  for (int i = 0; i < input_size; i++) {
+  for(int i = 0; i < input_size; i++) {
 
     phase = ApproxAtan2(input[i * 2 + 1], input[i * 2]);
 

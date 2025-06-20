@@ -1,9 +1,11 @@
+#include <Audio.h>
+
 #include "SDT.h"
+
 #include "Bearing.h"
 #include "Button.h"
 #include "ButtonProc.h"
 #include "Display.h"
-#include "DSP_Fn.h"
 #include "EEPROM.h"
 #include "Encoders.h"
 #include "FFT.h"
@@ -62,7 +64,7 @@ FLASHMEM void ChangeBand(int change) {
 
   if(xmtMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
-    bands[currentBand].mode = priorDemodMode;
+    bands[currentBand].demod = priorDemodMode;
   }
 
   currentBand += change;
@@ -75,12 +77,12 @@ FLASHMEM void ChangeBand(int change) {
 
   NCOFreq = 0L;
 
-  switch (activeVFO) {
+  switch(activeVFO) {
     case VFO_A:
-      if (save_last_frequency) {
+      if(save_last_frequency) {
         lastFrequencies[currentBandA][VFO_A] = TxRxFreq;
       } else {
-        if (directFreqFlag) {
+        if(directFreqFlag) {
           lastFrequencies[currentBandA][VFO_A] = TxRxFreqOld;
           directFreqFlag = false;
         } else {
@@ -93,10 +95,10 @@ FLASHMEM void ChangeBand(int change) {
       break;
 
     case VFO_B:
-      if (save_last_frequency) {
+      if(save_last_frequency) {
         lastFrequencies[currentBandB][VFO_B] = TxRxFreq;
       } else {
-        if (directFreqFlag) {
+        if(directFreqFlag) {
           lastFrequencies[currentBandB][VFO_B] = TxRxFreqOld;
           directFreqFlag = false;
         } else {
@@ -116,7 +118,7 @@ FLASHMEM void ChangeBand(int change) {
   EEPROMWrite();
 
   if(xmtMode == DATA_MODE) {
-    priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+    priorDemodMode = bands[currentBand].demod; // save demod mode for restoration later
 
     switch(currentDataMode) {
       case DEMOD_PSK31:
@@ -131,7 +133,7 @@ FLASHMEM void ChangeBand(int change) {
         break;
     }
 
-    bands[currentBand].mode = currentDataMode;
+    bands[currentBand].demod = currentDataMode;
   }
 
   SetBand();
@@ -176,7 +178,7 @@ FLASHMEM void ChangeBand(long newFreq) {
     void
 *****/
 FLASHMEM void ButtonFilter() {
-  switch(bands[currentBand].mode) {
+  switch(bands[currentBand].demod) {
     case DEMOD_NFM:
     // Active filter in NFM demod mode:
     // At startup:  high audio
@@ -243,7 +245,7 @@ FLASHMEM void ChangeDemodMode(int mode) {
         // try to set up FT8
         if(setupFT8()) {
           // FT8 set up successful
-          bands[currentBand].mode = DEMOD_FT8;
+          bands[currentBand].demod = DEMOD_FT8;
           currentDataMode = DEMOD_FT8;
           ShowOperatingStats();
           syncFlag = false;
@@ -255,7 +257,7 @@ FLASHMEM void ChangeDemodMode(int mode) {
       case DEMOD_FT8:
         exitFT8();
         UpdateInfoBoxItem(IB_ITEM_FT8);
-        bands[currentBand].mode = DEMOD_PSK31;
+        bands[currentBand].demod = DEMOD_PSK31;
         currentDataMode = DEMOD_PSK31;
         ShowOperatingStats();
         break;
@@ -269,24 +271,23 @@ FLASHMEM void ChangeDemodMode(int mode) {
     return;
   }
 
-  bands[currentBand].mode = mode;
-  if(bands[currentBand].mode > DEMOD_MAX) {
-    bands[currentBand].mode = DEMOD_MIN;
+  bands[currentBand].demod = mode;
+  if(bands[currentBand].demod > DEMOD_MAX) {
+    bands[currentBand].demod = DEMOD_MIN;
   }
-  if(bands[currentBand].mode < DEMOD_MIN) {
-    bands[currentBand].mode = DEMOD_MAX;
+  if(bands[currentBand].demod < DEMOD_MIN) {
+    bands[currentBand].demod = DEMOD_MAX;
   }
 
   // skip Data modes (*** these assume we're cycling through up or down ***)
-  if(bands[currentBand].mode == DEMOD_PSK31_WAV) {
-    bands[currentBand].mode += 4;
+  if(bands[currentBand].demod == DEMOD_PSK31_WAV) {
+    bands[currentBand].demod += 4;
   }
-  if(bands[currentBand].mode == DEMOD_FT8) {
-    bands[currentBand].mode -= 4;
+  if(bands[currentBand].demod == DEMOD_FT8) {
+    bands[currentBand].demod -= 4;
   }
 
-  SetupMode();
-  //UpdateBWFilters();
+  SetupDemodFilterBW();
 
   switch(displayScreen) {
     case DISPLAY_T41:
@@ -326,23 +327,23 @@ FLASHMEM void ChangeMode(int mode) {
     case SSB_MODE:
       // save demod mode if changing to Data mode
       if(mode == DATA_MODE) {
-        priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+        priorDemodMode = bands[currentBand].demod; // save demod mode for restoration later
       }
       break;
 
     case CW_MODE:
       // save demod mode if changing to Data mode
       if(mode == DATA_MODE) {
-        priorDemodMode = bands[currentBand].mode; // save demod mode for restoration later
+        priorDemodMode = bands[currentBand].demod; // save demod mode for restoration later
       }
       keyerState = 0; // turn off keyer
       break;
 
     case DATA_MODE:
       // return demod mode to previous mode
-      bands[currentBand].mode = priorDemodMode;
+      bands[currentBand].demod = priorDemodMode;
 
-      if(bands[currentBand].mode == DEMOD_FT8) {
+      if(bands[currentBand].demod == DEMOD_FT8) {
         exitFT8();
         UpdateInfoBoxItem(IB_ITEM_FT8);
       } else {
@@ -374,19 +375,19 @@ FLASHMEM void ChangeMode(int mode) {
         // try to set up FT8
         if(setupFT8()) {
           // FT8 set up successful
-          bands[currentBand].mode = DEMOD_FT8;
+          bands[currentBand].demod = DEMOD_FT8;
         } else {
           // can't set up FT8, move to psk31
-          bands[currentBand].mode = DEMOD_PSK31;
+          bands[currentBand].demod = DEMOD_PSK31;
         }
       } else {
         setupPSK31();
-        bands[currentBand].mode = DEMOD_PSK31;
+        bands[currentBand].demod = DEMOD_PSK31;
       }
       break;
   }
 
-  SetupMode();
+  SetupDemodFilterBW();
   UpdateCWFilter();
 
   switch(displayScreen) {
@@ -416,7 +417,7 @@ FLASHMEM void ChangeMode(int mode) {
 *****/
 FLASHMEM void ButtonNR() {
   nrOptionSelect++;
-  if (nrOptionSelect > NR_OPTIONS) {
+  if(nrOptionSelect > NR_OPTIONS) {
     nrOptionSelect = 0;
   }
 
@@ -476,10 +477,10 @@ FLASHMEM void ChangeFreqIncrement(int change) {
   long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
 
   tuneIndex += change;
-  if (tuneIndex < 0) {
+  if(tuneIndex < 0) {
     tuneIndex = MAX_FREQ_INDEX - 1;
   }
-  if (tuneIndex >= MAX_FREQ_INDEX) {
+  if(tuneIndex >= MAX_FREQ_INDEX) {
     tuneIndex = 0;
   }
 
@@ -501,10 +502,10 @@ FLASHMEM void ChangeFtIncrement(int change) {
   long selectFT[] = { 10, 50, 250, 500 };
 
   ftIndex += change;
-  if (ftIndex > 3) {
+  if(ftIndex > 3) {
     ftIndex = 0;
   }
-  if (ftIndex < 0) {
+  if(ftIndex < 0) {
     ftIndex = 3;
   }
 
@@ -592,8 +593,8 @@ FLASHMEM void ButtonFrequencyEntry() {
   tft.fillRect(KEYPAD_LEFT, KEYPAD_TOP, KEYPAD_WIDTH, KEYPAD_HEIGHT, DARKGREY);
   // put some circles
   tft.setFontScale((enum RA8875tsize)1);
-  for (unsigned i = 0; i < 6; i++) {
-    for (unsigned j = 0; j < 3; j++) {
+  for(unsigned i = 0; i < 6; i++) {
+    for(unsigned j = 0; j < 3; j++) {
       tft.fillCircle(BUTTONS_LEFT + j * BUTTONS_SPACE, BUTTONS_TOP + i * BUTTONS_SPACE, BUTTONS_RADIUS, keyCol[j + 3 * i]);
       tft.setCursor(BUTTONS_LEFT + j * BUTTONS_SPACE + TEXT_OFFSET, BUTTONS_TOP + i * BUTTONS_SPACE - 18);
       tft.setTextColor(textCol[j + 3 * i]);
@@ -643,7 +644,7 @@ FLASHMEM void ButtonFrequencyEntry() {
   tft.setCursor(WATERFALL_L + 50, SPECTRUM_TOP_Y + 260);
   tft.print("Save Direct to Last Freq.= ");
   tft.setCursor(WATERFALL_L + 270, SPECTRUM_TOP_Y + 190);
-  if (save_last_frequency) {
+  if(save_last_frequency) {
     tft.setTextColor(RA8875_GREEN);
     tft.print("On");
   } else {
@@ -651,14 +652,14 @@ FLASHMEM void ButtonFrequencyEntry() {
     tft.print("Off");
   }
 
-  while (doneFE == false) {
+  while(doneFE == false) {
     valPin = ReadSelectedPushButton();                     // Poll UI push buttons
-    if (valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
+    if(valPin != BOGUS_PIN_READ) {                        // If a button was pushed...
       pushButtonSwitchIndex = ProcessButtonPress(valPin);  // Winner, winner...chicken dinner!
       key = numKeys[pushButtonSwitchIndex];
-      switch (key) {
+      switch(key) {
         case 0x7F:  // erase last digit =127
-          if (numdigits != 0) {
+          if(numdigits != 0) {
             numdigits--;
             strF[numdigits] = ' ';
           }
@@ -669,13 +670,13 @@ FLASHMEM void ButtonFrequencyEntry() {
         case 0x0D:  // Apply the entered frequency (if valid) =13
           stringF = String(strF);
           enteredF = stringF.toInt();
-          if ((numdigits == 1) || (numdigits == 2)) {
+          if((numdigits == 1) || (numdigits == 2)) {
             enteredF = enteredF * 1000000;
           }
-          if ((numdigits == 4) || (numdigits == 5)) {
+          if((numdigits == 4) || (numdigits == 5)) {
             enteredF = enteredF * 1000;
           }
-          if ((enteredF > 30000000) || (enteredF < 1250000)) {
+          if((enteredF > 30000000) || (enteredF < 1250000)) {
             stringF = "     ";  // 5 spaces
             stringF.toCharArray(strF, stringF.length());
             numdigits = 0;
@@ -688,7 +689,7 @@ FLASHMEM void ButtonFrequencyEntry() {
           tft.setFontScale((enum RA8875tsize)0);
           tft.fillRect(WATERFALL_L + 269, SPECTRUM_TOP_Y + 190, 50, CHAR_HEIGHT, RA8875_BLACK);
           tft.setCursor(WATERFALL_L + 260, SPECTRUM_TOP_Y + 190);
-          if (save_last_frequency) {
+          if(save_last_frequency) {
             tft.setTextColor(RA8875_GREEN);
             tft.print("On");
           } else {
@@ -697,7 +698,7 @@ FLASHMEM void ButtonFrequencyEntry() {
           }
           break;
         default:
-          if ((numdigits == 5) || ((key == 0x30) & (numdigits == 0))) {
+          if((numdigits == 5) || ((key == 0x30) & (numdigits == 0))) {
           } else {
             strF[numdigits] = char(key);
             numdigits++;
@@ -713,7 +714,7 @@ FLASHMEM void ButtonFrequencyEntry() {
     }
   }
 
-  if (key != 0x58) {
+  if(key != 0x58) {
     TxRxFreq = enteredF;
   }
 
@@ -723,7 +724,7 @@ FLASHMEM void ButtonFrequencyEntry() {
   fineTuneFlag = true;  // Put back in so tuning bar is refreshed
   SetFreq();  // Used here instead of fineTuneFlag
 
-  if (save_last_frequency) {
+  if(save_last_frequency) {
     lastFrequencies[currentBand][activeVFO] = enteredF;
   } else {
     lastFrequencies[currentBand][activeVFO] = TxRxFreqOld;
@@ -757,7 +758,7 @@ FLASHMEM void ButtonBearing() {
   retVal = BearingHeading(keyboardBuffer);
 
 
-  if (retVal != -1.0) {                           // We have valid country
+  if(retVal != -1.0) {                           // We have valid country
     bmpDraw((char *)myMapFiles[selectedMapIndex].mapNames, IMAGE_CORNER_X, IMAGE_CORNER_Y);
     doneViewing = false;
   } else {
@@ -766,12 +767,12 @@ FLASHMEM void ButtonBearing() {
     tft.print("Country not found");
     tft.setTextColor(RA8875_WHITE);
   }
-  while (true) {
+  while(true) {
     valPin = ReadSelectedPushButton();            // Poll UI push buttons
     delay(100L);
-    if (valPin != BOGUS_PIN_READ) {               // If a button was pushed...
+    if(valPin != BOGUS_PIN_READ) {               // If a button was pushed...
       buttonIndex = ProcessButtonPress(valPin);   // Winner, winner...chicken dinner!
-      switch (buttonIndex) {
+      switch(buttonIndex) {
         case BEARING:                             // Pressed puchbutton 18
           doneViewing = true;
           break;
@@ -780,7 +781,7 @@ FLASHMEM void ButtonBearing() {
       }
     }
 
-    if (doneViewing == true) {
+    if(doneViewing == true) {
         //tft.clearMemory();          // Need to clear overlay too
         //tft.writeTo(L2);
         //tft.fillWindow();

@@ -50,10 +50,10 @@ void bt_setup() {
 
 void bt_loop() {
   digitalWrite(LED_PIN, HIGH);   // turn the LED on
-  if (Serial.available()) {
+  if(Serial.available()) {
     SerialBT.write(Serial.read());
   }
-  if (SerialBT.available()) {
+  if(SerialBT.available()) {
     Serial.write(SerialBT.read());
   }
   delay(20);

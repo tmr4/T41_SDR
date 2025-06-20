@@ -40,4 +40,4 @@ void Kim1_NR();
 void Xanr();
 void SpectralNoiseReduction();
 void InitLMSNoiseReduction();
-void SpectralNoiseReductionInit();
+void InitSpectralNoiseReduction();

@@ -1,6 +1,7 @@
-#include "SDT.h"
 
-//#include <USBHost_t36.h>
+#include <TimeLib.h>                   // Part of Teensy Time library
+
+#include "SDT.h"
 
 #include "ButtonProc.h"
 #include "debugSerial.h"
@@ -110,10 +111,10 @@ int GetKenwoodBand() {
 int GetKenwoodMode() {
   // 1: LSB, 2: USB, 3: CW, 4: FM, 5: AM
   int mode;
-  if (xmtMode == CW_MODE) {
+  if(xmtMode == CW_MODE) {
     mode=3;
   } else {
-    switch(bands[currentBand].mode) {
+    switch(bands[currentBand].demod) {
       case DEMOD_USB:
         mode=2; // USB
         break;
@@ -455,10 +456,10 @@ void WSJTLoop()
 int GetKenwoodTS2000Mode() {
   // 1: LSB, 2: USB, 3: CW, 4: FM, 5: AM
   int mode;
-  if (xmtMode == CW_MODE) {
+  if(xmtMode == CW_MODE) {
     mode=3;
   } else {
-    switch(bands[currentBand].mode) {
+    switch(bands[currentBand].demod) {
       case DEMOD_USB:
         mode=2; // USB
         break;

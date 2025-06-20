@@ -1,12 +1,15 @@
+#include <Audio.h>
+
 #include "SDT.h"
+
 #include "Button.h"
 #include "CWProcessing.h"
 #include "CW_Excite.h"
 #include "Display.h"
-#include "DSP_Fn.h"
 #include "EEPROM.h"
 #include "Encoders.h"
 #include "FFT.h"
+#include "FIR.h"
 #include "InfoBox.h"
 #include "keyer.h"
 #include "Menu.h"
@@ -53,9 +56,6 @@ float32_t aveCorrResultR;
 float32_t aveCorrResultL;
 
 float goertzelMagnitude;
-
-arm_fir_instance_f32 FIR_CW_DecodeL;
-arm_fir_instance_f32 FIR_CW_DecodeR;
 
 //------------------------- Local Variables ----------
 // *** looks like many of these should be function variables ***
@@ -137,7 +137,7 @@ FLASHMEM void SetWPMFollowup() {
 FLASHMEM void SetKeyTypeFollowup() {
   // Make sure the paddleDit and paddleDah variables are set correctly for straight key.
   // Paddle flip can reverse these, making the straight key inoperative.
-  if (keyType == 0) {
+  if(keyType == 0) {
     paddleDit = KEYER_DIT_INPUT_TIP;
     paddleDah = KEYER_DAH_INPUT_RING;
   }
@@ -171,12 +171,12 @@ FLASHMEM void SetKeyType() {
     void
 *****/
 FLASHMEM void SetKeyPowerUp() {
-  if (keyType == 0) {
+  if(keyType == 0) {
     paddleDit = KEYER_DIT_INPUT_TIP;
     paddleDah = KEYER_DAH_INPUT_RING;
     return;
   }
-  if (paddleFlip) {  // Means right-paddle dit
+  if(paddleFlip) {  // Means right-paddle dit
     paddleDit = KEYER_DAH_INPUT_RING;
     paddleDah = KEYER_DIT_INPUT_TIP;
   } else {
@@ -189,7 +189,7 @@ FLASHMEM void SelectCWFilterFollowup() {
   // update CW filters if index is different
   if(CWFilterIndex != getMenuInc) {
     ShowOperatingStats();
-    if (xmtMode == CW_MODE) {
+    if(xmtMode == CW_MODE) {
       UpdateCWFilter();
     }
   }
@@ -321,7 +321,7 @@ void DoCWReceiveProcessing() {
   float goertzelMagnitude2;
   int audioTemp;
 
-  if (decoderFlag == ON) {
+  if(decoderFlag == ON) {
     // left channel first
     arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_CW, 256); // Park McClellan FIR filter const Group delay
 
@@ -362,7 +362,7 @@ void DoCWReceiveProcessing() {
     combinedCoeff2Old = combinedCoeff2;
     tft.drawFastVLine(AUDIO_SPEC_BOX_L + 29, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, ORANGE);  //CW lower freq indicator
     tft.drawFastVLine(AUDIO_SPEC_BOX_L + 37, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, ORANGE);  //CW upper freq indicator
-    if (combinedCoeff > 50) {                                                                  // if  have a reasonable corr coeff, >50, then we have a keeper. // AFP 10-26-22
+    if(combinedCoeff > 50) {                                                                  // if  have a reasonable corr coeff, >50, then we have a keeper. // AFP 10-26-22
       audioTemp = 1;
     } else {
       audioTemp = 0;
@@ -387,7 +387,7 @@ FLASHMEM void SetDitLength(int wpm) {
 }
 
 //==================================== Decoder =================
-//DB2OO, 29-AUG-23: moved col declaration here
+
 static int col = 0;  // Start at lower left
 
 /*****
@@ -400,12 +400,12 @@ static int col = 0;  // Start at lower left
     void
 *****/
 void MorseCharacterDisplay(char currentLetter) {
-  if (col < MAX_DECODE_CHARS) {  // Start scrolling??
+  if(col < MAX_DECODE_CHARS) {  // Start scrolling??
     decodeBuffer[col] = currentLetter;
     col++;
     decodeBuffer[col] = '\0';  // Make is a string
   } else {
-    //DB2OO, 25-AUG-23: use memmove instead of memcpy(), to avoid the warning
+    // use memmove instead of memcpy(), to avoid the warning
     memmove(decodeBuffer, &decodeBuffer[1], MAX_DECODE_CHARS - 1);  // Slide array down 1 character.
     decodeBuffer[col - 1] = currentLetter;                          // Add to end
     decodeBuffer[col] = '\0';                                       // Make is a string
@@ -479,15 +479,15 @@ void DoCWDecoding(int audioValue) {
   static long signalStart;
   static long signalEnd;  // Start-end of dit or dah
 
-  switch (decodeStates) {
+  switch(decodeStates) {
 
     case state0:                                                // State 0.  Detects start of signal and starts timer.
       // Detect signal and redirect to appropriate state.
-      if (audioValue == 1) {
+      if(audioValue == 1) {
         signalStart = millis();                                                                              // Time stamp beginning of signal.
         decodeStates = state1;                                                                               // Go to "signalStart" state.
         gapLength = signalStart - signalEnd;                                                                 // Calculate the time gap between the start of this new signal and the end of the last one.
-        if (gapLength > LOWEST_ATOM_TIME                                                                     // range
+        if(gapLength > LOWEST_ATOM_TIME                                                                     // range
             && (uint32_t)gapLength < (uint32_t)(thresholdGeometricMean * 3)
             && signalStart - oldTime > 5000L) {                                                              // Only call histogram every 5 seconds
           DoGapHistogram(gapLength);                                                                         // Map the gap in the signal
@@ -497,11 +497,11 @@ void DoCWDecoding(int audioValue) {
       }
       noSignalTimeStamp = millis();
       interElementGap = noSignalTimeStamp - signalEnd;
-      if ((interElementGap > ditLength * 1.95) && charProcessFlag) {  // use thresholdGeometricMean??? was ditLength. End of character!  65 * 2
+      if((interElementGap > ditLength * 1.95) && charProcessFlag) {  // use thresholdGeometricMean??? was ditLength. End of character!  65 * 2
         decodeStates = state5;                                        // Character ended, print it!
         break;
       }
-      if (interElementGap > ditLength * 4.5 && not blankFlag && not charProcessFlag) {  // A big gap, print a blank, but don't repeat a blank.  85 * 3.5
+      if(interElementGap > ditLength * 4.5 && not blankFlag && not charProcessFlag) {  // A big gap, print a blank, but don't repeat a blank.  85 * 3.5
         decodeStates = state6;
         break;
       }
@@ -509,15 +509,15 @@ void DoCWDecoding(int audioValue) {
       break;                                                                                                 // End state0
 
     case state1:                                                // Times a signal and measures its duration.  The next state determines if the signal is a dit or a dah.
-      if (audioValue == 0) {
+      if(audioValue == 0) {
         currentTime       = millis();
         signalElapsedTime = currentTime - signalStart;          // Calculate the duration of the signal.
 //                                                                 Ignore short noisy signal bursts:
-        if (signalElapsedTime < LOWEST_ATOM_TIME) {             // A hiccup or a real signal?  Make this a fraction of ditLength instead???
+        if(signalElapsedTime < LOWEST_ATOM_TIME) {             // A hiccup or a real signal?  Make this a fraction of ditLength instead???
           decodeStates    = state0;                             // False signal, start over.
           break;
         }
-        if (signalElapsedTime > LOWEST_ATOM_TIME                // Valid elapsed time?
+        if(signalElapsedTime > LOWEST_ATOM_TIME                // Valid elapsed time?
             && signalElapsedTime < HISTOGRAM_ELEMENTS
             && currentTime - oldTime > 5000L) {                 // Only call histogram every 5 seconds
           DoSignalHistogram(signalElapsedTime);                 // Yep
@@ -531,9 +531,9 @@ void DoCWDecoding(int audioValue) {
       break;                  // End state1
 
     case state2:                                                // Determine if a timed signal was a dit or a dah and increment the decode tree.
-      if (signalElapsedTime > (0.5 * ditLength)) {              // Use the geometric mean instead of ditLength???
+      if(signalElapsedTime > (0.5 * ditLength)) {              // Use the geometric mean instead of ditLength???
         currentDashJump = currentDashJump >> 1;                 // Fast divide by 2
-        if (signalElapsedTime < (int)thresholdGeometricMean) {  // It was a dit
+        if(signalElapsedTime < (int)thresholdGeometricMean) {  // It was a dit
           charProcessFlag = true;
           currentDecoderIndex++;
         } else {  // It's a dah!
@@ -587,8 +587,8 @@ void DoGapHistogram(long gapLen) {
   int32_t atomIndex, charIndex, firstDit, temp;
   uint32_t offset;
 
-  if (gapHistogram[gapLen] > 10) {  // Need over 1 so we don't have fractional value
-    for (int k = 0; k < HISTOGRAM_ELEMENTS; k++) {
+  if(gapHistogram[gapLen] > 10) {  // Need over 1 so we don't have fractional value
+    for(int k = 0; k < HISTOGRAM_ELEMENTS; k++) {
       gapHistogram[k] = (uint32_t)(.8 * (float)gapHistogram[k]);
     }
   }
@@ -596,34 +596,34 @@ void DoGapHistogram(long gapLen) {
   gapHistogram[gapLen]++;  // Add new signal to distribution
 
   atomIndex = charIndex = 0;
-  if (gapLen <= thresholdGeometricMean) {                                                                                 // Find new dit length
+  if(gapLen <= thresholdGeometricMean) {                                                                                 // Find new dit length
     JackClusteredArrayMax(gapHistogram, (uint32_t)thresholdGeometricMean, &tempAtom, &atomIndex, &firstDit, (int32_t)1);  // Find max dit gap
-    if (atomIndex) {                                                                                                      // if something found
+    if(atomIndex) {                                                                                                      // if something found
       gapAtom = atomIndex;
     }
-    for (int j = 0; j < HISTOGRAM_ELEMENTS; j++) {                        // count down
-      if (gapHistogram[HISTOGRAM_ELEMENTS - j] > 0 && endGapFlag == 0) {  //Look for non-zero entries in the histogram
-        if (HISTOGRAM_ELEMENTS - j < gapAtom * 2) {                       // limit search to probable gapAtom entries
+    for(int j = 0; j < HISTOGRAM_ELEMENTS; j++) {                        // count down
+      if(gapHistogram[HISTOGRAM_ELEMENTS - j] > 0 && endGapFlag == 0) {  //Look for non-zero entries in the histogram
+        if(HISTOGRAM_ELEMENTS - j < gapAtom * 2) {                       // limit search to probable gapAtom entries
           topGapIndex = HISTOGRAM_ELEMENTS - j;                           //Upper end of gapAtom range
           endGapFlag = 1;                                                 // set flag so we know tha this is the top of the gapAtom range
         }
       }
-      if (topGapIndex > 2 * gapAtom) topGapIndex = topGapIndexOld;  // discard outliers
+      if(topGapIndex > 2 * gapAtom) topGapIndex = topGapIndexOld;  // discard outliers
     }
     endGapFlag = 0;                //reset flag
     topGapIndexOld = topGapIndex;  //Keep good value for reference
   } else {                         // dah calculation
-    if (gapLen <= thresholdGeometricMean * 2) {
+    if(gapLen <= thresholdGeometricMean * 2) {
       offset = (uint32_t)(thresholdGeometricMean * 2);  // Find number of elements to check
       JackClusteredArrayMax(&gapHistogram[(int32_t)thresholdGeometricMean + 1], offset, &tempChar, &charIndex, &temp, (int32_t)3);
-      if (charIndex)  // if something found
+      if(charIndex)  // if something found
         gapChar = charIndex;
     }
   }
-  if (atomIndex) {
+  if(atomIndex) {
     gapAtom = atomIndex;
   }
-  if (charIndex) {
+  if(charIndex) {
     gapChar = charIndex;
   }
 }
@@ -656,19 +656,19 @@ void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, 
   clusteredMax = 0;
   clusteredIndex = -1;  // Now we can check for an error
 
-  for (i = spread; i < elements - spread; i++) {  // Start with 1 so we can look at the previous element's value
+  for(i = spread; i < elements - spread; i++) {  // Start with 1 so we can look at the previous element's value
     temp = 0;
-    for (j = i - spread; j <= i + spread; j++) {
+    for(j = i - spread; j <= i + spread; j++) {
       temp += array[j];
       ;  // Include adjacent elements
     }
 
-    if (temp >= clusteredMax) {
+    if(temp >= clusteredMax) {
       clusteredMax = temp;
       clusteredIndex = i;
     }
   }
-  if (clusteredIndex > 0) {
+  if(clusteredIndex > 0) {
     *maxCount = array[clusteredIndex];
     *maxIndex = clusteredIndex;
   }
@@ -692,22 +692,22 @@ void DoSignalHistogram(long val) {
   int32_t tempDit, tempDah;
   int32_t offset;
 
-  if (valFlag == 0) {
+  if(valFlag == 0) {
     valRef1 = signalElapsedTime;
     signalStartOld = millis();
     valFlag = 1;
   }
 
-  if (millis() - signalStartOld > LOWEST_ATOM_TIME && valFlag == 1) {
+  if(millis() - signalStartOld > LOWEST_ATOM_TIME && valFlag == 1) {
     gapRef1 = gapLength;
     valRef2 = signalElapsedTime;
     valFlag = 0;
   }
 
-  if ((valRef2 >= valRef1 * compareFactor && gapRef1 <= valRef1 * compareFactor)
+  if((valRef2 >= valRef1 * compareFactor && gapRef1 <= valRef1 * compareFactor)
       || (valRef1 >= valRef2 * compareFactor && gapRef1 <= valRef2 * compareFactor)) {
     // See if consecutive signal lengths in approximate dit to dah ratio and which one is larger
-    if (valRef2 >= valRef1) {
+    if(valRef2 >= valRef1) {
       aveDitLength = (long)(0.9 * aveDitLength + 0.1 * valRef1);  //Do some dit length averaging
       aveDahLength = (long)(0.9 * aveDahLength + 0.1 * valRef2);
     } else {
@@ -724,8 +724,8 @@ void DoSignalHistogram(long val) {
   // Dit calculation
   // 2nd parameter means we only look for dits below the geomean.
 
-  for (int32_t j = (int32_t)thresholdGeometricMean; j; j--) {
-    if (signalHistogram[j] != 0) {
+  for(int32_t j = (int32_t)thresholdGeometricMean; j; j--) {
+    if(signalHistogram[j] != 0) {
       firstNonEmpty = j;
       break;
     }
@@ -737,8 +737,8 @@ void DoSignalHistogram(long val) {
   JackClusteredArrayMax(&signalHistogram[offset], HISTOGRAM_ELEMENTS - offset, &tempDah, (int32_t *)&dahLength, &firstNonEmpty, (uint32_t)3);
   dahLength += (uint32_t)offset;
 
-  if (tempDit > SCALE_CONSTANT && tempDah > SCALE_CONSTANT) {  //Adaptive dit signalHistogram[]
-    for (int k = 0; k < HISTOGRAM_ELEMENTS; k++) {
+  if(tempDit > SCALE_CONSTANT && tempDah > SCALE_CONSTANT) {  //Adaptive dit signalHistogram[]
+    for(int k = 0; k < HISTOGRAM_ELEMENTS; k++) {
       signalHistogram[k] = ADAPTIVE_SCALE_FACTOR * signalHistogram[k];
     }
   }
@@ -774,7 +774,7 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
   q1 = 0;
   q2 = 0;
 
-  for (i = 0; i < numSamples; i++) {
+  for(i = 0; i < numSamples; i++) {
     q0 = coeff * q1 - q2 + data[i];
     q2 = q1;
     q1 = q0;

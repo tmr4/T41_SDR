@@ -1,10 +1,12 @@
 // modified from: https://github.com/DD4WH/Pocket_FT8
 // this is a combination of Pocket_FT8.ino, Process_DSP.cpp and decode_ft8.cpp and their header files
 
-#include <stdint.h>
 #include <math.h>
+#include <stdint.h>
+#include <TimeLib.h>                   // Part of Teensy Time library
 
 #include "SDT.h"
+
 #include "ButtonProc.h"
 #include "Display.h"
 #include "ft8.h"
@@ -47,8 +49,8 @@ int master_offset, offset_step;
 bool ft8Init = false;
 bool syncFlag = false;
 
-//q15_t DMAMEM FFT_Scale[FFT_SIZE * 2]; 
-q15_t DMAMEM FFT_Magnitude[FFT_SIZE]; 
+//q15_t DMAMEM FFT_Scale[FFT_SIZE * 2];
+q15_t DMAMEM FFT_Magnitude[FFT_SIZE];
 int32_t DMAMEM FFT_Mag_10[FFT_SIZE/2];
 float  DMAMEM mag_db[FFT_SIZE/2 + 1];
 
@@ -127,7 +129,7 @@ void auto_sync_FT8() {
   // allow process to loop until we're within 1 second of the next T/R sequence
   if((second())%15 == 14) {
     // now we can sync up without causing a long delay
-    while ((second())%15 != 0){
+    while((second())%15 != 0){
     }
 
     start_time =millis();
@@ -157,7 +159,7 @@ void update_synchronization() {
 
   // we're missing every other interval, try to relax this a bit
   // are we within 3 sec of 15 sec interval
-  if(ft8_time % 15000 <= 200) 
+  if(ft8_time % 15000 <= 200)
   //if(ft8_flag == 0 && ft8_time % 15000 <= 266) { // within 4 sec of 15 sec interval
   {
     ft8_flag = 1;
@@ -179,7 +181,7 @@ float ft_blackman_i(int i, int N) {
 
 FLASHMEM bool init_DSP(void) {
   //Serial.println(sizeof(float32_t));
-  
+
   export_fft_power = new uint8_t[ft8_msg_samples*ft8_buffer*4];
 
   if(export_fft_power == NULL) {
@@ -211,7 +213,7 @@ FLASHMEM bool init_DSP(void) {
   //Serial.println(offset);
 
   arm_rfft_init_q15(&fft_inst, FFT_SIZE, 0, 1);
-  for (int i = 0; i < FFT_SIZE; ++i) {
+  for(int i = 0; i < FFT_SIZE; ++i) {
     window[i] = ft_blackman_i(i, FFT_SIZE);
   }
   offset_step = (int) ft8_buffer*4;
@@ -222,9 +224,9 @@ FLASHMEM bool init_DSP(void) {
 // Compute FFT magnitudes (log power) for each timeslot in the signal
 void extract_power(int offset) {
   // Loop over two possible time offsets (0 and block_size/2)
-  for (int time_sub = 0; time_sub <= input_gulp_size/2; time_sub += input_gulp_size/2) {
+  for(int time_sub = 0; time_sub <= input_gulp_size/2; time_sub += input_gulp_size/2) {
 
-    for (int i = 0; i <  FFT_SIZE ; i++) {
+    for(int i = 0; i <  FFT_SIZE ; i++) {
       window_ft8_dsp_buffer[i] = (q15_t) ( (float) ft8_dsp_buffer[i + time_sub] * window[i] );
       //if(window_ft8_dsp_buffer[i] != 0) Serial.printf("%d: %d\n", i, window_ft8_dsp_buffer[i]);
     }
@@ -234,19 +236,19 @@ void extract_power(int offset) {
     //arm_shift_q15(&dsp_output[0], 6, &FFT_Scale[0], FFT_SIZE * 2 );
     arm_cmplx_mag_squared_q15(&FFT_Scale[0], &FFT_Magnitude[0], FFT_SIZE);
 
-    for (int j = 0; j< FFT_SIZE/2; j++) {
+    for(int j = 0; j< FFT_SIZE/2; j++) {
       FFT_Mag_10[j] = 10 * (int32_t)FFT_Magnitude[j];
       //mag_db[j] =  5.0 * log((float)FFT_Mag_10[j] + 0.1);
       mag_db[j] =  10.0 * log((float)FFT_Mag_10[j] + 0.1);
     }
 
     // Loop over two possible frequency bin offsets (for averaging)
-    for (int freq_sub = 0; freq_sub < 2; ++freq_sub) {
-      for (int j = 0; j < ft8_buffer; ++j) {
+    for(int freq_sub = 0; freq_sub < 2; ++freq_sub) {
+      for(int j = 0; j < ft8_buffer; ++j) {
         float db1 = mag_db[j * 2 + freq_sub];
         float db2 = mag_db[j * 2 + freq_sub + 1];
         float db = (db1 + db2) / 2;
-        
+
         int scaled = (int) (db);
         export_fft_power[offset] = (scaled < 0) ? 0 : ((scaled > 255) ? 255 : scaled);
         ++offset;
@@ -261,7 +263,7 @@ void process_FT8_FFT(void) {
   extract_power(master_offset);
 
   FT_8_counter++;
-  if (FT_8_counter == ft8_msg_samples) {
+  if(FT_8_counter == ft8_msg_samples) {
     ft8_flag = 0;
     ft8_decode_flag = 1;
   }
@@ -278,18 +280,18 @@ static float max4(float a, float b, float c, float d) {
 static void heapify_down(Candidate *heap, int heap_size) {
   // heapify from the root down
   int current = 0;
-  while (true) {
+  while(true) {
     int largest = current;
     int left = 2 * current + 1;
     int right = left + 1;
 
-    if (left < heap_size && heap[left].score < heap[largest].score) {
+    if(left < heap_size && heap[left].score < heap[largest].score) {
       largest = left;
     }
-    if (right < heap_size && heap[right].score < heap[largest].score) {
+    if(right < heap_size && heap[right].score < heap[largest].score) {
       largest = right;
     }
-    if (largest == current) {
+    if(largest == current) {
       break;
     }
 
@@ -303,9 +305,9 @@ static void heapify_down(Candidate *heap, int heap_size) {
 static void heapify_up(Candidate *heap, int heap_size) {
   // heapify from the last node up
   int current = heap_size - 1;
-  while (current > 0) {
+  while(current > 0) {
     int parent = (current - 1) / 2;
-    if (heap[current].score >= heap[parent].score) {
+    if(heap[current].score >= heap[parent].score) {
       break;
     }
 
@@ -321,7 +323,7 @@ static void decode_symbol(const uint8_t *power, const uint8_t *code_map, int bit
   // Cleaned up code for the simple case of n_syms==1
   float s2[8];
 
-  for (int j = 0; j < 8; ++j) {
+  for(int j = 0; j < 8; ++j) {
     s2[j] = (float)power[code_map[j]];
     //s2[j] = (float)work_fft_power[offset+code_map[j]];
   }
@@ -341,18 +343,18 @@ int find_sync(const uint8_t *power, int num_blocks, int num_bins, const uint8_t 
   // Here we allow time offsets that exceed signal boundaries, as long as we still have all data bits.
   // I.e. we can afford to skip the first 7 or the last 7 Costas symbols, as long as we track how many
   // sync symbols we included in the score, so the score is averaged.
-  for (int alt = 0; alt < 4; ++alt) {
-    for (int time_offset = -7; time_offset < num_blocks - NN + 7; ++time_offset) {  // NN=79
-      for (int freq_offset = ft8_min_bin; freq_offset < num_bins - 8; ++freq_offset) {
+  for(int alt = 0; alt < 4; ++alt) {
+    for(int time_offset = -7; time_offset < num_blocks - NN + 7; ++time_offset) {  // NN=79
+      for(int freq_offset = ft8_min_bin; freq_offset < num_bins - 8; ++freq_offset) {
         int score = 0;
 
         // Compute average score over sync symbols (m+k = 0-7, 36-43, 72-79)
         int num_symbols = 0;
-        for (int m = 0; m <= 72; m += 36) {
-          for (int k = 0; k < 7; ++k) {
+        for(int m = 0; m <= 72; m += 36) {
+          for(int k = 0; k < 7; ++k) {
             // Check for time boundaries
-            if (time_offset + k + m < 0) continue;
-            if (time_offset + k + m >= num_blocks) break;
+            if(time_offset + k + m < 0) continue;
+            if(time_offset + k + m >= num_blocks) break;
 
             int offset = ((time_offset + k + m) * 4 + alt) * num_bins + freq_offset;
 
@@ -367,19 +369,19 @@ int find_sync(const uint8_t *power, int num_blocks, int num_bins, const uint8_t 
 /*
             // Check only the neighbors of the expected symbol frequency- and time-wise
             int sm = sync_map[k];   // Index of the expected bin
-            if (sm > 0) {
+            if(sm > 0) {
                 // look at one frequency bin lower
                 score += p8[sm] - p8[sm - 1];
             }
-            if (sm < 7) {
+            if(sm < 7) {
                 // look at one frequency bin higher
                 score += p8[sm] - p8[sm + 1];
             }
-            if (k > 0) {
+            if(k > 0) {
                 // look one symbol back in time
                 score += p8[sm] - p8[sm - 4 * num_bins];
             }
-            if (k < 6) {
+            if(k < 6) {
                 // look one symbol forward in time
                 score += p8[sm] - p8[sm + 4 * num_bins];
             }
@@ -390,11 +392,11 @@ int find_sync(const uint8_t *power, int num_blocks, int num_bins, const uint8_t 
         score /= num_symbols;
 
         // if(score > max_score) max_score = score;
-        if (score < min_score) continue;
+        if(score < min_score) continue;
 
         // If the heap is full AND the current candidate is better than
         // the worst in the heap, we remove the worst and make space
-        if (heap_size == num_candidates && score > heap[0].score) {
+        if(heap_size == num_candidates && score > heap[0].score) {
             heap[0] = heap[heap_size - 1];
             --heap_size;
 
@@ -402,7 +404,7 @@ int find_sync(const uint8_t *power, int num_blocks, int num_bins, const uint8_t 
         }
 
         // If there's free space in the heap, we add the current candidate
-        if (heap_size < num_candidates) {
+        if(heap_size < num_candidates) {
             heap[heap_size].score = score;
             heap[heap_size].time_offset = time_offset;
             heap[heap_size].freq_offset = freq_offset;
@@ -434,7 +436,7 @@ void extract_likelihood(const uint8_t *power, int num_bins, Candidate cand, cons
   // Go over FSK tones and skip Costas sync symbols
   const int n_syms = 1;
 
-  for (int k = 0; k < ND; k += n_syms) {
+  for(int k = 0; k < ND; k += n_syms) {
     int sym_idx = (k < ND / 2) ? (k + 7) : (k + 14);
     int bit_idx = 3 * k;
 
@@ -448,7 +450,7 @@ void extract_likelihood(const uint8_t *power, int num_bins, Candidate cand, cons
   float sum   = 0;
   float sum2  = 0;
   float inv_n = 1.0f / N;
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i) {
     sum  += log174[i];
     sum2 += log174[i] * log174[i];
   }
@@ -456,7 +458,7 @@ void extract_likelihood(const uint8_t *power, int num_bins, Candidate cand, cons
   // Normalize log174 such that sigma = 2.83 (Why? It's in WSJT-X, ft8b.f90)
   // Seems to be 2.83 = sqrt(8). Experimentally sqrt(16) works better.
   float norm_factor = sqrtf(16.0f / variance);
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i) {
     log174[i] *= norm_factor;
   }
 }
@@ -469,12 +471,12 @@ void extract_likelihood(const uint8_t *power, int num_bins, Candidate cand, cons
 static int ldpc_check(uint8_t codeword[]) {
   int errors = 0;
 
-  for (int j = 0; j < M; ++j) {
+  for(int j = 0; j < M; ++j) {
     uint8_t x = 0;
-    for (int i = 0; i < kNrw[j]; ++i) {
+    for(int i = 0; i < kNrw[j]; ++i) {
       x ^= codeword[kNm[j][i] - 1];
     }
-    if (x != 0) {
+    if(x != 0) {
       ++errors;
     }
   }
@@ -488,10 +490,10 @@ static int ldpc_check(uint8_t codeword[]) {
 // thank you Douglas Bagnall
 // https://math.stackexchange.com/a/446411
 static float fast_tanh(float x) {
-  if (x < -4.97f) {
+  if(x < -4.97f) {
     return -1.0f;
   }
-  if (x > 4.97f) {
+  if(x > 4.97f) {
     return 1.0f;
   }
   float x2 = x * x;
@@ -522,23 +524,23 @@ void bp_decode(float codeword[], int max_iters, uint8_t plain[], int *ok) {
   int min_errors = M;
 
   // initialize messages to checks
-  for (int i = 0; i < M; ++i) {
-    for (int j = 0; j < kNrw[i]; ++j) {
+  for(int i = 0; i < M; ++i) {
+    for(int j = 0; j < kNrw[i]; ++j) {
       toc[i][j] = codeword[kNm[i][j] - 1];
     }
   }
 
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < 3; ++j) {
+  for(int i = 0; i < N; ++i) {
+    for(int j = 0; j < 3; ++j) {
       tov[i][j] = 0;
     }
   }
 
-  for (int iter = 0; iter < max_iters; ++iter) {
+  for(int iter = 0; iter < max_iters; ++iter) {
     float   zn[N];
 
     // Update bit log likelihood ratios (tov=0 in iter 0)
-    for (int i = 0; i < N; ++i) {
+    for(int i = 0; i < N; ++i) {
       zn[i] = codeword[i] + tov[i][0] + tov[i][1] + tov[i][2];
       plain[i] = (zn[i] > 0) ? 1 : 0;
     }
@@ -546,23 +548,23 @@ void bp_decode(float codeword[], int max_iters, uint8_t plain[], int *ok) {
     // Check to see if we have a codeword (check before we do any iter)
     int errors = ldpc_check(plain);
 
-    if (errors < min_errors) {
+    if(errors < min_errors) {
       // we have a better guess - update the result
       min_errors = errors;
 
-      if (errors == 0) {
+      if(errors == 0) {
         break;  // Found a perfect answer
       }
     }
 
     // Send messages from bits to check nodes
-    for (int i = 0; i < M; ++i) {
-      for (int j = 0; j < kNrw[i]; ++j) {
+    for(int i = 0; i < M; ++i) {
+      for(int j = 0; j < kNrw[i]; ++j) {
         int ibj = kNm[i][j] - 1;
         toc[i][j] = zn[ibj];
-        for (int kk = 0; kk < 3; ++kk) {
+        for(int kk = 0; kk < 3; ++kk) {
           // subtract off what the bit had received from the check
-          if (kMn[ibj][kk] - 1 == i) {
+          if(kMn[ibj][kk] - 1 == i) {
             toc[i][j] -= tov[ibj][kk];
           }
         }
@@ -570,18 +572,18 @@ void bp_decode(float codeword[], int max_iters, uint8_t plain[], int *ok) {
     }
 
     // send messages from check nodes to variable nodes
-    for (int i = 0; i < M; ++i) {
-      for (int j = 0; j < kNrw[i]; ++j) {
+    for(int i = 0; i < M; ++i) {
+      for(int j = 0; j < kNrw[i]; ++j) {
         toc[i][j] = fast_tanh(-toc[i][j] / 2);
       }
     }
 
-    for (int i = 0; i < N; ++i) {
-      for (int j = 0; j < 3; ++j) {
+    for(int i = 0; i < N; ++i) {
+      for(int j = 0; j < 3; ++j) {
         int ichk = kMn[i][j] - 1; // kMn(:,j) are the checks that include bit j
         float Tmn = 1.0f;
-        for (int k = 0; k < kNrw[ichk]; ++k) {
-          if (kNm[ichk][k] - 1 != i) {
+        for(int k = 0; k < kNrw[ichk]; ++k) {
+          if(kNm[ichk][k] - 1 != i) {
             Tmn *= toc[ichk][k];
           }
         }
@@ -597,18 +599,18 @@ void bp_decode(float codeword[], int max_iters, uint8_t plain[], int *ok) {
 // as a string of packed bits starting from the MSB of the first byte of packed[]
 void pack_bits(const uint8_t plain[], int num_bits, uint8_t packed[]) {
   int num_bytes = (num_bits + 7) / 8;
-  for (int i = 0; i < num_bytes; ++i) {
+  for(int i = 0; i < num_bytes; ++i) {
     packed[i] = 0;
   }
 
   uint8_t mask = 0x80;
   int     byte_idx = 0;
-  for (int i = 0; i < num_bits; ++i) {
-    if (plain[i]) {
+  for(int i = 0; i < num_bits; ++i) {
+    if(plain[i]) {
       packed[byte_idx] |= mask;
     }
     mask >>= 1;
-    if (!mask) {
+    if(!mask) {
       mask = 0x80;
       ++byte_idx;
     }
@@ -627,38 +629,38 @@ int unpack77_fields(const uint8_t *a77, char *field1, char *field2, char *field3
 
   field1[0] = field2[0] = field3[0] = '\0';
 
-  if (i3 == 0 && n3 == 0) {
+  if(i3 == 0 && n3 == 0) {
     // 0.0  Free text
     return unpack_text(a77, field1);
   }
-  // else if (i3 == 0 && n3 == 1) {
+  // else if(i3 == 0 && n3 == 1) {
   //     // 0.1  K1ABC RR73; W9XYZ <KH1/KH7Z> -11   28 28 10 5       71   DXpedition Mode
   // }
-  // else if (i3 == 0 && n3 == 2) {
+  // else if(i3 == 0 && n3 == 2) {
   //     // 0.2  PA3XYZ/P R 590003 IO91NP           28 1 1 3 12 25   70   EU VHF contest
   // }
-  // else if (i3 == 0 && (n3 == 3 || n3 == 4)) {
+  // else if(i3 == 0 && (n3 == 3 || n3 == 4)) {
   //     // 0.3   WA9XYZ KA1ABC R 16A EMA            28 28 1 4 3 7    71   ARRL Field Day
   //     // 0.4   WA9XYZ KA1ABC R 32A EMA            28 28 1 4 3 7    71   ARRL Field Day
   // }
-  else if (i3 == 0 && n3 == 5) {
+  else if(i3 == 0 && n3 == 5) {
     // 0.5   0123456789abcdef01                 71               71   Telemetry (18 hex)
     return unpack_telemetry(a77, field1);
   }
-  else if (i3 == 1 || i3 == 2) {
+  else if(i3 == 1 || i3 == 2) {
     // Type 1 (standard message) or Type 2 ("/P" form for EU VHF contest)
     return unpack_type1(a77, i3, field1, field2, field3);
   }
-  // else if (i3 == 3) {
+  // else if(i3 == 3) {
   //     // Type 3: ARRL RTTY Contest
   // }
-  else if (i3 == 4) {
+  else if(i3 == 4) {
   //     // Type 4: Nonstandard calls, e.g. <WA9XYZ> PJ4/KA1ABC RR73
   //     // One hashed call or "CQ"; one compound or nonstandard call with up
   //     // to 11 characters; and (if not "CQ") an optional RRR, RR73, or 73.
     return unpack_nonstandard(a77, field1, field2, field3);
   }
-  // else if (i3 == 5) {
+  // else if(i3 == 5) {
   //     // Type 5: TU; W9XYZ K1ABC R-09 FN             1 28 28 1 7 9       74   WWROF contest
   // }
 
@@ -674,7 +676,7 @@ uint16_t crc(uint8_t *message, int num_bits) {
   //constexpr uint16_t  TOPBIT = (1 << (CRC_WIDTH - 1));
   uint16_t  TOPBIT = (1 << (CRC_WIDTH - 1));
   // printf("CRC, %d bits: ", num_bits);
-  // for (int i = 0; i < (num_bits + 7) / 8; ++i) {
+  // for(int i = 0; i < (num_bits + 7) / 8; ++i) {
   //     printf("%02x ", message[i]);
   // }
   // printf("\n");
@@ -683,15 +685,15 @@ uint16_t crc(uint8_t *message, int num_bits) {
   int idx_byte = 0;
 
   // Perform modulo-2 division, a bit at a time.
-  for (int idx_bit = 0; idx_bit < num_bits; ++idx_bit) {
-    if (idx_bit % 8 == 0) {
+  for(int idx_bit = 0; idx_bit < num_bits; ++idx_bit) {
+    if(idx_bit % 8 == 0) {
       // Bring the next byte into the remainder.
       remainder ^= (message[idx_byte] << (CRC_WIDTH - 8));
       ++idx_byte;
     }
 
     // Try to divide the current data bit.
-    if (remainder & TOPBIT) {
+    if(remainder & TOPBIT) {
       remainder = (remainder << 1) ^ CRC_POLYNOMIAL;
     }
     else {
@@ -711,12 +713,12 @@ int validate_locator(char locator[]) {
   N1 = locator[2] - 48;
   N2= locator [3] - 48;
 
-  if (A1 >= 0 && A1 <= 17) test++;
-  if (A2 > 0 && A2 < 17) test++; //block RR73 Artic and Anartica
-  if (N1 >= 0 && N1 <= 9) test++;
-  if (N2 >= 0 && N2 <= 9) test++;
+  if(A1 >= 0 && A1 <= 17) test++;
+  if(A2 > 0 && A2 < 17) test++; //block RR73 Artic and Anartica
+  if(N1 >= 0 && N1 <= 9) test++;
+  if(N2 >= 0 && N2 <= 9) test++;
 
-  if (test == 4) {
+  if(test == 4) {
     return 1;
   }
   else {
@@ -765,55 +767,55 @@ int ft8_decode(void) {
     // bp_decode() produces better decodes, uses way less memory
     n_errors = 0;
     bp_decode(log174, kLDPC_iterations, plain, &n_errors);
-    
-    if (n_errors > 0)    continue;
-    //if (n_errors > 0)    {
+
+    if(n_errors > 0)    continue;
+    //if(n_errors > 0)    {
     //  Serial.print("errors = "); Serial.println(n_errors);
     //}
 
     // Extract payload + CRC (first K bits)
     pack_bits(plain, K, a91);
-    
+
     // Extract CRC and check it
     chksum = ((a91[9] & 0x07) << 11) | (a91[10] << 3) | (a91[11] >> 5);
     a91[9] &= 0xF8;
     a91[10] = 0;
     a91[11] = 0;
     chksum2 = crc(a91, 96 - 14);
-    if (chksum != chksum2)   continue;
-    //if (chksum != chksum2) {
+    if(chksum != chksum2)   continue;
+    //if(chksum != chksum2) {
     //  Serial.print("chksum = "); Serial.print(chksum); Serial.print(" chksum2 = "); Serial.println(chksum2);
     //}
-    
+
     rc = unpack77_fields(a91, field1, field2, field3);
-    if (rc < 0) continue;
-    //if (rc < 0) {
+    if(rc < 0) continue;
+    //if(rc < 0) {
     //  Serial.print("rc = "); Serial.println(rc);
     //  }
-    
+
     sprintf(message,"%.13s %.13s %.6s",field1, field2, field3);
     //if(strlen(message) > 10) Serial.println(message);
 
     // Check for duplicate messages (TODO: use hashing)
     found = false;
-    for (int i = 0; i < numNewlyDecoded; ++i) {
-      if (0 == strcmp(newlyDecoded[i], message)) {
+    for(int i = 0; i < numNewlyDecoded; ++i) {
+      if(0 == strcmp(newlyDecoded[i], message)) {
         found = true;
         break;
       }
     }
 
-    getTeensy3Time();
+    GetTeensyTime();
     //sprintf(rtc_string,"%02i:%02i:%02i",hour(),minute(),second());
 
     // check in decoded as well
     if(!found) {
       char msg[48];
 
-      for (int i = 0; i < nDecoded; ++i) {
+      for(int i = 0; i < nDecoded; ++i) {
         sprintf(msg,"%.13s %.13s %.6s",decoded[i].field1, decoded[i].field2, decoded[i].field3);
 
-        if (0 == strcmp(msg, message)) {
+        if(0 == strcmp(msg, message)) {
           found = true;
 
           // indicate we've seen the msg before
@@ -821,7 +823,7 @@ int ft8_decode(void) {
 
           // update its details
           //strcpy(decoded[i].decode_time, rtc_string);
-          getTeensy3Time();
+          GetTeensyTime();
           decoded[i].hour = hour();
           decoded[i].min = minute();
           decoded[i].sec = second();
@@ -836,7 +838,7 @@ int ft8_decode(void) {
       }
     }
 
-    if (!found && numNewlyDecoded < kMax_decoded_messages) {
+    if(!found && numNewlyDecoded < kMax_decoded_messages) {
       if(strlen(message) < kMax_message_length) {
         strcpy(newlyDecoded[numNewlyDecoded++], message);
 
@@ -849,12 +851,12 @@ int ft8_decode(void) {
         decoded[nDecoded].hour = hour();
         decoded[nDecoded].min = minute();
         decoded[nDecoded].sec = second();
-          
+
         decoded[nDecoded].count = 1;
 
         // *** TODO: revisit this ***
         raw_RSL = decoded[nDecoded].sync_score;
-        if (raw_RSL > 160) {
+        if(raw_RSL > 160) {
           raw_RSL = 160;
         }
         display_RSL = (raw_RSL - 160 ) / 6;
@@ -864,7 +866,7 @@ int ft8_decode(void) {
 
         strcpy(Target_Locator, decoded[nDecoded].field3);
 
-        if (validate_locator(Target_Locator)  == 1) {
+        if(validate_locator(Target_Locator)  == 1) {
   				distance = Target_Distance(Target_Locator);
           //println(distance);
           decoded[nDecoded].distance = (int)distance;
@@ -921,8 +923,8 @@ void DisplayMessages() {
   tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
 
   // print messages in 2 columns
-  //for (int i = 0; i < decoded_messages && i < message_limit; i++){
-  for (int i = 0; i < num_decoded_msg; i++){
+  //for(int i = 0; i < decoded_messages && i < message_limit; i++){
+  for(int i = 0; i < num_decoded_msg; i++){
     if(i == activeMsg) {
       if(ft8MsgSelectActive) {
         tft.setTextColor(RA8875_GREEN);
@@ -964,28 +966,28 @@ const uint16_t MAXGRID4 = 32400L;
 // call sign bits from a packed message.
 int unpack28(uint32_t n28, uint8_t ip, uint8_t i3, char *result) {
   // Check for special tokens DE, QRZ, CQ, CQ_nnn, CQ_aaaa
-  if (n28 < NTOKENS) {
-    if (n28 <= 2) {
-      if (n28 == 0) strcpy(result, "DE");
-      if (n28 == 1) strcpy(result, "QRZ");
-      if (n28 == 2) strcpy(result, "CQ");
+  if(n28 < NTOKENS) {
+    if(n28 <= 2) {
+      if(n28 == 0) strcpy(result, "DE");
+      if(n28 == 1) strcpy(result, "QRZ");
+      if(n28 == 2) strcpy(result, "CQ");
       return 0;   // Success
     }
-    if (n28 <= 1002) {
+    if(n28 <= 1002) {
       // CQ_nnn with 3 digits
       strcpy(result, "CQ ");
       int_to_dd(result + 3, n28 - 3, 3, true);
       return 0;   // Success
     }
-    if (n28 <= 532443L) {
+    if(n28 <= 532443L) {
       // CQ_aaaa with 4 alphanumeric symbols
       uint32_t n = n28 - 1003;
       char aaaa[5];
 
       aaaa[4] = '\0';
-      for (int i = 3; /* */; --i) {
+      for(int i = 3; /* */; --i) {
         aaaa[i] = charn(n % 27, 4);
-        if (i == 0) break;
+        if(i == 0) break;
         n /= 27;
       }
 
@@ -998,7 +1000,7 @@ int unpack28(uint32_t n28, uint8_t ip, uint8_t i3, char *result) {
   }
 
   n28 = n28 - NTOKENS;
-  if (n28 < MAX22) {
+  if(n28 < MAX22) {
     // This is a 22-bit hash of a result
     //call hash22(n22,c13)     !Retrieve result from hash table
     // TODO: implement
@@ -1029,14 +1031,14 @@ int unpack28(uint32_t n28, uint8_t ip, uint8_t i3, char *result) {
 
   // Skip trailing and leading whitespace in case of a short callsign
   strcpy(result, trim(callsign));
-  if (strlen(result) == 0) return -1;
+  if(strlen(result) == 0) return -1;
 
   // Check if we should append /R or /P suffix
-  if (ip) {
-    if (i3 == 1) {
+  if(ip) {
+    if(i3 == 1) {
       strcat(result, "/R");
     }
-    else if (i3 == 2) {
+    else if(i3 == 2) {
       strcat(result, "/P");
     }
   }
@@ -1067,27 +1069,27 @@ int unpack_type1(const uint8_t *a77, uint8_t i3, char *field1, char *field2, cha
   igrid4 |= (a77[9] >> 6);
 
   // Unpack both callsigns
-  if (unpack28(n28a >> 1, n28a & 0x01, i3, field1) < 0) {
+  if(unpack28(n28a >> 1, n28a & 0x01, i3, field1) < 0) {
     return -1;
   }
-  if (unpack28(n28b >> 1, n28b & 0x01, i3, field2) < 0) {
+  if(unpack28(n28b >> 1, n28b & 0x01, i3, field2) < 0) {
     return -2;
   }
   // Fix "CQ_" to "CQ " -> already done in unpack28()
 
   // TODO: add to recent calls
-  // if (field1[0] != '<' && strlen(field1) >= 4) {
+  // if(field1[0] != '<' && strlen(field1) >= 4) {
   //     save_hash_call(field1)
   // }
-  // if (field2[0] != '<' && strlen(field2) >= 4) {
+  // if(field2[0] != '<' && strlen(field2) >= 4) {
   //     save_hash_call(field2)
   // }
 
-  if (igrid4 <= MAXGRID4) {
+  if(igrid4 <= MAXGRID4) {
     // Extract 4 symbol grid locator
     char *dst = field3;
     uint16_t n = igrid4;
-    if (ir > 0) {
+    if(ir > 0) {
       // In case of ir=1 add an "R" before grid
       dst = stpcpy(dst, "R ");
     }
@@ -1101,27 +1103,27 @@ int unpack_type1(const uint8_t *a77, uint8_t i3, char *field1, char *field2, cha
     n /= 18;
     dst[0] = 'A' + (n % 18);
     // if(msg(1:3).eq.'CQ ' .and. ir.eq.1) unpk77_success=.false.
-    // if (ir > 0 && strncmp(field1, "CQ", 2) == 0) return -1;
+    // if(ir > 0 && strncmp(field1, "CQ", 2) == 0) return -1;
   }
   else {
     // Extract report
     int irpt = igrid4 - MAXGRID4;
 
     // Check special cases first
-    if (irpt == 1) field3[0] = '\0';
-    else if (irpt == 2) strcpy(field3, "RRR");
-    else if (irpt == 3) strcpy(field3, "RR73");
-    else if (irpt == 4) strcpy(field3, "73");
-    else if (irpt >= 5) {
+    if(irpt == 1) field3[0] = '\0';
+    else if(irpt == 2) strcpy(field3, "RRR");
+    else if(irpt == 3) strcpy(field3, "RR73");
+    else if(irpt == 4) strcpy(field3, "73");
+    else if(irpt >= 5) {
       char *dst = field3;
       // Extract signal report as a two digit number with a + or - sign
-      if (ir > 0) {
+      if(ir > 0) {
         *dst++ = 'R'; // Add "R" before report
       }
       int_to_dd(dst, irpt - 35, 2, true);
     }
     // if(msg(1:3).eq.'CQ ' .and. irpt.ge.2) unpk77_success=.false.
-    // if (irpt >= 2 && strncmp(field1, "CQ", 2) == 0) return -1;
+    // if(irpt >= 2 && strncmp(field1, "CQ", 2) == 0) return -1;
   }
 
   return 0;       // Success
@@ -1132,17 +1134,17 @@ int unpack_text(const uint8_t *a71, char *text) {
   uint8_t b71[9];
 
   uint8_t carry = 0;
-  for (int i = 0; i < 9; ++i) {
+  for(int i = 0; i < 9; ++i) {
     b71[i] = carry | (a71[i] >> 1);
     carry = (a71[i] & 1) ? 0x80 : 0;
   }
 
 	char c14[14];
 	c14[13] = 0;
-  for (int idx = 12; idx >= 0; --idx) {
+  for(int idx = 12; idx >= 0; --idx) {
     // Divide the long integer in b71 by 42
     uint16_t rem = 0;
-    for (int i = 0; i < 9; ++i) {
+    for(int i = 0; i < 9; ++i) {
       rem = (rem << 8) | b71[i];
       b71[i] = rem / 42;
       rem    = rem % 42;
@@ -1159,13 +1161,13 @@ int unpack_telemetry(const uint8_t *a71, char *telemetry) {
 
   // Shift bits in a71 right by 1
   uint8_t carry = 0;
-  for (int i = 0; i < 9; ++i) {
+  for(int i = 0; i < 9; ++i) {
     b71[i] = (carry << 7) | (a71[i] >> 1);
     carry = (a71[i] & 0x01);
   }
 
   // Convert b71 to hexadecimal string
-  for (int i = 0; i < 9; ++i) {
+  for(int i = 0; i < 9; ++i) {
     uint8_t nibble1 = (b71[i] >> 4);
     uint8_t nibble2 = (b71[i] & 0x0F);
     char c1 = (nibble1 > 9) ? (nibble1 - 10 + 'A') : nibble1 + '0';
@@ -1208,9 +1210,9 @@ int unpack_nonstandard(const uint8_t *a77, char *field1, char *field2, char *fie
 	char c11[12];
 	c11[11] = '\0';
 
-  for (int i = 10; /* no condition */ ; --i) {
+  for(int i = 10; /* no condition */ ; --i) {
     c11[i] = charn(n58 % 38, 5);
-      if (i == 0) break;
+      if(i == 0) break;
     n58 /= 38;
   }
 
@@ -1226,13 +1228,13 @@ int unpack_nonstandard(const uint8_t *a77, char *field1, char *field2, char *fie
   char * call_2 = (iflip) ? call_3 : c11;
 	//save_hash_call(c11_trimmed);
 
-	if (icq == 0) {
+	if(icq == 0) {
 		strcpy(field1, trim(call_1));
-		if (nrpt == 1)
+		if(nrpt == 1)
 			strcpy(field3, "RRR");
-		else if (nrpt == 2)
+		else if(nrpt == 2)
 			strcpy(field3, "RR73");
-		else if (nrpt == 3)
+		else if(nrpt == 3)
 			strcpy(field3, "73");
         else {
             field3[0] = '\0';
@@ -1248,7 +1250,7 @@ int unpack_nonstandard(const uint8_t *a77, char *field1, char *field2, char *fie
 
 const char * trim_front(const char *str) {
   // Skip leading whitespace
-  while (*str == ' ') {
+  while(*str == ' ') {
     str++;
   }
   return str;
@@ -1257,7 +1259,7 @@ const char * trim_front(const char *str) {
 void trim_back(char *str) {
   // Skip trailing whitespace by replacing it with '\0' characters
   int idx = strlen(str) - 1;
-  while (idx >= 0 && str[idx] == ' ') {
+  while(idx >= 0 && str[idx] == ' ') {
     str[idx--] = '\0';
   }
 }
@@ -1273,22 +1275,22 @@ char * trim(char *str) {
 
 // Convert a 2 digit integer to string
 void int_to_dd(char *str, int value, int width, bool full_sign) {
-  if (value < 0) {
+  if(value < 0) {
     *str = '-';
     ++str;
     value = -value;
   }
-  else if (full_sign) {
+  else if(full_sign) {
     *str = '+';
     ++str;
   }
 
   int divisor = 1;
-  for (int i = 0; i < width - 1; ++i) {
+  for(int i = 0; i < width - 1; ++i) {
     divisor *= 10;
   }
 
-  while (divisor >= 1) {
+  while(divisor >= 1) {
     int digit = value / divisor;
 
     *str = '0' + digit;
@@ -1308,24 +1310,24 @@ void int_to_dd(char *str, int value, int width, bool full_sign) {
 // table 4: " ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 // table 5: " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
 char charn(int c, int table_idx) {
-  if (table_idx != 2 && table_idx != 3) {
-    if (c == 0) return ' ';
+  if(table_idx != 2 && table_idx != 3) {
+    if(c == 0) return ' ';
     c -= 1;
   }
-  if (table_idx != 4) {
-    if (c < 10) return '0' + c;
+  if(table_idx != 4) {
+    if(c < 10) return '0' + c;
     c -= 10;
   }
-  if (table_idx != 3) {
-    if (c < 26) return 'A' + c;
+  if(table_idx != 3) {
+    if(c < 26) return 'A' + c;
     c -= 26;
   }
 
-  if (table_idx == 0) {
-    if (c < 5) return "+-./?" [c];
+  if(table_idx == 0) {
+    if(c < 5) return "+-./?" [c];
   }
-  else if (table_idx == 5) {
-    if (c == 0) return '/';
+  else if(table_idx == 5) {
+    if(c == 0) return '/';
   }
 
   return '_'; // unknown character, should never get here

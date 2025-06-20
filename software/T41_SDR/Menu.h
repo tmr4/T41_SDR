@@ -12,26 +12,6 @@
 #define EACH_MENU_WIDTH               260
 #define BOTH_MENU_WIDTHS             (EACH_MENU_WIDTH * 2)
 
-#define MENU_OPTION_SELECT           0
-#define MAIN_MENU_UP                 1
-#define BAND_UP                      2
-#define ZOOM                         3
-#define MAIN_MENU_DN                 4
-#define BAND_DN                      5
-#define FILTER                       6
-#define DEMODULATION                 7
-#define SET_MODE                     8
-#define NOISE_REDUCTION              9
-#define NOTCH_FILTER                10
-#define NOISE_FLOOR                 11
-#define FINE_TUNE_INCREMENT         12
-#define DECODER_TOGGLE              13
-#define MAIN_TUNE_INCREMENT         14
-#define RESET_TUNING                15
-#define UNUSED_1                    16
-#define BEARING                     17
-#define BEACON                      17
-
 #define NO_MENUS_ACTIVE             0      // No menus displayed
 #define PRIMARY_MENU_ACTIVE         1      // A primary menu is active
 #define SECONDARY_MENU_ACTIVE       2      // Both primary and secondary menus active

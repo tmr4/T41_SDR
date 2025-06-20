@@ -1,10 +1,13 @@
-#include "SDT.h"
-#include "AudioConfig.h"
-#include "DSP_Fn.h"
 
-#ifdef AUDIO_STATS
-elapsedMicros usecAudio;
+#include <utility/imxrt_hw.h>          // for setting I2S freq
+
+#include "SDT.h"
+
+#ifdef USE_MIC_COMPRESSION
+#include <OpenAudio_ArduinoLibrary.h>  // https://github.com/chipaudette/OpenAudio_ArduinoLibrary
 #endif
+
+#include "AudioConfig.h"
 
 /**************************************************************
 T41 audio chain
@@ -44,7 +47,17 @@ The use of mixers to control audio chain flow is inefficient:
     RAM2: variables:377024  free for malloc/new:147264
 */
 
-AudioControlSGTL5000_Extended sgtl5000_1; // controller for the Teensy Audio Board microphone https://www.janbob.com/electron/OpenAudio_Design_Tool/index.html?info=AudioControlSGTL5000
+//-------------------------------------------------------------------------------------------------------------
+// Data
+//-------------------------------------------------------------------------------------------------------------
+
+#ifdef AUDIO_STATS
+elapsedMicros usecAudio;
+#endif
+
+//AudioControlSGTL5000_Extended sgtl5000_1; // controller for the Teensy Audio Board microphone https://www.janbob.com/electron/OpenAudio_Design_Tool/index.html?info=AudioControlSGTL5000
+// https://www.pjrc.com/teensy/gui/?info=AudioControlSGTL5000
+AudioControlSGTL5000 sgtl5000_1; // controller for the Teensy Audio Board microphone
 AudioControlSGTL5000 sgtl5000_2;          // control object PCM1808 ADC (doesn't actually control ADC) https://www.pjrc.com/teensy/gui/?info=AudioControlSGTL5000
 
 // Audio inputs
@@ -117,13 +130,88 @@ AudioConnection patchCord28(Q_out_L, 0, amp2, 0);
 AudioConnection patchCord29(amp2, 0, usb1, 1);
 #endif
 
+//-------------------------------------------------------------------------------------------------------------
+// Code
+//-------------------------------------------------------------------------------------------------------------
+
+/*****
+  Purpose: To set the I2S frequency
+
+  Parameter list:
+    int freq        the frequency to set
+
+  Return value:
+    int             the frequency or 0 if too large
+
+  Tested I2S sample rates
+    8000, // SAMPLE_RATE_8K    // not OK
+   11025, // SAMPLE_RATE_11K   // not OK
+   16000, // SAMPLE_RATE_16K   // OK
+   22050, // SAMPLE_RATE_22K   // OK
+   32000, // SAMPLE_RATE_32K   // OK, on
+   44100, // SAMPLE_RATE_44K   // OK
+   48000, // SAMPLE_RATE_48K   // OK
+   50223, // SAMPLE_RATE_50K   // NOT OK
+   88200, // SAMPLE_RATE_88K   // OK
+   96000, // SAMPLE_RATE_96K   // OK
+  100000, // SAMPLE_RATE_100K  // NOT OK
+  100466, // SAMPLE_RATE_101K  // NOT OK
+  176400, // SAMPLE_RATE_176K  // OK
+  192000, // SAMPLE_RATE_192K  // OK
+  234375, // SAMPLE_RATE_234K  // NOT OK
+  256000, // SAMPLE_RATE_256K  // NOT OK
+  281000, // SAMPLE_RATE_281K  // NOT OK
+  352800  // SAMPLE_RATE_353K  // NOT OK
+*****/
+FLASHMEM int SetI2SFreq(int freq) {
+  int n1;
+  int n2;
+  int c0;
+  int c2;
+  int c1;
+  double C;
+
+  // PLL between 27*24 = 648MHz und 54*24=1296MHz
+  // Fudge to handle 8kHz - El Supremo
+  if(freq > 8000) {
+    n1 = 4;  //SAI prescaler 4 => (n1*n2) = multiple of 4
+  } else {
+    n1 = 8;
+  }
+  n2 = 1 + (24000000 * 27) / (freq * 256 * n1);
+  if(n2 > 63) {
+    char msg[50];
+
+    sprintf(msg, "ERROR: n2 exceeds 63 - %d\n", n2);
+
+    // n2 must fit into a 6-bit field
+    Debug(msg);
+    return 0;
+  }
+  C = ((double)freq * 256 * n1 * n2) / 24000000;
+  c0 = C;
+  c2 = 10000;
+  c1 = C * c2 - (c0 * c2);
+  set_audioClock(c0, c1, c2, true);
+  CCM_CS1CDR = (CCM_CS1CDR & ~(CCM_CS1CDR_SAI1_CLK_PRED_MASK | CCM_CS1CDR_SAI1_CLK_PODF_MASK))
+               | CCM_CS1CDR_SAI1_CLK_PRED(n1 - 1)   // &0x07
+               | CCM_CS1CDR_SAI1_CLK_PODF(n2 - 1);  // &0x3f
+
+  CCM_CS2CDR = (CCM_CS2CDR & ~(CCM_CS2CDR_SAI2_CLK_PRED_MASK | CCM_CS2CDR_SAI2_CLK_PODF_MASK))
+               | CCM_CS2CDR_SAI2_CLK_PRED(n1 - 1)   // &0x07
+               | CCM_CS2CDR_SAI2_CLK_PODF(n2 - 1);  // &0x3f)
+  return freq;
+}
 
 void AudioSetup() {
+  // set I2S freq to sample rate
+  SetI2SFreq(192000.0);
+
   // configure an SGTL5000 control object for input from the audio adapter microphone
   sgtl5000_1.setAddress(LOW); // Teensy pin 8
   sgtl5000_1.enable();
   AudioMemory(500);
-  AudioMemory_F32(10);
+  //AudioMemory_F32(10);
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
   sgtl5000_1.micGain(20);
   sgtl5000_1.lineInLevel(0);
@@ -142,6 +230,11 @@ void AudioSetup() {
   //Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING);
   //Q_out_L_Ex.setBehaviour(AudioPlayQueue::NON_STALLING);
   //Q_out_R_Ex.setBehaviour(AudioPlayQueue::NON_STALLING);
+
+#ifdef USE_MIC_COMPRESSION
+  comp1.setPreGain_dB(-10);
+  comp2.setPreGain_dB(-10);
+#endif
 
 #ifdef T41_USB_AUDIO
   amp1.gain(100);
@@ -244,21 +337,6 @@ void ConfigAudioState() {
       break;
 
     case CALIBRATE_STATE:
-      //modeSelectOutExL.gain(0, powerOutCW[currentBand]);
-      //modeSelectOutExR.gain(0, powerOutCW[currentBand]);
-      //
-      //patchCord9.connect();
-      //patchCord10.connect();
-      //
-      //modeSelectInExR.gain(0, 0);
-      //modeSelectInExL.gain(0, 0);
-      //
-      //modeSelectOutL.gain(0, 1);
-      //modeSelectOutR.gain(0, 1);
-      //modeSelectOutL.gain(1, 0);
-      //modeSelectOutR.gain(1, 0);
-      //modeSelectOutExL.gain(0, 1);
-      //modeSelectOutExR.gain(0, 1);
       break;
 
     default:
@@ -266,7 +344,6 @@ void ConfigAudioState() {
   }
 
 }
-
 
 #ifdef USE_MIC_COMPRESSION
 /*****
@@ -276,19 +353,22 @@ void ConfigAudioState() {
   Return value:
     void
 *****/
-FLASHMEM void SetupMicCompressors(boolean use_HP_filter1, float knee_dBFS1, float comp_ratio1, float attack_sec1, float release_sec1) {
-  comp1.enableHPFilter(use_HP_filter1);
-  comp2.enableHPFilter(use_HP_filter1);
-  comp1.setThresh_dBFS(knee_dBFS1);
-  comp2.setThresh_dBFS(knee_dBFS1);
-  comp1.setCompressionRatio(comp_ratio1);
-  comp2.setCompressionRatio(comp_ratio1);
-
+FLASHMEM void SetupMicCompressors(float knee_dBFS, float attack_sec, float release_sec) {
+  boolean use_HP_filter = true; //enable the software HP filter to get rid of DC?
+  float comp_ratio = 5.0;
   float fs_Hz = AUDIO_SAMPLE_RATE;
-  comp1.setAttack_sec(attack_sec1, fs_Hz);
-  comp2.setAttack_sec(attack_sec1, fs_Hz);
-  comp1.setRelease_sec(release_sec1, fs_Hz);
-  comp2.setRelease_sec(release_sec1, fs_Hz);
+
+  comp1.enableHPFilter(use_HP_filter);
+  comp2.enableHPFilter(use_HP_filter);
+  comp1.setThresh_dBFS(knee_dBFS);
+  comp2.setThresh_dBFS(knee_dBFS);
+  comp1.setCompressionRatio(comp_ratio);
+  comp2.setCompressionRatio(comp_ratio);
+
+  comp1.setAttack_sec(attack_sec, fs_Hz);
+  comp2.setAttack_sec(attack_sec, fs_Hz);
+  comp1.setRelease_sec(release_sec, fs_Hz);
+  comp2.setRelease_sec(release_sec, fs_Hz);
 }
 #endif
 

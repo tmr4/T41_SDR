@@ -1,10 +1,17 @@
-#include "T41Config.h"
 
 //-------------------------------------------------------------------------------------------------------------
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-struct maps myMapFiles[10] = {
+typedef struct {
+  char mapNames[50];
+  float lat;
+  float lon;
+} maps;
+
+char myGrid[] = "CM87";
+
+maps myMapFiles[10] = {
   //{ "Cincinnati.bmp", 39.07466, -84.42677 },  // Map name and coordinates for QTH
   //{ "Denver.bmp", 39.61331, -105.01664 },
   //{ "Honolulu.bmp", 21.31165, -157.89291 },

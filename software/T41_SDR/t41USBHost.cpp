@@ -29,8 +29,6 @@ MouseController mouseController(usbHost);
 #endif
 
 #ifdef HOST_SERIAL_SUPPORT
-//#undef BUFFER_SIZE
-
 // the T41 does not register when plugged into the USB host with this object defined
 // this is likely due to the Teensy defaulting to high speed serial vs full speed used by USBSerial
 //USBSerial usbHostSerial(usbHost);
@@ -109,10 +107,10 @@ void UsbHostLoop() {
   // check if the USB virtual serial wants a new baud rate
   // ignore if 0 as current Serial monitor of Arduino sets to 0..
   uint32_t cur_usb_baud = Serial.baud();
-  if (cur_usb_baud && (cur_usb_baud != baud)) {
+  if(cur_usb_baud && (cur_usb_baud != baud)) {
     baud = cur_usb_baud;
     Serial.print("Changed baud rate: ");
-    if (baud == 57600) {
+    if(baud == 57600) {
       // This ugly hack is necessary for talking
       // to the arduino bootloader, which actually
       // communicates at 58824 baud (+2.1% error).
