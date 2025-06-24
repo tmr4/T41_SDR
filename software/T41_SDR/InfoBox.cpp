@@ -87,7 +87,7 @@ const char *keyerOpts[] = { "Off", "WPM" };
 
 #define IB_NUM_ITEMS 12
 
-PROGMEM const infoBoxItem infoBox[] =
+/* PROGMEM */ const infoBoxItem infoBox[] =
 { //                                                     font    # chars
   // label         Options      option                   size    to erase  flag  col            row,           follow-up function
   { "Vol:",        NULL,        NULL,                     1,        3,      0,   IB_COL_1_X,    IB_ROW_1_Y,    &IBVolFollowup         }, // Tune Inc
