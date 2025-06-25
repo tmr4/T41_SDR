@@ -226,8 +226,8 @@ void AudioSetup() {
   sgtl5000_2.volume(0.5);
 
   // *** TODO: examine need for these with regards to audio memory ***
-  // enabling these causes unstable cw behavior
-  //Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING);
+  // enabling these causes unstable CW behavior *** TODO: examine this and provide details ***
+  Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING); // FT8 decoding slow without this *** TODO: examine audio memory issues ***
   //Q_out_L_Ex.setBehaviour(AudioPlayQueue::NON_STALLING);
   //Q_out_R_Ex.setBehaviour(AudioPlayQueue::NON_STALLING);
 

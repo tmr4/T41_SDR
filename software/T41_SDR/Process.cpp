@@ -640,8 +640,8 @@ void ProcessIQData() {
           // if(bands[currentBand].demod == DEMOD_USB || bands[currentBand].demod == DEMOD_LSB ) {  // for SSB copy real part in both outputs
           float_buffer_L[i] = iFFT_buffer[512 + (i * 2)];
 
-          float_buffer_R[i] = float_buffer_L[i];
-          audiotmp = AlphaBetaMag(iFFT_buffer[512 + (i * 2)], iFFT_buffer[512 + (i * 2) + 1]);
+          //float_buffer_R[i] = float_buffer_L[i];
+          //audiotmp = AlphaBetaMag(iFFT_buffer[512 + (i * 2)], iFFT_buffer[512 + (i * 2) + 1]);
         }
 
           // save audio signal to FT8 buffer
@@ -711,7 +711,7 @@ void ProcessIQData() {
           //if(bands[currentBand].demod == DEMOD_USB || bands[currentBand].demod == DEMOD_LSB ) {  // for SSB copy real part in both outputs
           float_buffer_L[i] = iFFT_buffer[512 + (i * 2)];
 
-          float_buffer_R[i] = float_buffer_L[i];
+          //float_buffer_R[i] = float_buffer_L[i];
         }
         break;
 
