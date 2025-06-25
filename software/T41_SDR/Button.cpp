@@ -404,7 +404,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
 
     case SET_MODE:  // 8
       // change to the next mode: SSB -> CW -> DATA -> SSB
-      ChangeMode(xmtMode + 1);
+      ChangeMode(radioMode + 1);
       break;
 
     case NOISE_REDUCTION:  // 9
@@ -428,7 +428,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
       decoderFlag = !decoderFlag;
       UpdateInfoBoxItem(IB_ITEM_DECODER);
 
-      if(xmtMode == CW_MODE) {
+      if(radioMode == CW_MODE) {
         if(decoderFlag == ON) {
           // reduce waterfall height if we're decoding CW
           tft.fillRect(WATERFALL_L, YPIXELS - 35, WATERFALL_W, CHAR_HEIGHT + 3, RA8875_BLACK);  // Erase waterfall in decode area
@@ -453,7 +453,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
       break;
 
     case UNUSED_1:  // 16
-      if(xmtMode == DATA_MODE) {
+      if(radioMode == DATA_MODE) {
         switch(bands[currentBand].demod) {
           case DEMOD_PSK31:
             // try to load wav file

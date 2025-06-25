@@ -111,7 +111,7 @@ int GetKenwoodBand() {
 int GetKenwoodMode() {
   // 1: LSB, 2: USB, 3: CW, 4: FM, 5: AM
   int mode;
-  if(xmtMode == CW_MODE) {
+  if(radioMode == CW_MODE) {
     mode=3;
   } else {
     switch(bands[currentBand].demod) {
@@ -456,7 +456,7 @@ void WSJTLoop()
 int GetKenwoodTS2000Mode() {
   // 1: LSB, 2: USB, 3: CW, 4: FM, 5: AM
   int mode;
-  if(xmtMode == CW_MODE) {
+  if(radioMode == CW_MODE) {
     mode=3;
   } else {
     switch(bands[currentBand].demod) {

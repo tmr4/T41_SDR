@@ -189,7 +189,7 @@ FLASHMEM void SelectCWFilterFollowup() {
   // update CW filters if index is different
   if(CWFilterIndex != getMenuInc) {
     ShowOperatingStats();
-    if(xmtMode == CW_MODE) {
+    if(radioMode == CW_MODE) {
       UpdateCWFilter();
     }
   }

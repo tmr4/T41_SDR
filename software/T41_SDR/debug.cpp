@@ -28,7 +28,7 @@ void EnterLoop() {
   oldEEPROMData.tuneIndex = tuneIndex;
   //oldEEPROMData.ftIncrement = ftIncrement;
   oldEEPROMData.transmitPowerLevel = transmitPowerLevel;
-  oldEEPROMData.xmtMode = xmtMode;
+  oldEEPROMData.radioMode = radioMode;
   oldEEPROMData.nrOptionSelect = nrOptionSelect;
   oldEEPROMData.currentScale = currentScale;
   oldEEPROMData.spectrumZoom = spectrumZoom;
@@ -140,7 +140,7 @@ void ExitLoop() {
   if(oldEEPROMData.tuneIndex != tuneIndex) { Serial.println("  tuneIndex changed"); }
   //if(oldEEPROMData.ftIncrement != ftIncrement) { Serial.println("  ftIncrement changed"); }
   if(oldEEPROMData.transmitPowerLevel != transmitPowerLevel) { Serial.println("  transmitPowerLevel changed"); }
-  if(oldEEPROMData.xmtMode != xmtMode) { Serial.println("  xmtMode changed"); }
+  if(oldEEPROMData.radioMode != radioMode) { Serial.println("  radioMode changed"); }
   if(oldEEPROMData.nrOptionSelect != nrOptionSelect) { Serial.println("  nrOptionSelect changed"); }
   if(oldEEPROMData.currentScale != currentScale) { Serial.println("  currentScale changed"); }
   if(oldEEPROMData.spectrumZoom != spectrumZoom) { Serial.println("  spectrumZoom changed"); }
@@ -239,7 +239,7 @@ void EnterLoop() {
   oldEEPROMData.tuneIndex = EEPROMData.tuneIndex;
   oldEEPROMData.ftIncrement = EEPROMData.ftIncrement;
   oldEEPROMData.transmitPowerLevel = EEPROMData.transmitPowerLevel;
-  oldEEPROMData.xmtMode = EEPROMData.xmtMode;
+  oldEEPROMData.radioMode = EEPROMData.radioMode;
   oldEEPROMData.nrOptionSelect = EEPROMData.nrOptionSelect;
   oldEEPROMData.currentScale = EEPROMData.currentScale;
   oldEEPROMData.spectrumZoom = EEPROMData.spectrumZoom;
@@ -338,7 +338,7 @@ void ExitLoop() {
   if(oldEEPROMData.tuneIndex != EEPROMData.tuneIndex) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("tuneIndex changed"); }
   if(oldEEPROMData.ftIncrement != EEPROMData.ftIncrement) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("ftIncrement changed"); }
   if(oldEEPROMData.transmitPowerLevel != EEPROMData.transmitPowerLevel) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("transmitPowerLevel changed"); }
-  if(oldEEPROMData.xmtMode != EEPROMData.xmtMode) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("xmtMode changed"); }
+  if(oldEEPROMData.radioMode != EEPROMData.radioMode) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("radioMode changed"); }
   if(oldEEPROMData.nrOptionSelect != EEPROMData.nrOptionSelect) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("nrOptionSelect changed"); }
   if(oldEEPROMData.currentScale != EEPROMData.currentScale) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("currentScale changed"); }
   if(oldEEPROMData.spectrumZoom != EEPROMData.spectrumZoom) { Serial.print("Loop #: "); Serial.println(loopCount); Serial.println("spectrumZoom changed"); }

@@ -93,12 +93,12 @@ FLASHMEM void CWOptions() {
 
 // *** TODO: T41EEE does this for each band ***
 FLASHMEM void RFPowerFollowup() {
-  if(xmtMode == CW_MODE) {                                                                                                                                      //AFP 10-13-22
+  if(radioMode == CW_MODE) {                                                                                                                                      //AFP 10-13-22
     powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];  //  afp 10-21-22
 
     EEPROMData.powerOutCW[currentBand] = powerOutCW[currentBand];
   } else {
-    if(xmtMode == SSB_MODE) {
+    if(radioMode == SSB_MODE) {
       powerOutSSB[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * SSBPowerCalibrationFactor[currentBand];  // afp 10-21-22
       EEPROMData.powerOutSSB[currentBand] = powerOutSSB[currentBand];                                                                                                //AFP 10-21-22
     }
@@ -147,7 +147,7 @@ FLASHMEM void RFOptions() {
     void
 *****/
 FLASHMEM void VFOSelect(int32_t index) {
-  if(xmtMode == DATA_MODE) {
+  if(radioMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
     bands[currentBand].demod = priorDemodMode;
   }
@@ -179,7 +179,7 @@ FLASHMEM void VFOSelect(int32_t index) {
       break;
   }
 
-  if(xmtMode == DATA_MODE) {
+  if(radioMode == DATA_MODE) {
     priorDemodMode = bands[currentBand].demod; // save demod mode for restoration later
 
     switch(currentDataMode) {
@@ -205,7 +205,7 @@ FLASHMEM void VFOSelect(int32_t index) {
   EEPROMData.activeVFO = activeVFO;
   EEPROMWrite();
 
-  if(xmtMode == CW_MODE) {
+  if(radioMode == CW_MODE) {
     UpdateCWFilter();
   }
 }
@@ -525,7 +525,7 @@ FLASHMEM void CalibrateOptions() {
       break;
 
     case 1:  // CW PA Cal
-      if(keyPressedOn == 1 && xmtMode == CW_MODE) {
+      if(keyPressedOn == 1 && radioMode == CW_MODE) {
         //================  CW Transmit Mode Straight Key ===========
         if(digitalRead(KEYER_DIT_INPUT_TIP) == LOW && keyType == 0) {  //Straight Key
           powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];

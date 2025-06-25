@@ -48,7 +48,6 @@ unsigned long last_usb_read = 0;
       DrawSpectrumFrame
       DrawSMeterContainer
       DrawAudioSpectContainer
-      DrawInfoBoxFrame
 
   Other Areas:
     All other areas are updated in response to user interaction with the radio, whether by encoder, button or
@@ -182,14 +181,14 @@ struct DEMOD_Descriptor
 };
 const DEMOD_Descriptor DEMOD[8] = {
   //   DEMOD_n, name
-  { DEMOD_USB, "(USB)" },
-  { DEMOD_LSB, "(LSB)" },
-  { DEMOD_AM, "(AM)" },
-  { DEMOD_NFM, "(NFM)" },
-  { DEMOD_PSK31_WAV, "(PSK31.wav)" },
-  { DEMOD_PSK31, "(PSK31)" },
-  { DEMOD_FT8_WAV, "(FT8.wav)" },
-  { DEMOD_FT8, "(FT8)" },
+  { DEMOD_USB, "USB" },
+  { DEMOD_LSB, "LSB" },
+  { DEMOD_AM, "AM" },
+  { DEMOD_NFM, "NFM" },
+  { DEMOD_PSK31_WAV, "PSK31.wav" },
+  { DEMOD_PSK31, "PSK31" },
+  { DEMOD_FT8_WAV, "FT8.wav" },
+  { DEMOD_FT8, "FT8" },
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -890,7 +889,7 @@ FLASHMEM void ShowOperatingStats() {
   tft.setTextColor(RA8875_GREEN);
   tft.setCursor(OPERATION_STATS_MD, OPERATION_STATS_T);
 
-  switch(xmtMode) {
+  switch(radioMode) {
     case CW_MODE:
       tft.print("CW ");
       tft.setCursor(OPERATION_STATS_CWF, OPERATION_STATS_T);
@@ -970,7 +969,7 @@ FLASHMEM void UpdateCWFilter() {
   float CWFilterPosition = 85.0; // max filter position
 
   tft.writeTo(L2);
-  if(xmtMode == CW_MODE) {
+  if(radioMode == CW_MODE) {
     switch(CWFilterIndex) {
       case 0:
         CWFilterPosition = 35.7;  // 0.84 * 42.5;
@@ -1523,7 +1522,7 @@ FLASHMEM void DrawStaticDisplayItems() {
   DrawSpectrumFrame();
   DrawSMeterContainer();
   DrawAudioSpectContainer();
-  DrawInfoBoxFrame();
+  ClearInfoBox();
 }
 
 #ifdef HOST_KEYBOARD_MOUSE_SUPPORT

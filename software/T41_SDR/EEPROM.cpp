@@ -37,7 +37,7 @@ config_t EEPROMData {
   DEFAULTFREQINDEX,             // int tuneIndex
   DEFAULT_FT_INDEX,             // int ftIndex
   DEFAULT_POWER_LEVEL,          // int transmitPowerLevel
-  0,                            // int xmtMode
+  0,                            // int radioMode
   0,                            // int nrOptionSelect
   1,                            // int currentScale
   1,                            // long spectrumZoom = SPECTRUM_ZOOM_2
@@ -233,8 +233,8 @@ FLASHMEM void EEPROMShow() {
   //Serial.println(EEPROMData.ftIncrement);
   Serial.print("transmitPowerLevel                      = ");
   Serial.println(EEPROMData.transmitPowerLevel);
-  Serial.print("xmtMode                         = ");
-  Serial.println(EEPROMData.xmtMode);
+  Serial.print("radioMode                         = ");
+  Serial.println(EEPROMData.radioMode);
   Serial.print("nrOptionSelect                  = ");
   Serial.println(EEPROMData.nrOptionSelect);
   Serial.print("currentScale                    = ");
@@ -665,7 +665,7 @@ FLASHMEM void EEPROMSaveDefaults2() {
   EEPROMData.tuneIndex = 5;
   //EEPROMData.ftIncrement = 50L;
   EEPROMData.transmitPowerLevel = 10;
-  EEPROMData.xmtMode = 0;
+  EEPROMData.radioMode = 0;
   EEPROMData.nrOptionSelect = 0;  // 1 byte
   EEPROMData.currentScale = 1;
   EEPROMData.spectrumZoom = 1;
@@ -913,7 +913,7 @@ FLASHMEM int CopySDToEEPROM() {
         EEPROMData.transmitPowerLevel = atoi(temp);
         break;
       case 8:
-        EEPROMData.xmtMode = atoi(temp);
+        EEPROMData.radioMode = atoi(temp);
         break;
       case 9:
         EEPROMData.nrOptionSelect = (int8_t)atoi(temp);
@@ -1517,8 +1517,8 @@ FLASHMEM int CopyEEPROMToSD() {
   itoa(transmitPowerLevel, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
-  strcpy(buffer, "EEPROMData.xmtMode = 0");
-  itoa(xmtMode, temp, DEC);
+  strcpy(buffer, "EEPROMData.radioMode = 0");
+  itoa(radioMode, temp, DEC);
   strcat(buffer, temp);
   file.println(buffer);
   strcpy(buffer, "EEPROMData.nrOptionSelect = ");  // KF5N

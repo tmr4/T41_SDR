@@ -62,7 +62,7 @@ FLASHMEM void ChangeBand(int change) {
     digitalWrite(bandswitchPins[currentBand], LOW);
   }
 
-  if(xmtMode == DATA_MODE) {
+  if(radioMode == DATA_MODE) {
     // restore old demodulation mode before we change bands
     bands[currentBand].demod = priorDemodMode;
   }
@@ -117,7 +117,7 @@ FLASHMEM void ChangeBand(int change) {
 
   EEPROMWrite();
 
-  if(xmtMode == DATA_MODE) {
+  if(radioMode == DATA_MODE) {
     priorDemodMode = bands[currentBand].demod; // save demod mode for restoration later
 
     switch(currentDataMode) {
@@ -127,9 +127,11 @@ FLASHMEM void ChangeBand(int change) {
 
       case DEMOD_FT8:
       case DEMOD_FT8_WAV:
+        // turn on FT8
         syncFlag = false;
-        ft8State = 1;
+        ft8State = 1; // not sync'd
         UpdateInfoBoxItem(IB_ITEM_FT8);
+        infoBoxItemActive[IB_ITEM_FT8] = true;
         break;
     }
 
@@ -239,7 +241,7 @@ FLASHMEM void ButtonFilter() {
 *****/
 FLASHMEM void ChangeDemodMode(int mode) {
   // wrap up current demod mode
-  if(xmtMode == DATA_MODE) {
+  if(radioMode == DATA_MODE) {
     switch(currentDataMode) {
       case DEMOD_PSK31:
         // try to set up FT8
@@ -248,15 +250,11 @@ FLASHMEM void ChangeDemodMode(int mode) {
           bands[currentBand].demod = DEMOD_FT8;
           currentDataMode = DEMOD_FT8;
           ShowOperatingStats();
-          syncFlag = false;
-          ft8State = 1;
-          UpdateInfoBoxItem(IB_ITEM_FT8);
         }
         break;
 
       case DEMOD_FT8:
         exitFT8();
-        UpdateInfoBoxItem(IB_ITEM_FT8);
         bands[currentBand].demod = DEMOD_PSK31;
         currentDataMode = DEMOD_PSK31;
         ShowOperatingStats();
@@ -323,7 +321,7 @@ FLASHMEM void ChangeMode(int mode) {
   }
 
   // wrap up current mode
-  switch(xmtMode) {
+  switch(radioMode) {
     case SSB_MODE:
       // save demod mode if changing to Data mode
       if(mode == DATA_MODE) {
@@ -336,25 +334,28 @@ FLASHMEM void ChangeMode(int mode) {
       if(mode == DATA_MODE) {
         priorDemodMode = bands[currentBand].demod; // save demod mode for restoration later
       }
-      keyerState = 0; // turn off keyer
+
+      // turn off keyer
+      keyerState = 0;
+      infoBoxItemActive[IB_ITEM_KEYER] = false;
+      ClearInfoBoxKeyer();
       break;
 
     case DATA_MODE:
-      // return demod mode to previous mode
-      bands[currentBand].demod = priorDemodMode;
-
       if(bands[currentBand].demod == DEMOD_FT8) {
         exitFT8();
-        UpdateInfoBoxItem(IB_ITEM_FT8);
       } else {
         exitPSK31();
       }
+
+      // return demod mode to previous mode
+      bands[currentBand].demod = priorDemodMode;
       break;
   }
 
   // set new mode and update
-  xmtMode = mode;
-  switch(xmtMode) {
+  radioMode = mode;
+  switch(radioMode) {
     case SSB_MODE:
       break;
 
@@ -367,7 +368,10 @@ FLASHMEM void ChangeMode(int mode) {
         tft.writeTo(L1);
         wfRows = WATERFALL_H - CHAR_HEIGHT - 3;
       }
-      keyerState = 1; // turn on keyer
+
+      // turn on keyer
+      keyerState = 1;
+      infoBoxItemActive[IB_ITEM_KEYER] = true;
       break;
 
     case DATA_MODE:

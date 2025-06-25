@@ -62,7 +62,7 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   transmitPowerLevelTemp = transmitPowerLevel;
   transmitPowerLevel = 5;
   powerOutCW[currentBand] = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
-  userXmtMode = xmtMode;          // Store the user's mode setting
+  userXmtMode = radioMode;          // Store the user's mode setting
   userZoomIndex = spectrumZoom;  // Save the zoom index so it can be reset at the conclusion
   SetZoom(setZoom);
   tft.writeTo(L2);  // Erase the bandwidth bar
@@ -118,7 +118,7 @@ FLASHMEM void CalibratePrologue() {
   NCOFreq = 0L;
   currentScale = userScale;                     //  Restore vertical scale to user preference.  KF5N
   ShowSpectrumdBScale();
-  xmtMode = userXmtMode;   // Restore the user's floor setting.  KF5N July 27, 2023
+  radioMode = userXmtMode;   // Restore the user's floor setting.  KF5N July 27, 2023
   transmitPowerLevel = transmitPowerLevelTemp;  // Restore the user's transmit power level setting.  KF5N August 15, 2023
   EEPROMWrite();                                // Save calibration numbers and configuration.  KF5N August 12, 2023
   // Restore the user's zoom setting

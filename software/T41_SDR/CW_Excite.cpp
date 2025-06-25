@@ -34,7 +34,7 @@ uint8_t keyPressedOn = 0;
     void
 *****/
 void KeyTipOn() {
-  if(digitalRead(KEYER_DIT_INPUT_TIP) == LOW && xmtMode == CW_MODE ) {
+  if(digitalRead(KEYER_DIT_INPUT_TIP) == LOW && radioMode == CW_MODE ) {
     keyPressedOn = 1;
   }
 }
@@ -50,7 +50,7 @@ void KeyTipOn() {
 *****/
 void KeyRingOn() {
   if(keyType == 1) {
-    if(digitalRead(KEYER_DAH_INPUT_RING) == LOW && xmtMode == CW_MODE ) {
+    if(digitalRead(KEYER_DAH_INPUT_RING) == LOW && radioMode == CW_MODE ) {
       keyPressedOn = 1;
     }
   }

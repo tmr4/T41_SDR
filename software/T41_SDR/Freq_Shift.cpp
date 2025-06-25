@@ -108,10 +108,10 @@ void FreqShift2() {
 
   TxRxFreq = centerFreq + NCOFreq;
 
-  if(xmtMode == SSB_MODE || xmtMode == DATA_MODE) {
+  if(radioMode == SSB_MODE || radioMode == DATA_MODE) {
     sideToneShift = 0;
   } else {
-    if(xmtMode == CW_MODE ) {
+    if(radioMode == CW_MODE ) {
       if(bands[currentBand].demod == DEMOD_LSB) {
         sideToneShift = CWFreqShift;
       } else {

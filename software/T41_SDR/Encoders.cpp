@@ -138,7 +138,7 @@ void EncoderCenterTune() {
   if(result == 0)  // Nothing read
     return;
 
-  if(xmtMode == CW_MODE && decoderFlag == ON) {  // No reason to reset if we're not doing decoded CW
+  if(radioMode == CW_MODE && decoderFlag == ON) {  // No reason to reset if we're not doing decoded CW
     ResetHistograms();
   }
 

@@ -19,7 +19,7 @@ int spectrumNoiseFloor = 247; // SPECTRUM_NOISE_FLOOR;
 int tuneIndex = DEFAULTFREQINDEX;
 int ftIndex = DEFAULT_FT_INDEX;
 int transmitPowerLevel = DEFAULT_POWER_LEVEL;
-int xmtMode = SSB_MODE;  // 0 = SSB, 1 = CW, 2 = FT8
+int radioMode = SSB_MODE;  // 0 = SSB, 1 = CW, 2 = FT8
 int nrOptionSelect = 0;
 int currentScale = 1;  // 20 dB/division
 long spectrumZoom = 1; // SPECTRUM_ZOOM_2
@@ -114,7 +114,7 @@ void LoadOpVars() {
   tuneIndex = EEPROMData.tuneIndex;
   ftIndex = EEPROMData.ftIndex;
   transmitPowerLevel = EEPROMData.transmitPowerLevel;
-  xmtMode = EEPROMData.xmtMode;
+  radioMode = EEPROMData.radioMode;
   nrOptionSelect = EEPROMData.nrOptionSelect;
   currentScale = EEPROMData.currentScale;
   spectrumZoom = EEPROMData.spectrumZoom;

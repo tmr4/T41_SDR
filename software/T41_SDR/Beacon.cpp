@@ -574,7 +574,7 @@ void BeaconLoop() {
     // save current state
     priorFreq = TxRxFreq;
     priorBand = currentBand;
-    priorMode = xmtMode;
+    priorMode = radioMode;
     priorDemod = bands[currentBand].demod;
 
     // set radio state for beacon monitoring

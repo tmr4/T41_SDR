@@ -42,7 +42,7 @@ uint32_t current_time, start_time, ft8_time;
 int DSP_Flag;
 int ft8_flag, FT_8_counter, ft8_decode_flag;
 int num_decoded_msg;
-int ft8State = 0; // 0 - off, 1 - not sync'd, 2 - sync'd
+int ft8State = 0; // state status for info box: 0 - off, 1 - not sync'd, 2 - sync'd
 
 int master_offset, offset_step;
 
@@ -1343,7 +1343,12 @@ FLASHMEM bool setupFT8() {
     if(init_DSP()) {
       ft8Init = true;
 
-      // set up message area
+      syncFlag = false;
+      ft8State = 1; // not sync'd
+      UpdateInfoBoxItem(IB_ITEM_FT8);
+      infoBoxItemActive[IB_ITEM_FT8] = true;
+
+          // set up message area
       // Erase waterfall in decode area
       tft.fillRect(WATERFALL_L, YPIXELS - 25 * 5, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);
       tft.writeTo(L2); // it's on layer 2 as well
@@ -1389,4 +1394,10 @@ FLASHMEM void exitFT8() {
   FT_8_counter = 0;
   ft8_flag = 0;
   ft8State = 0;
+  num_decoded_msg = 0;
+
+  // update info box
+  //UpdateInfoBoxItem(IB_ITEM_FT8);
+  infoBoxItemActive[IB_ITEM_FT8] = false;
+  ClearInfoBoxFT8();
 }

@@ -17,7 +17,7 @@ typedef struct {
   int tuneIndex;
   int ftIndex;
   float32_t transmitPowerLevel;
-  int xmtMode;
+  int radioMode;
   int nrOptionSelect;
   int currentScale;
   long spectrumZoom;

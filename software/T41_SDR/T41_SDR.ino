@@ -400,24 +400,24 @@ FASTRUN void loop() {
 #endif
 
   //  State detection
-  if(xmtMode == SSB_MODE && digitalRead(PTT) == HIGH) {
+  if(radioMode == SSB_MODE && digitalRead(PTT) == HIGH) {
     radioState = SSB_RECEIVE_STATE;
   }
-  if(xmtMode == SSB_MODE && digitalRead(PTT) == LOW) {
+  if(radioMode == SSB_MODE && digitalRead(PTT) == LOW) {
     radioState = SSB_TRANSMIT_STATE;
   }
-  if(xmtMode == CW_MODE && (digitalRead(paddleDit) == HIGH && digitalRead(paddleDah) == HIGH)) {
+  if(radioMode == CW_MODE && (digitalRead(paddleDit) == HIGH && digitalRead(paddleDah) == HIGH)) {
     radioState = CW_RECEIVE_STATE;
   }
-  if(xmtMode == CW_MODE && (digitalRead(paddleDit) == LOW && keyType == 0)) {
+  if(radioMode == CW_MODE && (digitalRead(paddleDit) == LOW && keyType == 0)) {
     radioState = CW_TRANSMIT_STRAIGHT_STATE;
   }
-  if(xmtMode == CW_MODE && (keyPressedOn == 1 && keyType == 1)) {
+  if(radioMode == CW_MODE && (keyPressedOn == 1 && keyType == 1)) {
     radioState = CW_TRANSMIT_KEYER_STATE;
     keyPressedOn = 0;
   }
 
-  if(xmtMode == DATA_MODE) {
+  if(radioMode == DATA_MODE) {
     radioState = SSB_RECEIVE_STATE;
   }
 

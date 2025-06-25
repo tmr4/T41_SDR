@@ -131,7 +131,7 @@ void SendAS() {
   sprintf(cmd, "AS%011ld%d%d%d;",
     TxRxFreq,                       // freq in Hz (%011d) at index 2
     currentBand,                    // current band (%d) at index 13
-    xmtMode,                        // transmission mode (%d) at index 14
+    radioMode,                        // transmission mode (%d) at index 14
     bands[currentBand].demod         // demodulation mode (%d)  at index 15
   );
   T41ControlSendCmd(cmd);
@@ -146,7 +146,7 @@ void SendIF() {
     //  *** TODO: we only need 8 digits for first field for T41, consider using other 3 for something ***
     TxRxFreq,                       // freq in Hz (%011d) at index 2
     currentBand,                    // current band (%d) at index 13
-    xmtMode,                        // transmission mode (%d) at index 14
+    radioMode,                        // transmission mode (%d) at index 14
     bands[currentBand].demod,        // demodulation mode (%d)  at index 15
     audioVolume,                    // audio volume (%03d) at index 16
     NCOFreq,                        // NCO freq (%+06ld) at index 19
@@ -169,7 +169,7 @@ void SendIF() {
 int GetMode() {
   // 1: LSB, 2: USB, 3: CW, 4: FM, 5: AM
   int mode;
-  if(xmtMode == CW_MODE) {
+  if(radioMode == CW_MODE) {
     mode=3;
   } else {
     switch(bands[currentBand].demod) {

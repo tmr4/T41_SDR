@@ -304,7 +304,7 @@ void MouseButtonOpStatsArea(int button) {
     }
   } else if(button == 1 && cursorX > OPERATION_STATS_MD - 5 && cursorX < OPERATION_STATS_CWF) {
     // change to the next mode: SSB -> CW -> DATA -> SSB
-    ChangeMode(xmtMode + 1);
+    ChangeMode(radioMode + 1);
   } else if(button == 1 && cursorX > OPERATION_STATS_DMD - 5 && cursorX < OPERATION_STATS_DMD + 35) {
     // change to the next demod mode
     ChangeDemodMode(bands[currentBand].demod + 1);
