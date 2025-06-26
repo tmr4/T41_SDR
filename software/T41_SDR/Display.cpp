@@ -145,6 +145,7 @@ dispSc displayScale[] =
   { "1 dB/", 200.0, 40, 200, 0.05 }
 };
 
+int currentNF = 0;
 int newSpectrumFlag = 0; // 0 - oldNF needs initialized in ShowSpectrum(), 1 - it doesn't need initialized
 
 //------------------------- Local Variables ----------
@@ -433,8 +434,6 @@ FASTRUN void UpdateControls(bool updateDisplay) {
   }
 }
 
-int currentNF = 0;
-
 /*****
   Purpose: Update normal T41 operating display
             This routine calls the Audio process Function during each display cycle,
@@ -454,6 +453,7 @@ FASTRUN void ShowSpectrum() {
   int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
   static int oldNF;
   int hLo = 0, hHi = 0;
+  int wfGradIndex;
 
   // set current noise flow level for this loop
   // noise floor is constant for each spectrum update
@@ -560,13 +560,12 @@ FASTRUN void ShowSpectrum() {
     }
 
     // create data for waterfall
-    int test1;
-    test1 = -y_new_plot + 230;  // Nudged waterfall towards blue
-    //test1 = (int)(x1 / 50) + currentNF * 10; // test color gradient
-    if(test1 < 0) test1 = 0;
-    //if(test1 > 117) test1 = 117;
-    if(test1 > 116) test1 = 116; // *** above is out of range of gradient
-    waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array
+    wfGradIndex = -y_new_plot + 230;  // Nudged waterfall towards blue
+    //wfGradIndex = (int)(x1 / 50) + currentNF * 10; // test color gradient
+    if(wfGradIndex < 0) wfGradIndex = 0;
+    //if(wfGradIndex > 117) wfGradIndex = 117;
+    if(wfGradIndex > 116) wfGradIndex = 116; // *** above is out of range of gradient
+    waterfall[x1] = gradient[wfGradIndex];  // Try to put pixel values in middle of gradient array
 
 #ifdef NO_DISPLAY
     // along with the delay in the main loop this duplicates overall loop timing
@@ -1076,7 +1075,7 @@ FASTRUN void DrawSmeterBar() {
   int16_t smeterPad;
   float32_t dbm_calibration = 22.0;
   const float32_t slope = 10.0;
-  const float32_t cons = -92;
+  const float32_t cons = -92.0;
 
   // *** it's easiest for now to handle multiple display "pages" by limiting S-meter display
   // updates here to when displayScreen is set to DISPLAY_T41, messy, but it works.
@@ -1089,10 +1088,19 @@ FASTRUN void DrawSmeterBar() {
     tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
   }
 
-  // dbm_calibration set to -22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
+  // prevent NAN dBm
+  if(audioMaxSquaredAve <= 0.0) {
+    // reset audioMaxSquaredAve to a small value
+    // with default parameters and audioMaxSquaredAve = 1.778e-6, dBm = -131
+    audioMaxSquaredAve = 0.01;
+    Serial.println("dBm is NAN");
+  }
+
+  // dbm_calibration set to 22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
   // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
+  //  rfGainAllBands is initialized to 0
   dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) +
-        cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands; // added rfGainAllBands
+        cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
 
   // determine length of S-meter bar, limit it to the box and draw it
   smeterPad = map(dbm, -73.0-9*6.0 /*S1*/, -73.0 /*S9*/, 0, 9*pixels_per_s);
@@ -1551,6 +1559,7 @@ FLASHMEM void PrintKeyboardBuffer() {
 FASTRUN void ShowBeacon() {
   int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
   static int oldNF;
+  int wfGradIndex;
 
   currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
 
@@ -1625,13 +1634,12 @@ FASTRUN void ShowBeacon() {
     }
 
     // create data for waterfall
-    int test1;
-    test1 = -y_new_plot + 230;  // Nudged waterfall towards blue
-    //test1 = (int)(x1 / 50) + currentNF * 10; // test color gradient
-    if(test1 < 0) test1 = 0;
-    //if(test1 > 117) test1 = 117;
-    if(test1 > 116) test1 = 116; // *** above is out of range of gradient
-    waterfall[x1] = gradient[test1];  // Try to put pixel values in middle of gradient array
+    wfGradIndex = -y_new_plot + 230;  // Nudged waterfall towards blue
+    //wfGradIndex = (int)(x1 / 50) + currentNF * 10; // test color gradient
+    if(wfGradIndex < 0) wfGradIndex = 0;
+    //if(wfGradIndex > 117) wfGradIndex = 117;
+    if(wfGradIndex > 116) wfGradIndex = 116; // *** above is out of range of gradient
+    waterfall[x1] = gradient[wfGradIndex];  // Try to put pixel values in middle of gradient array
   }
 
   // update S-meter once per loop

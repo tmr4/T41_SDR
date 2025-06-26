@@ -14,7 +14,7 @@
 char versionSettings[10] = VERSION;
 int AGCMode = 1;
 int audioVolume = 30;
-int rfGainAllBands = 1;
+int rfGainAllBands = 0;
 int spectrumNoiseFloor = 247; // SPECTRUM_NOISE_FLOOR;
 int tuneIndex = DEFAULTFREQINDEX;
 int ftIndex = DEFAULT_FT_INDEX;

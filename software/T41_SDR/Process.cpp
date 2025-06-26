@@ -36,7 +36,7 @@ float32_t biquad_lowpass1_coeffs[5] = { 0, 0, 0, 0, 0 };
 int dataLoop = 0;
 int dataIndex = 0;
 
-float32_t audioMaxSquaredAve = 0;
+float32_t audioMaxSquaredAve = 0.01; // this will blow up dBm if 0
 
 int audioYPixel[1024]; // *** TODO: this doesn't need to be this big ***
 float32_t audioSpectBuffer[1024]; // This can't be DMAMEM.  It will break the S-Meter.
