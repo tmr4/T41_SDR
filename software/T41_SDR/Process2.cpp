@@ -400,8 +400,8 @@ FLASHMEM void ShowSpectrum2() {
 
   pixelnew[0] = 0;
   pixelnew[1] = 0;
-  pixelold[0] = 0;
-  pixelold[1] = 0;
+  //pixelold[0] = 0;
+  //pixelold[1] = 0;
 
   //  This is the "spectra scanning" for loop.  During calibration, only small areas of the spectrum need to be examined.
   //  If the entire 512 wide spectrum is used, the calibration loop will be slow and unresponsive.
@@ -475,8 +475,12 @@ FLASHMEM float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
 
   y_new = pixelnew[x1];
   y1_new = pixelnew[x1 - 1];
-  y_old = pixelold[x1];
-  y_old2 = pixelold[x1 - 1];
+
+  // *** TODO: rework: pixelold no longer set in FFT.cpp ***
+  //y_old = pixelold[x1];
+  //y_old2 = pixelold[x1 - 1];
+  y_old = 0;
+  y_old2 = 0;
 
   // Find the maximums of the desired and undesired signals.
   if(bands[currentBand].demod == DEMOD_LSB) {
@@ -502,7 +506,6 @@ FLASHMEM float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
   // Erase the old spectrum and draw the new spectrum.
   tft.drawLine(x1, spectrumNoiseFloor - y_old2, x1, spectrumNoiseFloor - y_old, RA8875_BLACK);   // Erase old...
   tft.drawLine(x1, spectrumNoiseFloor - y1_new, x1, spectrumNoiseFloor - y_new, RA8875_YELLOW);  // Draw new
-  pixelCurrent[x1] = pixelnew[x1];                                                               //  This is the actual "old" spectrum!  This is required due to CW interrupts.  Copied to pixelold by the FFT function.
 
   if(calTypeFlag == 0) {  // Receive Cal
     adjdB = ((float)adjAmplitude - (float)refAmplitude) / 1.95;

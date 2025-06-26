@@ -185,21 +185,15 @@ void ZoomFFTExe(uint32_t blockSize) {
   int16_t max = 0;
   int16_t data[SPECTRUM_RES];
   for(int i = 0; i < SPECTRUM_RES; i++) {
-    // save old pixels for lowpass filter This is also used to erase the old spectrum
-    //pixelold[i] = pixelnew[i];
-    // *** TODO: check if pixelCurrent is still needed, seems like with single update per loop
-    //            and fixed noise floor (currentNF) pixelCurrent will always equal pixelnew ***
-    pixelold[i] = pixelCurrent[i];
-
     FFT_spec[i] = LPFcoeff * FFT_spec[i] + onem_LPFcoeff * FFT_spec_old[i];
     FFT_spec_old[i] = FFT_spec[i];
 
-    // *** TODO: consider doing the limiting in Display.cpp here ***
     pixelnew[i] = displayScale[currentScale].baseOffset + bands[currentBand].pixel_offset + (int16_t)(displayScale[currentScale].dBScale * log10f_fast(FFT_spec[i]));
+
     if(controlDataFlag) {
       // T41 spectrum equation: spectrumNoiseFloor - pixelnew[i] - currentNF;
       //data[i] = spectrumNoiseFloor - pixelnew[i] - currentNF;
-      data[i] = pixelnew[i] + currentNF;
+      data[i] = pixelnew[i] + nf2PC;
       if(data[i] < min) {
         min = data[i];
       }
@@ -271,10 +265,6 @@ void CalcZoom1Magn() {
     if(LPFcoeff > 1.0) {
       LPFcoeff = 1.0;
     }
-    for(int i = 0; i < SPECTRUM_RES; i++) {
-      pixelold[i] = pixelnew[i];
-    }
-
 
     for(int i = 0; i < SPECTRUM_RES; i++) { // interleave real and imaginary input values [real, imag, real, imag . . .]
       buffer_spec_FFT[i * 2] =      float_buffer_L[i] * (0.5 - 0.5 * cos(6.28 * i / SPECTRUM_RES)); //Hanning

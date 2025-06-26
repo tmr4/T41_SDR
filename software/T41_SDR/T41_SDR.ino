@@ -134,8 +134,6 @@ FLASHMEM void InitializeDataArrays() {
   CLEAR_VAR(FFT_spec);
   CLEAR_VAR(FFT_spec_old);
   SET_VAR(pixelnew, SPECTRUM_BOTTOM);
-  SET_VAR(pixelold, SPECTRUM_BOTTOM);
-  CLEAR_VAR(pixelCurrent);
   CLEAR_VAR(NR_FFT_buffer);
   CLEAR_VAR(NR_output_audio_buffer);
   CLEAR_VAR(NR_last_iFFT_result);

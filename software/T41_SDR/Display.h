@@ -135,11 +135,8 @@ extern int displayScreen;
 
 extern int centerLine;
 
-extern int16_t pixelCurrent[SPECTRUM_RES];
 extern int16_t pixelnew[SPECTRUM_RES];
-extern int16_t pixelold[SPECTRUM_RES];
-extern int16_t pixelnew2[];
-extern int16_t pixelold2[];
+
 extern int newFilterX;
 extern int oldFilterX;
 extern bool updateSpectrumData;
@@ -158,7 +155,7 @@ typedef struct {
 extern dispSc displayScale[];
 
 extern int newSpectrumFlag;
-extern int currentNF;
+extern int nf2PC;
 
 // *** TODO: this only needs to be global for the beacon monitor ***
 extern float32_t dbm;

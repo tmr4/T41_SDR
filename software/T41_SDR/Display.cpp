@@ -105,11 +105,8 @@ int displayScreen = DISPLAY_T41;
 
 int centerLine = SPECTRUM_RES / 2 + SPECTRUM_LEFT_X;
 
-int16_t pixelCurrent[SPECTRUM_RES];
 int16_t pixelnew[SPECTRUM_RES];
-int16_t pixelold[SPECTRUM_RES];
-int16_t pixelnew2[SPECTRUM_RES + 1];
-int16_t pixelold2[SPECTRUM_RES];
+int nf2PC;
 
 int newFilterX = 0;
 int oldFilterX = 0;
@@ -145,7 +142,6 @@ dispSc displayScale[] =
   { "1 dB/", 200.0, 40, 200, 0.05 }
 };
 
-int currentNF = 0;
 int newSpectrumFlag = 0; // 0 - oldNF needs initialized in ShowSpectrum(), 1 - it doesn't need initialized
 
 //------------------------- Local Variables ----------
@@ -450,10 +446,11 @@ FASTRUN void UpdateControls(bool updateDisplay) {
     void
 *****/
 FASTRUN void ShowSpectrum() {
-  int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
-  static int oldNF;
+  int yPlot, y1Plot;
   int hLo = 0, hHi = 0;
   int wfGradIndex;
+  static uint16_t yOldPlot[SPECTRUM_RES];
+  static int currentNF = 0;
 
   // set current noise flow level for this loop
   // noise floor is constant for each spectrum update
@@ -462,9 +459,10 @@ FASTRUN void ShowSpectrum() {
     currentNF = currentNoiseFloor[currentBand];
   }
 
-  // initialize old noise floor if this is a new spectrum
+  // initialize yOldPlot if this is a new spectrum
+  // otherwise copy y values from last loop
   if(newSpectrumFlag == 0) {
-    oldNF = currentNF;
+    memset(yOldPlot, SPECTRUM_BOTTOM, SPECTRUM_RES * sizeof(uint16_t));
     newSpectrumFlag = 1;
   }
 
@@ -487,11 +485,9 @@ FASTRUN void ShowSpectrum() {
       ProcessIQData();
     }
 
-    // pixelold spectrum is saved by the FFT function prior to a new FFT which generates the pixelnew spectrum
-    y_new_plot = spectrumNoiseFloor - pixelnew[x1] - currentNF;
-    y1_new_plot = spectrumNoiseFloor - pixelnew[x1 + 1] - currentNF;
-    y_old_plot = spectrumNoiseFloor - pixelold[x1] - oldNF;
-    y1_old_plot = spectrumNoiseFloor - pixelold[x1 + 1] - oldNF;
+    // FFT function generates the pixelnew spectrum
+    yPlot = spectrumNoiseFloor - pixelnew[x1] - currentNF;
+    y1Plot = spectrumNoiseFloor - pixelnew[x1 + 1] - currentNF;
 
     // create rough spectrum histogram if auto noise floor is active
     // the frequency spectrum is 150 pixels high, let's create
@@ -500,8 +496,8 @@ FASTRUN void ShowSpectrum() {
     // but right shift of a negative number is implimentation specific
     // and I want to keep the negative numbers here
     if(liveNoiseFloorFlag == 1) {
-      int specPlotY = spectrumNoiseFloor - y_new_plot; // actual spectrum value at current noise floor
-      int bin = specPlotY / 5;                         // divide by 5 to get histogram bin
+      int specPlotY = spectrumNoiseFloor - yPlot; // actual spectrum value at current noise floor
+      int bin = specPlotY / 5;                    // divide by 5 to get histogram bin
 
       // hLo and hHi capture spectrum at or outside the spectrum display extremes
       // this is all we need to automatically set the noise floor
@@ -514,32 +510,25 @@ FASTRUN void ShowSpectrum() {
     }
 
     // Prevent spectrum from going below the bottom of the spectrum area
-    if(y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
-    if(y1_new_plot > SPECTRUM_BOTTOM) y1_new_plot = SPECTRUM_BOTTOM;
-    if(y_old_plot > SPECTRUM_BOTTOM) y_old_plot = SPECTRUM_BOTTOM;
-    if(y1_old_plot > SPECTRUM_BOTTOM) y1_old_plot = SPECTRUM_BOTTOM;
+    if(yPlot > SPECTRUM_BOTTOM) yPlot = SPECTRUM_BOTTOM;
+    if(y1Plot > SPECTRUM_BOTTOM) y1Plot = SPECTRUM_BOTTOM;
 
     // Prevent spectrum from going above the top of the spectrum area
-    if(y_new_plot < SPECTRUM_TOP_Y) y_new_plot = SPECTRUM_TOP_Y;
-    if(y1_new_plot < SPECTRUM_TOP_Y) y1_new_plot = SPECTRUM_TOP_Y;
-    if(y_old_plot < SPECTRUM_TOP_Y) y_old_plot = SPECTRUM_TOP_Y;
-    if(y1_old_plot < SPECTRUM_TOP_Y) y1_old_plot = SPECTRUM_TOP_Y;
+    if(yPlot < SPECTRUM_TOP_Y) yPlot = SPECTRUM_TOP_Y;
+    if(y1Plot < SPECTRUM_TOP_Y) y1Plot = SPECTRUM_TOP_Y;
 
     // Erase the old spectrum, and draw the new spectrum.
-    tft.drawLine(SPECTRUM_LEFT_X + x1, y1_old_plot, SPECTRUM_LEFT_X + x1, y_old_plot, RA8875_BLACK);
-    tft.drawLine(SPECTRUM_LEFT_X + x1, y1_new_plot, SPECTRUM_LEFT_X + x1, y_new_plot, RA8875_YELLOW);
+    tft.drawLine(SPECTRUM_LEFT_X + x1, yOldPlot[x1 + 1], SPECTRUM_LEFT_X + x1, yOldPlot[x1], RA8875_BLACK);
+    tft.drawLine(SPECTRUM_LEFT_X + x1, y1Plot, SPECTRUM_LEFT_X + x1, yPlot, RA8875_YELLOW);
+
+    // save values to erase spectrum next loop
+    yOldPlot[x1] = yPlot;
 
 #ifdef T41_REMOTE_DISPLAY
     if(connected) {
-      freqData[x1] = y_new_plot;
+      freqData[x1] = yPlot;
     }
 #endif
-
-    // What is the actual spectrum at this time?  It's a combination of the old and new spectrums
-    // In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum
-    // This is the actual "old" spectrum!  This is required due to CW interrupts
-    // pixelCurrent gets copied to pixelold by the FFT function
-    pixelCurrent[x1] = pixelnew[x1];
 
     // update audio spectrum
     // don't overwrite right edge of audio spectrum box or audio filter lines
@@ -560,7 +549,7 @@ FASTRUN void ShowSpectrum() {
     }
 
     // create data for waterfall
-    wfGradIndex = -y_new_plot + 230;  // Nudged waterfall towards blue
+    wfGradIndex = -yPlot + 230;  // Nudged waterfall towards blue
     //wfGradIndex = (int)(x1 / 50) + currentNF * 10; // test color gradient
     if(wfGradIndex < 0) wfGradIndex = 0;
     //if(wfGradIndex > 117) wfGradIndex = 117;
@@ -575,12 +564,11 @@ FASTRUN void ShowSpectrum() {
 #endif
   }
 
+  // save last plot value for erasing on next loop
+  yOldPlot[SPECTRUM_RES - 1] = y1Plot;
+
   // update S-meter once per loop
   DrawSmeterBar();
-
-  pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];
-
-  oldNF = currentNF; // save the noise floor we used for this spectrum
 
 #ifdef T41_REMOTE_DISPLAY
   if(connected) {
@@ -601,6 +589,11 @@ FASTRUN void ShowSpectrum() {
     } else if((hHi > 25) || (hLo < 51)) {
       currentNF -= 1;
     }
+  }
+
+  // update noise floor sent to PC control app
+  if(controlDataFlag) {
+    nf2PC = currentNF;
   }
 
   // scroll the waterfall display
@@ -1557,19 +1550,6 @@ FLASHMEM void PrintKeyboardBuffer() {
     void
 *****/
 FASTRUN void ShowBeacon() {
-  int y_new_plot, y1_new_plot, y_old_plot, y1_old_plot;
-  static int oldNF;
-  int wfGradIndex;
-
-  currentNF = currentNoiseFloor[currentBand]; // noise floor is constant for each spectrum update
-
-  // initialize old noise floor if this is a new spectrum
-  if(newSpectrumFlag == 0) {
-    oldNF = currentNF;
-    newSpectrumFlag = 1;
-  }
-
-  // Draw the main Spectrum, Waterfall and Audio displays
   for(int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
     // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
     if(x1 == 0) {
@@ -1588,80 +1568,10 @@ FASTRUN void ShowBeacon() {
       ProcessIQData();
     }
 
-    // pixelold spectrum is saved by the FFT function prior to a new FFT which generates the pixelnew spectrum
-    y_new_plot = spectrumNoiseFloor - pixelnew[x1] - currentNF;
-    y1_new_plot = spectrumNoiseFloor - pixelnew[x1 + 1] - currentNF;
-    y_old_plot = spectrumNoiseFloor - pixelold[x1] - oldNF;
-    y1_old_plot = spectrumNoiseFloor - pixelold[x1 + 1] - oldNF;
-
-    // Prevent spectrum from going below the bottom of the spectrum area
-    if(y_new_plot > SPECTRUM_BOTTOM) y_new_plot = SPECTRUM_BOTTOM;
-    if(y1_new_plot > SPECTRUM_BOTTOM) y1_new_plot = SPECTRUM_BOTTOM;
-    if(y_old_plot > SPECTRUM_BOTTOM) y_old_plot = SPECTRUM_BOTTOM;
-    if(y1_old_plot > SPECTRUM_BOTTOM) y1_old_plot = SPECTRUM_BOTTOM;
-
-    // Prevent spectrum from going above the top of the spectrum area
-    if(y_new_plot < SPECTRUM_TOP_Y) y_new_plot = SPECTRUM_TOP_Y;
-    if(y1_new_plot < SPECTRUM_TOP_Y) y1_new_plot = SPECTRUM_TOP_Y;
-    if(y_old_plot < SPECTRUM_TOP_Y) y_old_plot = SPECTRUM_TOP_Y;
-    if(y1_old_plot < SPECTRUM_TOP_Y) y1_old_plot = SPECTRUM_TOP_Y;
-
-    // Erase the old spectrum, and draw the new spectrum.
-    //tft.drawLine(SPECTRUM_LEFT_X + x1, y1_old_plot, SPECTRUM_LEFT_X + x1, y_old_plot, RA8875_BLACK);
-    //tft.drawLine(SPECTRUM_LEFT_X + x1, y1_new_plot, SPECTRUM_LEFT_X + x1, y_new_plot, RA8875_YELLOW);
-
-    // What is the actual spectrum at this time?  It's a combination of the old and new spectrums
-    // In the case of a CW interrupt, the array pixelnew should be saved as the actual spectrum
-    // This is the actual "old" spectrum!  This is required due to CW interrupts
-    // pixelCurrent gets copied to pixelold by the FFT function
-    pixelCurrent[x1] = pixelnew[x1];
-
-    // update audio spectrum
-    // don't overwrite right edge of audio spectrum box or audio filter lines
-    if(x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
-      // erase old audio spectrum line at this position (including filter lines)
-      //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
-
-      // draw current audio spectrum line at this position
-      if(audioYPixel[x1] != 0) {
-        // maintain spectrum within box
-        if(audioYPixel[x1] > CLIP_AUDIO_PEAK)
-        {
-          audioYPixel[x1] = CLIP_AUDIO_PEAK;
-        }
-        //tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
-      }
-    }
-
-    // create data for waterfall
-    wfGradIndex = -y_new_plot + 230;  // Nudged waterfall towards blue
-    //wfGradIndex = (int)(x1 / 50) + currentNF * 10; // test color gradient
-    if(wfGradIndex < 0) wfGradIndex = 0;
-    //if(wfGradIndex > 117) wfGradIndex = 117;
-    if(wfGradIndex > 116) wfGradIndex = 116; // *** above is out of range of gradient
-    waterfall[x1] = gradient[wfGradIndex];  // Try to put pixel values in middle of gradient array
   }
 
   // update S-meter once per loop
   DrawSmeterBar(); // can't get rid of this yet, need dbm calc
-
-  pixelCurrent[SPECTRUM_RES - 1] = pixelnew[SPECTRUM_RES - 1];
-
-  oldNF = currentNF; // save the noise floor we used for this spectrum
-
-  // scroll the waterfall display
-  // Use the Block Transfer Engine (BTE) to move waterfall down a line
-  // copy the waterfall to layer 2, moving it down to row 2
-  //tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-  //while(tft.readStatus())  // Make sure it is done.  Memory moves can take time.
-  //  ;
-  //// copy the waterfall back to layer 1, row 2
-  //tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
-  //while(tft.readStatus())  // Make sure it's done.
-  //  ;
-
-  // write new row of data into the top row to finish the scrolling effect
-  //tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);
 
   // update FT8 msg if appropriate
   //if(ft8MsgSelectActive) {
