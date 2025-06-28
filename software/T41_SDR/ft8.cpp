@@ -87,9 +87,9 @@ typedef struct Candidate {
 
 typedef struct
 {
-  char field1[14];
-  char field2[14];
-  char field3[7];
+  char field1[20];
+  char field2[20];
+  char field3[20];
   int  freq_hz;
   //char decode_time[10];
   uint8_t hour, min, sec;
@@ -743,9 +743,9 @@ int ft8_decode(void) {
   uint8_t plain[N];
   int n_errors;
   uint8_t a91[K_BYTES];
-  char field1[14];
-  char field2[14];
-  char field3[7];
+  char field1[20];
+  char field2[20];
+  char field3[20];
   int rc;
   const float fsk_dev = 6.25f;    // tone deviation in Hz and symbol rate
   bool found;
@@ -964,6 +964,7 @@ const uint16_t MAXGRID4 = 32400L;
 
 // n28 is a 28-bit integer, e.g. n28a or n28b, containing all the
 // call sign bits from a packed message.
+// result[10]
 int unpack28(uint32_t n28, uint8_t ip, uint8_t i3, char *result) {
   // Check for special tokens DE, QRZ, CQ, CQ_nnn, CQ_aaaa
   if(n28 < NTOKENS) {
@@ -1046,6 +1047,9 @@ int unpack28(uint32_t n28, uint8_t ip, uint8_t i3, char *result) {
   return 0;   // Success
 }
 
+// field1[10]
+// field2[10]
+// field3[5+]
 int unpack_type1(const uint8_t *a77, uint8_t i3, char *field1, char *field2, char *field3) {
   uint32_t n28a, n28b;
   uint16_t igrid4;
@@ -1129,6 +1133,7 @@ int unpack_type1(const uint8_t *a77, uint8_t i3, char *field1, char *field2, cha
   return 0;       // Success
 }
 
+// text[14]
 int unpack_text(const uint8_t *a71, char *text) {
   // TODO: test
   uint8_t b71[9];
@@ -1156,6 +1161,7 @@ int unpack_text(const uint8_t *a71, char *text) {
   return 0;       // Success
 }
 
+// telemetry[19]
 int unpack_telemetry(const uint8_t *a71, char *telemetry) {
   uint8_t b71[9];
 
@@ -1182,6 +1188,9 @@ int unpack_telemetry(const uint8_t *a71, char *telemetry) {
 
 //none standard for wsjt-x 2.0
 //by KD8CEC
+// field1[15]
+// field2[15]
+// field3[15]
 int unpack_nonstandard(const uint8_t *a77, char *field1, char *field2, char *field3) {
 /*
 	wsjt-x 2.1.0 rc5

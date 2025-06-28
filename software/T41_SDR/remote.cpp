@@ -81,7 +81,7 @@ void SendSpectrumData(uint8_t *freqData, uint8_t *audioData) {
     combData[i + 5] = freqData[i];
   }
 
-  for(int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
+  for(int i = 0; i < AUDIO_SPEC_RES; i++) {
     combData[i + 517 + 2 + 1] = audioData[i];
   }
 

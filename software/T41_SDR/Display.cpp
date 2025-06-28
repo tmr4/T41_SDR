@@ -108,11 +108,6 @@ int centerLine = SPECTRUM_RES / 2 + SPECTRUM_LEFT_X;
 int16_t pixelnew[SPECTRUM_RES];
 int nf2PC;
 
-int newFilterX = 0;
-int oldFilterX = 0;
-int newFilterWidth = 0;
-int oldFilterWidth = 0;
-
 bool updateSpectrumData = true;
 int wfRows = WATERFALL_H;
 
@@ -265,15 +260,16 @@ void CalcAudioFilterLinePositions() {
   // map filter position to audio spectrum box
   // abs prevents these from going below the bottom of the audio spectrum display but the
   // resulting filter value isn't meaningful, should fix at the encoder
-  filterLoPosition = abs(map(bands[currentBand].FLoCut, 0, 6400, 0, AUDIO_SPEC_BOX_W));
-  filterHiPosition = abs(map(bands[currentBand].FHiCut, 0, 6400, 0, AUDIO_SPEC_BOX_W));
+  filterLoPosition = abs(map(bands[currentBand].FLoCut, 0, AUDIO_SPEC_SPAN, 0, AUDIO_SPEC_RES));
+  filterHiPosition = abs(map(bands[currentBand].FHiCut, 0, AUDIO_SPEC_SPAN, 0, AUDIO_SPEC_RES));
 }
 
 // *** pulling this out of ShowSpectrum allows the screen to update about 35% faster
 //     Waterfall Time before update 54s, after 35s ***
 void DrawAudioFilterLines() {
-  int filterLoColor;
-  int filterHiColor;
+  int filterLoColor, filterHiColor;
+  static int oldFilterLoPosition;
+  static int oldFilterHiPosition;
 
   CalcAudioFilterLinePositions();
 
@@ -333,13 +329,23 @@ void DrawAudioFilterLines() {
       break;
   }
 
+  // erase old and draw new filter lines
   // limit the filter line from going out of the spectrum box to the right
-  if(filterLoPosition > 0 && filterLoPosition < (AUDIO_SPEC_BOX_W - 1)) {
-    tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterLoPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterLoColor);
+  if(oldFilterLoPosition > 0 && oldFilterLoPosition < AUDIO_SPEC_W) {
+    tft.drawFastVLine(AUDIO_SPEC_L + oldFilterLoPosition, AUDIO_SPEC_T, AUDIO_SPEC_H, RA8875_BLACK);
   }
-  if(filterHiPosition > 0 && filterHiPosition < (AUDIO_SPEC_BOX_W - 1)) {
-    tft.drawFastVLine(AUDIO_SPEC_BOX_L + filterHiPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H - 1, filterHiColor);
+  if(oldFilterHiPosition > 0 && oldFilterHiPosition < AUDIO_SPEC_W) {
+    tft.drawFastVLine(AUDIO_SPEC_L + oldFilterHiPosition, AUDIO_SPEC_T, AUDIO_SPEC_H, RA8875_BLACK);
   }
+  if(filterLoPosition > 0 && filterLoPosition < AUDIO_SPEC_W) {
+    tft.drawFastVLine(AUDIO_SPEC_L + filterLoPosition, AUDIO_SPEC_T, AUDIO_SPEC_H, filterLoColor);
+  }
+  if(filterHiPosition > 0 && filterHiPosition < AUDIO_SPEC_W) {
+    tft.drawFastVLine(AUDIO_SPEC_L + filterHiPosition, AUDIO_SPEC_T, AUDIO_SPEC_H, filterHiColor);
+  }
+
+  oldFilterLoPosition = filterLoPosition;
+  oldFilterHiPosition = filterHiPosition;
 }
 
 /*****
@@ -450,6 +456,7 @@ FASTRUN void ShowSpectrum() {
   int hLo = 0, hHi = 0;
   int wfGradIndex;
   static uint16_t yOldPlot[SPECTRUM_RES];
+  static int yOldAudioPlot[AUDIO_SPEC_RES];
   static int currentNF = 0;
 
   // set current noise flow level for this loop
@@ -509,17 +516,42 @@ FASTRUN void ShowSpectrum() {
       }
     }
 
-    // Prevent spectrum from going below the bottom of the spectrum area
-    if(yPlot > SPECTRUM_BOTTOM) yPlot = SPECTRUM_BOTTOM;
-    if(y1Plot > SPECTRUM_BOTTOM) y1Plot = SPECTRUM_BOTTOM;
+    bool drawSpec = true, eraseSpec = true, inBoxLow = true, inBoxHigh = true;
 
+    // Prevent spectrum from going below the bottom of the spectrum area
     // Prevent spectrum from going above the top of the spectrum area
-    if(yPlot < SPECTRUM_TOP_Y) yPlot = SPECTRUM_TOP_Y;
-    if(y1Plot < SPECTRUM_TOP_Y) y1Plot = SPECTRUM_TOP_Y;
+    if(yPlot > SPECTRUM_BOTTOM) {
+      yPlot = SPECTRUM_BOTTOM;
+      inBoxLow = false;
+    }
+    if(y1Plot > SPECTRUM_BOTTOM) {
+      y1Plot = SPECTRUM_BOTTOM;
+      drawSpec = inBoxLow ? true : false;
+    }
+    if(yPlot < SPECTRUM_TOP_Y) {
+      yPlot = SPECTRUM_TOP_Y;
+      inBoxHigh = drawSpec ? false : true;
+    }
+    if(y1Plot < SPECTRUM_TOP_Y) {
+      y1Plot = SPECTRUM_TOP_Y;
+      drawSpec = inBoxHigh ? true : false;
+    }
+
+    // should we erase old spectrum
+    if((yOldPlot[x1] == SPECTRUM_BOTTOM) && (yOldPlot[x1 + 1] == SPECTRUM_BOTTOM)) {
+      eraseSpec = false;
+    }
+    if((yOldPlot[x1] == SPECTRUM_TOP_Y) && (yOldPlot[x1 + 1] == SPECTRUM_TOP_Y)) {
+      eraseSpec = false;
+    }
 
     // Erase the old spectrum, and draw the new spectrum.
-    tft.drawLine(SPECTRUM_LEFT_X + x1, yOldPlot[x1 + 1], SPECTRUM_LEFT_X + x1, yOldPlot[x1], RA8875_BLACK);
-    tft.drawLine(SPECTRUM_LEFT_X + x1, y1Plot, SPECTRUM_LEFT_X + x1, yPlot, RA8875_YELLOW);
+    if(eraseSpec) {
+      tft.drawLine(SPECTRUM_LEFT_X + x1, yOldPlot[x1 + 1], SPECTRUM_LEFT_X + x1, yOldPlot[x1], RA8875_BLACK);
+    }
+    if(drawSpec) {
+      tft.drawLine(SPECTRUM_LEFT_X + x1, y1Plot, SPECTRUM_LEFT_X + x1, yPlot, RA8875_YELLOW);
+    }
 
     // save values to erase spectrum next loop
     yOldPlot[x1] = yPlot;
@@ -531,11 +563,13 @@ FASTRUN void ShowSpectrum() {
 #endif
 
     // update audio spectrum
-    // don't overwrite right edge of audio spectrum box or audio filter lines
-    if(x1 < AUDIO_SPEC_BOX_W - 2 && ((x1 + 1) != filterLoPosition) && ((x1 + 1) != filterHiPosition)) {
+    // don't overwrite audio filter lines
+    if(x1 < AUDIO_SPEC_RES && (x1 != filterLoPosition) && (x1 != filterHiPosition)) {
       // *** TODO: consider adding audio spectrum for transmission ***
-      // erase old audio spectrum line at this position (including filter lines)
-      tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOX_T + 1, AUDIO_SPEC_BOX_H - 2, RA8875_BLACK);
+      // erase old audio spectrum line at this position if present
+      if(yOldAudioPlot[x1] != 0) {
+        tft.drawFastVLine(AUDIO_SPEC_L + x1, AUDIO_SPEC_BOTTOM - yOldAudioPlot[x1], yOldAudioPlot[x1], RA8875_BLACK);
+      }
 
       // draw current audio spectrum line at this position
       if(audioYPixel[x1] != 0) {
@@ -544,8 +578,11 @@ FASTRUN void ShowSpectrum() {
         {
           audioYPixel[x1] = CLIP_AUDIO_PEAK;
         }
-        tft.drawFastVLine(AUDIO_SPEC_BOX_L + x1 + 1, AUDIO_SPEC_BOTTOM - audioYPixel[x1] - 2, audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
+        tft.drawFastVLine(AUDIO_SPEC_L + x1, AUDIO_SPEC_BOTTOM - audioYPixel[x1], audioYPixel[x1], RA8875_MAGENTA);  // draw new AUDIO spectrum line
       }
+
+      // save data to erase next loop
+      yOldAudioPlot[x1] = audioYPixel[x1];
     }
 
     // create data for waterfall
@@ -599,13 +636,25 @@ FASTRUN void ShowSpectrum() {
   // scroll the waterfall display
   // Use the Block Transfer Engine (BTE) to move waterfall down a line
   // copy the waterfall to layer 2, moving it down to row 2
+  //
+  // *** The waterfall update takes ~20ms or more in total.
+  //     The process depends on this in part to ensure that the IQ input
+  //     buffers have sufficient data to process at the start of the next
+  //     loop.  Spectrum updates are skipped if this isn't the case.
   tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-  while(tft.readStatus())  // Make sure it is done.  Memory moves can take time.
-    ;
+
+  // process controls and audio here to make radio appear more responsive
+  // Adding a call to ProcessIQ also shortens overall process loop time and smooths display updates somewhat.
+  // We can add another call to ProcessIQData later in the waterfall update with proper care to ensure IQ
+  // input buffers will be full at start of next loop.  However, this doesn't seem to add much value.
+  UpdateControls(true);
+  ProcessIQData();
+
+  tft.readStatus(); // Make sure it is done.  Memory moves can take time. This is blocking. *** might need to be changed back to original if blocking nature is modified ***
+
   // copy the waterfall back to layer 1, row 2
   tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
-  while(tft.readStatus())  // Make sure it's done.
-    ;
+  tft.readStatus(); // Make sure it's done.
 
   // write new row of data into the top row to finish the scrolling effect
   tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);
@@ -983,12 +1032,12 @@ FLASHMEM void UpdateCWFilter() {
         break;
     }
 
-    tft.fillRect(AUDIO_SPEC_BOX_L + 2, AUDIO_SPEC_BOX_T, CWFilterPosition, 120, MAROON);
+    tft.fillRect(AUDIO_SPEC_L, AUDIO_SPEC_T, CWFilterPosition, 120, MAROON);
     // this bounding line is confusing given the filter lines already in the audio spectrum box
     //tft.drawFastVLine(AUDIO_SPEC_BOX_L + 2 + CWFilterPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, RA8875_LIGHT_GREY);
   } else {
     // clear CW filter
-    tft.fillRect(AUDIO_SPEC_BOX_L + 2, AUDIO_SPEC_BOX_T, CWFilterPosition, 120, RA8875_BLACK);
+    tft.fillRect(AUDIO_SPEC_L, AUDIO_SPEC_T, CWFilterPosition, 120, RA8875_BLACK);
   }
 
   tft.writeTo(L1);
@@ -1081,19 +1130,20 @@ FASTRUN void DrawSmeterBar() {
     tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
   }
 
-  // prevent NAN dBm
-  if(audioMaxSquaredAve <= 0.0) {
+  if(audioMaxSquaredAve > 0.0) {
+    // dbm_calibration set to 22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
+    // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
+    //  rfGainAllBands is initialized to 0
+    dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) +
+          cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
+  } else {
+
     // reset audioMaxSquaredAve to a small value
     // with default parameters and audioMaxSquaredAve = 1.778e-6, dBm = -131
-    audioMaxSquaredAve = 0.01;
-    Serial.println("dBm is NAN");
+    audioMaxSquaredAve = 0.0;
+    //Serial.println("dBm is NAN");
+    dbm = -131;
   }
-
-  // dbm_calibration set to 22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
-  // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
-  //  rfGainAllBands is initialized to 0
-  dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) +
-        cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
 
   // determine length of S-meter bar, limit it to the box and draw it
   smeterPad = map(dbm, -73.0-9*6.0 /*S1*/, -73.0 /*S9*/, 0, 9*pixels_per_s);
@@ -1195,6 +1245,11 @@ FASTRUN void DrawBandwidthBar() {
   float Zoom1Offset = 0.0;
   float32_t pixel_per_khz;
   int NCOFreqX;
+  int newFilterX = 0;
+  int newFilterWidth = 0;
+  static int oldFilterX = 0;
+  static int oldFilterWidth = 0;
+  static int oldTuneLine = 0;
 
   switch(spectrumZoom) {
     case 0:
@@ -1256,6 +1311,7 @@ FASTRUN void DrawBandwidthBar() {
   tft.writeTo(L2);
   //tft.fillRect(SPECTRUM_LEFT_X, SPECTRUM_TOP_Y + 20, SPECTRUM_RES, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
   tft.fillRect(oldFilterX, SPECTRUM_TOP_Y + 20, oldFilterWidth + 1, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
+  tft.drawFastVLine(oldTuneLine, SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 20, RA8875_BLACK);
 
   // update bar if we haven't reset tuning, otherwise this gets recalled by that routine
   if(!resetTuningFlag) {
@@ -1269,7 +1325,7 @@ FASTRUN void DrawBandwidthBar() {
         break;
 
       case DEMOD_LSB:
-        newFilterX = centerLine - newFilterWidth + NCOFreqX;
+        newFilterX = centerLine - newFilterWidth + NCOFreqX + bands[currentBand].FHiCut / 1000.0 * pixel_per_khz;
         break;
 
       case DEMOD_NFM:
@@ -1291,6 +1347,7 @@ FASTRUN void DrawBandwidthBar() {
 
     oldFilterX = newFilterX;
     oldFilterWidth = newFilterWidth;
+    oldTuneLine = centerLine + NCOFreqX;
   }
 
   tft.writeTo(L1);
@@ -1399,19 +1456,20 @@ FLASHMEM void DrawSMeterContainer() {
   Return value:
     void
 *****/
-// old factor 43.8
 FLASHMEM void DrawAudioSpectContainer() {
+  float ticks = (float)(AUDIO_SPEC_RES) / AUDIO_SPEC_SPAN * 1000.0;
+
   tft.drawRect(AUDIO_SPEC_BOX_L, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_W, AUDIO_SPEC_BOX_H, RA8875_WHITE);
-  for(int k = 0; k < 6; k++) {
-    tft.drawFastVLine(AUDIO_SPEC_BOX_L + k * 43, AUDIO_SPEC_BOTTOM, 15, RA8875_WHITE);
-    tft.setCursor(AUDIO_SPEC_BOX_L - 4 + k * 43, AUDIO_SPEC_BOTTOM + 16);
+  tft.drawFastVLine(AUDIO_SPEC_BOX_L + 1, AUDIO_SPEC_BOX_BOTTOM, 15, RA8875_WHITE);
+  tft.setCursor(AUDIO_SPEC_BOX_L - 3, AUDIO_SPEC_BOX_BOTTOM + 16);
+  tft.print(0);
+  tft.print("k");
+  for(int k = 1; k < 7; k++) {
+    tft.drawFastVLine(AUDIO_SPEC_BOX_L + 1 + ((float)k * ticks), AUDIO_SPEC_BOX_BOTTOM, 15, RA8875_WHITE);
+    tft.setCursor(AUDIO_SPEC_BOX_L - 3 + ((float)k * ticks), AUDIO_SPEC_BOX_BOTTOM + 16);
     tft.print(k);
     tft.print("k");
   }
-  tft.drawFastVLine(AUDIO_SPEC_BOX_L + 6 * 43, AUDIO_SPEC_BOTTOM, 15, RA8875_WHITE);
-  tft.setCursor(AUDIO_SPEC_BOX_L + 6 * 43 - tft.getFontWidth(), AUDIO_SPEC_BOTTOM + 16);
-  tft.print(6);
-  tft.print("k");
 }
 
 /*****

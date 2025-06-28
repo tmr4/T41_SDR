@@ -49,10 +49,17 @@
 
 #define AUDIO_SPEC_BOX_L      (SPECTRUM_LEFT_X + SPECTRUM_RES + 15)
 #define AUDIO_SPEC_BOX_T      SPECTRUM_BOTTOM - 118
-//#define AUDIO_SPEC_BOX_W      260
-#define AUDIO_SPEC_BOX_W      XPIXELS - AUDIO_SPEC_BOX_L // use up rest of screen right
+#define AUDIO_SPEC_BOX_W      (XPIXELS - AUDIO_SPEC_BOX_L) // use up rest of screen right
 #define AUDIO_SPEC_BOX_H      118
-#define AUDIO_SPEC_BOTTOM     SPECTRUM_BOTTOM
+#define AUDIO_SPEC_BOX_BOTTOM SPECTRUM_BOTTOM
+
+#define AUDIO_SPEC_RES        (AUDIO_SPEC_BOX_W - 2)
+#define AUDIO_SPEC_L          AUDIO_SPEC_BOX_L + 1
+#define AUDIO_SPEC_T          AUDIO_SPEC_BOX_T + 1
+#define AUDIO_SPEC_H          AUDIO_SPEC_BOX_H - 2
+#define AUDIO_SPEC_W          AUDIO_SPEC_BOX_W - 2
+#define AUDIO_SPEC_BOTTOM     AUDIO_SPEC_BOX_BOTTOM - 2
+#define AUDIO_SPEC_SPAN       6250.0
 
 #define CLIP_AUDIO_PEAK       115           // The pixel value where audio peak overwrites S-meter
 
@@ -137,8 +144,6 @@ extern int centerLine;
 
 extern int16_t pixelnew[SPECTRUM_RES];
 
-extern int newFilterX;
-extern int oldFilterX;
 extern bool updateSpectrumData;
 extern int wfRows;
 

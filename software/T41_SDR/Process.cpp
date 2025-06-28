@@ -573,13 +573,13 @@ void ProcessIQData() {
             audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
           }
           //for(int k = 0; k < 256; k++) {
-          for(int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
+          for(int k = 0; k < AUDIO_SPEC_RES; k++) {
             if(bands[currentBand].demod == DEMOD_USB || bands[currentBand].demod == DEMOD_FT8 || bands[currentBand].demod == DEMOD_AM || bands[currentBand].demod == DEMOD_SAM) {
-              audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
+              audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, AUDIO_SPEC_H);
             }
             else {
               if(bands[currentBand].demod == 1) {
-                audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, 120);
+                audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, AUDIO_SPEC_H);
               }
             }
             if(audioYPixel[k] < 0) {
@@ -814,9 +814,9 @@ void ProcessIQData() {
           audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
         }
         //for(int k = 0; k < 256; k++) {
-        for(int k = 0; k < AUDIO_SPEC_BOX_W - 2; k++) {
+        for(int k = 0; k < AUDIO_SPEC_RES; k++) {
           // a spectrum offset of 20 give about the same magnitude signal peak as seen in the AM modes
-          audioYPixel[k] = 20 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, 120);
+          audioYPixel[k] = 20 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, AUDIO_SPEC_H);
           if(audioYPixel[k] < 0) {
             audioYPixel[k] = 0;
           }
@@ -838,16 +838,16 @@ void ProcessIQData() {
 
     // send audio data to control app if applicable
     if(updateSpectrumData && controlDataFlag) {
-      for(int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
+      for(int i = 0; i < AUDIO_SPEC_RES; i++) {
         // audioYPixel is already >= 0, limit it to 255
         specData[i] = (uint8_t)(audioYPixel[i] > 255 ? 255 : audioYPixel[i]);
       }
-      T41ControlSendData(specData, AUDIO_SPEC_BOX_W - 2);
+      T41ControlSendData(specData, AUDIO_SPEC_RES);
     }
 
     #ifdef T41_REMOTE_DISPLAY
     if(connected) {
-      for(int i = 0; i < AUDIO_SPEC_BOX_W - 2; i++) {
+      for(int i = 0; i < AUDIO_SPEC_RES; i++) {
         // audioYPixel is already >= 0, limit it to 255
         audioData[i] = (uint8_t)(audioYPixel[i] > 255 ? 255 : audioYPixel[i]);
       }
@@ -966,7 +966,7 @@ void ProcessIQData() {
     arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
     Q_out_L.play(q15_buffer_LTemp, 2048);
 
-    //Codec_gain();
+    Codec_gain();
 
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;

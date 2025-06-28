@@ -146,7 +146,7 @@ bool CursorInOpStatsArea() {
 }
 
 bool CursorInAudioSpectrum() {
-  return (cursorY > AUDIO_SPEC_BOX_T - CURSOR_H / 2) && (cursorY < AUDIO_SPEC_BOTTOM - CURSOR_H / 2) && cursorX > AUDIO_SPEC_BOX_L;
+  return (cursorY > AUDIO_SPEC_BOX_T - CURSOR_H / 2) && (cursorY < AUDIO_SPEC_BOX_BOTTOM - CURSOR_H / 2) && cursorX > AUDIO_SPEC_BOX_L;
 }
 
 bool CursorInSpectrumWaterfall() {
