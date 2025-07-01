@@ -137,6 +137,8 @@
 
 #define DISPLAY_T41                 0
 #define DISPLAY_BEACON_MONITOR      1
+#define DISPLAY_FULL_MENU           2
+#define DISPLAY_CALIBRATION         3
 
 extern int displayState;
 

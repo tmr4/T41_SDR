@@ -408,9 +408,6 @@ void GetMenuOptionLoop() {
 /*****
   Purpose: To present the encoder-driven full menu display
 
-  Argument List;
-    void
-
   Return value: index number for the selected menu
 *****/
 /*
@@ -467,9 +464,6 @@ FLASHMEM int DrawMenuDisplay() {
 /*****
   Purpose: To select the primary menu on full menu
 
-  Argument List;
-    void
-
   Return value: index number for the selected primary menu
 *****/
 FLASHMEM int SetPrimaryMenuIndex() {
@@ -477,8 +471,11 @@ FLASHMEM int SetPrimaryMenuIndex() {
   int val;
 
   while(true) {
+    UpdateClock();
+    ShowSpectrum();
 
     if(menuEncoderMove != 0) {             // Did they move the encoder?
+      tft.setFontScale((enum RA8875tsize)1);
       tft.setTextColor(RA8875_WHITE);         // Yep. Repaint the old choice
       tft.setCursor(10, mainMenuIndex * 25 + 115);
       tft.print(topMenus[mainMenuIndex]);
@@ -505,8 +502,11 @@ FLASHMEM int SetPrimaryMenuIndex() {
       tft.print(secondaryChoices[mainMenuIndex][i]);
       menuEncoderMove = 0;
     }
+
     val = ReadSelectedPushButton();  // Read the ladder value
-    delay(150L);
+
+    YieldForProcess(150L);
+
     if(val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {      // Did they press Select?
       val = ProcessButtonPress(val);                                          // Use ladder value to get menu choice
       if(val > -1) {                                                         // Valid choice?
@@ -515,11 +515,12 @@ FLASHMEM int SetPrimaryMenuIndex() {
           tft.setTextColor(RA8875_WHITE);
           break;
         }
-        delay(50L);
+
+        YieldForProcess(50L);
       }
     }
-
   }  // End while True
+
   tft.setTextColor(RA8875_WHITE);
 
   return mainMenuIndex;
@@ -527,9 +528,6 @@ FLASHMEM int SetPrimaryMenuIndex() {
 
 /*****
   Purpose: To select the secondary menu on full menu
-
-  Argument List;
-    void
 
   Return value: index number for the selected primary menu
 *****/
@@ -540,6 +538,8 @@ FLASHMEM int SetSecondaryMenuIndex() {
   int val;
 
   while(true) {                                                        // How many secondary menu options?
+    YieldToProcess();
+
     if(strcmp(secondaryChoices[mainMenuIndex][i], "Cancel") != 0) {    // Have we read the last entry in secondary menu?
       i++;                                                              // Nope.
     } else {
@@ -551,12 +551,14 @@ FLASHMEM int SetSecondaryMenuIndex() {
   menuEncoderMove  = 0;
   i = 0;
 
+  tft.setFontScale((enum RA8875tsize)1);
   tft.setTextColor(RA8875_GREEN);
   tft.setCursor(300, 115);
   tft.print(secondaryChoices[mainMenuIndex][0]);
 
   i = 0;
   while(true) {
+    YieldToProcess();
 
     if(menuEncoderMove != 0) {  // Did they move the encoder?
       tft.setTextColor(DARKGREY);  // Yep. Repaint the old choice
@@ -578,7 +580,9 @@ FLASHMEM int SetSecondaryMenuIndex() {
       menuEncoderMove = 0;
     }
     val = ReadSelectedPushButton();  // Read the ladder value
-    delay(200L);
+
+    YieldForProcess(200L);
+
     if(val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
       val = ProcessButtonPress(val);  // Use ladder value to get menu choice
       if(val > -1) {                 // Valid choice?
@@ -587,10 +591,11 @@ FLASHMEM int SetSecondaryMenuIndex() {
           secondaryMenuIndex = oldIndex;
           break;
         }
-        delay(50L);
+
+        YieldForProcess(50L);
       }
     }
-  }  // End while True
+  }
 
   return secondaryMenuIndex;
 }

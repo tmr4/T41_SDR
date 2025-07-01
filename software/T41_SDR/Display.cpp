@@ -405,7 +405,7 @@ FASTRUN void ShowSpectrum() {
     }
 
     // erase the old spectrum if needed
-    if(eraseSpec) {
+    if(eraseSpec && (displayState == DISPLAY_T41)) {
       tft.drawLine(SPECTRUM_LEFT_X + x1, yOldPlot[x1 + 1], SPECTRUM_LEFT_X + x1, yOldPlot[x1], RA8875_BLACK);
     }
 
@@ -429,7 +429,7 @@ FASTRUN void ShowSpectrum() {
     }
 
     // draw the new spectrum if needed
-    if(drawSpec) {
+    if(drawSpec && (displayState == DISPLAY_T41)) {
       tft.drawLine(SPECTRUM_LEFT_X + x1, y1Plot, SPECTRUM_LEFT_X + x1, yPlot, RA8875_YELLOW);
     }
 
@@ -523,22 +523,24 @@ FASTRUN void ShowSpectrum() {
   //     The process depends on this in part to ensure that the IQ input
   //     buffers have sufficient data to process at the start of the next
   //     loop.  Spectrum updates are skipped if this isn't the case.
-  tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-  tft.readStatus(); // Make sure it is done.  Memory moves can take time. This is blocking. *** might need to be changed back to original if blocking nature is modified ***
+  if(displayState == DISPLAY_T41) {
+    tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
+    tft.readStatus(); // Make sure it is done.  Memory moves can take time. This is blocking. *** might need to be changed back to original if blocking nature is modified ***
 
-  YieldToProcess();
+    YieldToProcess();
 
-  // copy the waterfall back to layer 1, row 2
-  tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
-  tft.readStatus(); // Make sure it's done.
+    // copy the waterfall back to layer 1, row 2
+    tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
+    tft.readStatus(); // Make sure it's done.
 
-  // write new row of data into the top row to finish the scrolling effect
-  tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);
+    // write new row of data into the top row to finish the scrolling effect
+    tft.writeRect(WATERFALL_L, WATERFALL_T, WATERFALL_W, 1, waterfall);
 
-  // update FT8 msg if appropriate
-  //if(ft8MsgSelectActive) {
-  if(ft8MsgSelectActive) {
-    DisplayMessages();
+    // update FT8 msg if appropriate
+    //if(ft8MsgSelectActive) {
+    if(ft8MsgSelectActive) {
+      DisplayMessages();
+    }
   }
 }
 
@@ -944,16 +946,10 @@ FASTRUN void DrawSmeterBar() {
   int16_t smeterPad;
   float32_t dbm;
 
-  // *** it's easiest for now to handle multiple display "pages" by limiting S-meter display
-  // updates here to when displayState is set to DISPLAY_T41, messy, but it works.
-  // Refinesments are possible. ***
-
   // the S-Meter bar and the dBm value were inconsistent, as they were using different base values.
   // Moreover the bar could go over the limits of the S-meter box, as the map() function, does not constrain the values
   // S-Meter bar is consistent with the dBm value and the S-Meter bar will always be restricted to the box
-  if(displayState == DISPLAY_T41) {
-    tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
-  }
+  tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
 
   dbm = CalcSignalStrength();
 
@@ -963,23 +959,18 @@ FASTRUN void DrawSmeterBar() {
   // make sure, that it does not extend beyond the field
   smeterPad = max(0, smeterPad);
   smeterPad = min(SMETER_BAR_LENGTH, smeterPad);
-  if(displayState == DISPLAY_T41) {
-    tft.fillRect(SMETER_X + 1, SMETER_Y + 2, smeterPad, SMETER_BAR_HEIGHT-2, RA8875_RED); // bar 2*1 pixel smaller than the field
+  tft.fillRect(SMETER_X + 1, SMETER_Y + 2, smeterPad, SMETER_BAR_HEIGHT-2, RA8875_RED); // bar 2*1 pixel smaller than the field
 
-    tft.setTextColor(RA8875_WHITE);
-  }
+  tft.setTextColor(RA8875_WHITE);
+  //unit_label = "dBm";
+  tft.setFontScale((enum RA8875tsize)0);
 
-  if(displayState == DISPLAY_T41) {
-    //unit_label = "dBm";
-    tft.setFontScale((enum RA8875tsize)0);
+  tft.fillRect(SMETER_X + 185, SMETER_Y, 80, tft.getFontHeight(), RA8875_BLACK);  // The dB figure at end of S
 
-    tft.fillRect(SMETER_X + 185, SMETER_Y, 80, tft.getFontHeight(), RA8875_BLACK);  // The dB figure at end of S
-
-    // consider no decimals in the S-meter dBm value as it is very busy with decimals
-    MyDrawFloat(dbm, /*0*/ 1, SMETER_X + 184, SMETER_Y, buff);
-    tft.setTextColor(RA8875_GREEN);
-    tft.print("dBm");
-  }
+  // consider no decimals in the S-meter dBm value as it is very busy with decimals
+  MyDrawFloat(dbm, /*0*/ 1, SMETER_X + 184, SMETER_Y, buff);
+  tft.setTextColor(RA8875_GREEN);
+  tft.print("dBm");
 
   if(controlDataFlag) {
     SendSmeter(smeterPad, dbm);

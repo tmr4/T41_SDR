@@ -73,8 +73,7 @@
 #define                           FOURSQRP
 //#define                           PROJECTSYSTEM
 
-#define USE_FULL_MENU             0        // 0 - use top line menus; 1 - use full screen menus
-//#define USE_LIVE_NOISE_FLOOR      1      // 0 - don't use, 1 - use live display when setting noise floor
+#define USE_FULL_MENU             1      // 0 - use top line menus; 1 - use full screen menus
 
 #define SDCARD_MESSAGE_LENGTH     3000L    // The number of milliseconds to leave error message on screen
 
@@ -103,4 +102,3 @@
 #define controlSerial Serial // Serial or SerialUSB1 for USB port or usbHostSerial for USB Host port
 #define beaconSerial Serial // Serial or SerialUSB2
 #define wsjtSerial Serial // Serial or SerialUSB1 or SerialUSB2
-

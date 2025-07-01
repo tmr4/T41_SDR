@@ -973,7 +973,7 @@ bool ProcessIQData(bool updateSpectrumData) {
     arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
     Q_out_L.play(q15_buffer_LTemp, 2048);
 
-    Codec_gain();
+    //Codec_gain();
 
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
@@ -1064,6 +1064,7 @@ FASTRUN void ProcessControls() {
       break;
 
     case DISPLAY_BEACON_MONITOR:
+    case DISPLAY_FULL_MENU:
     default:
     // no screen updates at all
     break;
@@ -1071,7 +1072,7 @@ FASTRUN void ProcessControls() {
 
   // update volume if changed
   if(volumeChangeFlag) {
-    if(updateDisplay) {
+    if(updateDisplay || (displayState == DISPLAY_FULL_MENU)) {
       UpdateInfoBoxItem(IB_ITEM_VOL);
     }
     volumeChangeFlag = false;
@@ -1108,6 +1109,9 @@ FASTRUN void ProcessControls() {
     if(updateDisplay) {
       ShowFrequency();
       DrawBandwidthBar();
+    }
+    if(displayState == DISPLAY_FULL_MENU) {
+      ShowFrequency();
     }
     fineTuneFlag = false;
   }

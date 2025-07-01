@@ -340,6 +340,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
 
     case MAIN_MENU_UP:  // 1
       if(USE_FULL_MENU) {
+        displayState = DISPLAY_FULL_MENU;
         DrawMenuDisplay();                    // Draw selection box and primary menu
         SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
         if(mainMenuIndex < TOP_MENU_COUNT - 1) {
@@ -347,9 +348,13 @@ FLASHMEM void ExecuteButtonPress(int val) {
           functionPtr[mainMenuIndex]();
         }
 
+        displayState = DISPLAY_T41;
         tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
         DrawSpectrumFrame();
-        EraseMenus();
+        DrawBandwidthBar();
+        ShowBandwidthBarValues();
+        ShowSpectrumFreqValues();
+        //EraseMenus(); // *** TODO: evaluate need for this here and below ***
       } else {
         ShowMenuBar(0, 1);
       }
@@ -365,6 +370,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
 
     case MAIN_MENU_DN:  // 4
       if(USE_FULL_MENU) {
+        displayState = DISPLAY_FULL_MENU;
         DrawMenuDisplay();                    // Draw selection box and primary menu
         SetPrimaryMenuIndex();                // Scroll through primary indexes and select one
         if(mainMenuIndex < TOP_MENU_COUNT - 1) {
@@ -372,9 +378,13 @@ FLASHMEM void ExecuteButtonPress(int val) {
           functionPtr[mainMenuIndex]();
         }
 
+        displayState = DISPLAY_T41;
         tft.fillRect(1, SPECTRUM_TOP_Y + 1, 513, 379, RA8875_BLACK);          // Erase Menu box
         DrawSpectrumFrame();
-        EraseMenus();
+        DrawBandwidthBar();
+        ShowBandwidthBarValues();
+        ShowSpectrumFreqValues();
+        //EraseMenus();
       } else {
         ShowMenuBar(TOP_MENU_COUNT - 2, -1);
       }

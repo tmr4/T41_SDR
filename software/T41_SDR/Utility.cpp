@@ -426,6 +426,11 @@ FLASHMEM void SetBand() {
     case DISPLAY_BEACON_MONITOR:
       break;
 
+    case DISPLAY_FULL_MENU:
+      ShowFrequency();
+      ShowOperatingStats();
+      break;
+
     default:
     // no screen updates at all
     break;
@@ -834,7 +839,7 @@ void UpdateMemTempLoad() {
   }
 }
 
-void YieldToProcess(bool updateSpectrum) {
+void YieldToProcess(bool updateSpectrum /* = false */) {
   static long prevUpdate = 0;
 
   if(updateSpectrum) {
@@ -855,5 +860,14 @@ void YieldToProcess(bool updateSpectrum) {
       while(ProcessIQData()) ;
       prevUpdate = millis();
     }
+  }
+}
+
+void YieldForProcess(int ms) {
+  long unsigned entry = millis();
+
+  // process controls and IQ data if 10ms has passed since last update
+  while(millis() - entry < (long unsigned)ms) {
+    YieldToProcess();
   }
 }

@@ -92,6 +92,11 @@ void SetTxRxFreq(long freq) {
     case DISPLAY_BEACON_MONITOR:
       break;
 
+    case DISPLAY_FULL_MENU:
+      ShowFrequency();
+      ShowOperatingStats();
+      break;
+
     default:
     // no screen updates at all
     break;
