@@ -10,7 +10,9 @@
 #include "EEPROM.h"
 #include "Filter.h"
 #include "FIR.h"
+#include "InfoBox.h"
 #include "pi.h"
+#include "Process.h"
 #include "Tune.h"
 #include "Utility.h"
 
@@ -23,7 +25,8 @@
 #define TMS1_MEASURE_FREQ(x)        (((uint32_t)(((uint32_t)(x)) << 0U)) & 0xFFFFU)
 #define TEMPMON_ROOMTEMP    25.0f
 
-Metro ms_500 = Metro(500);  // set up a Metro to update display clock
+Metro ms_500 = Metro(500); // display clock updates
+Metro ms_5000 = Metro(5000); // memory, temp and load updates
 
 uint8_t display_dbm = DISPLAY_S_METER_DBM; // DISPLAY_S_METER_DBM or DISPLAY_S_METER_DBMHZ
 
@@ -66,12 +69,6 @@ float32_t sinBuffer3[256];
 
 /*****
   Purpose: Generate Array with variable sinewave frequency tone
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void sineTone(int numCycles) {
   float theta;
@@ -165,12 +162,7 @@ FLASHMEM void sineTone(int numCycles) {
 };
 
 /*****
-  Purpose: Generate Array with variable sinewave frequency tone
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: Generate Array with variable sinewave frequency tone*****/
 /*void SinTone(long freqSideTone) { // AFP 10-25-22
   float theta;
   for(int kf = 0; kf < 255; kf++) { //Calc 750 hz sine wave.  use 750 because it is 8 whole cycles in 256 buffer.
@@ -180,12 +172,7 @@ FLASHMEM void sineTone(int numCycles) {
   }*/
 
 /*****
-  Purpose: Correct Phase angle between I andQ channels
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: Correct Phase angle between I andQ channels*****/
 void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t factor, uint32_t blocksize) {
   float32_t temp_buffer[blocksize];
   if(factor < 0.0) {                                                             // mix a bit of I into Q
@@ -199,11 +186,6 @@ void IQPhaseCorrection(float32_t *I_buffer, float32_t *Q_buffer, float32_t facto
 
 /*****
   Purpose: Calculate sinc function
-
-  Parameter list:
-    void
-  Return value:
-    void
 *****/
 float MSinc(int m, float fc) {
   float x = m * HALF_PI;
@@ -215,11 +197,6 @@ float MSinc(int m, float fc) {
 
 /*****
   Purpose: Izero
-
-  Parameter list:
-    void
-  Return value:
-    void
 *****/
 float32_t Izero(float32_t x) {
   float32_t x2          = x / 2.0;
@@ -249,9 +226,6 @@ float32_t Izero(float32_t x) {
 
   Parameter list:
     float32_t X       number for conversion
-
-  Return value:
-    void
 *****/
 float32_t log10f_fast(float32_t X) {
   float Y, F;
@@ -314,12 +288,6 @@ float ApproxAtan(float z) {
 
 /*****
   Purpose: function reads the analog value for each matrix switch and stores that value in EEPROM.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SaveAnalogSwitchValues() {
   int index;
@@ -398,12 +366,7 @@ FLASHMEM void SaveAnalogSwitchValues() {
 
 // ================== Clock stuff
 /*****
-  Purpose: DisplayClock()
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: DisplayClock()*****/
 void DisplayClock() {
   char timeBuffer[15];
   char temp[5];
@@ -445,19 +408,13 @@ void DisplayClock() {
 
 /*****
   Purpose: sets frequancy for selected band and update filters accordingly
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetBand() {
   SetFreq();
 
   CalcFilters();
 
-  switch(displayScreen) {
+  switch(displayState) {
     case DISPLAY_T41:
       ShowFrequency();
       ShowOperatingStats();
@@ -478,8 +435,6 @@ FLASHMEM void SetBand() {
 /*****
   Purpose: Tries to open the EEPROM SD file to see if an SD card is present in the system
 
-  Parameter list:
-    void
 
   Return value:
     int               0 = SD not initialized, 1 = has data
@@ -517,9 +472,6 @@ double elapsed_micros_sum;
   Parameter list:
     int notchF        the notch to use
     int MODE          the current MODE
-
-  Return value:
-    void
 *****/
 void ShowTempAndLoad() {
   char buff[10];
@@ -574,8 +526,6 @@ float s_hotT_ROOM;       // !< The value of s_hotTemp minus room temperature(25Â
 /*****
   Purpose: Read the Teensy's temperature. Get worried over 50C
 
-  Parameter list:
-    void
 
   Return value:
     float           temperature Centigrade
@@ -594,11 +544,6 @@ float TGetTemp() {
 
 /*****
   Purpose: void initTempMon
-
-  Parameter list:
-    void
-  Return value:
-    void
 *****/
 FLASHMEM void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAlarmTemp, uint32_t panicAlarmTemp) {
 
@@ -618,12 +563,6 @@ FLASHMEM void initTempMon(uint16_t freq, uint32_t lowAlarmTemp, uint32_t highAla
 
 /*****
   Purpose: Format frequency for printing
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void FormatFrequency(long freq, char *freqBuffer) {
   char outBuffer[15];
@@ -677,12 +616,6 @@ void FormatFrequency(long freq, char *freqBuffer) {
 /*****
   Purpose: fully allocate the heap and then free it
             mallinfo() will provide useful heap size info if we prime it with this info
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void PrimeMallInfo() {
   char *alloc[30];
@@ -887,5 +820,40 @@ void UpdateClock() {
   // update clock
   if(ms_500.check() == 1) {
     DisplayClock();
+  }
+}
+
+void UpdateMemTempLoad() {
+  // update memory usage, temperature and load
+  if(ms_5000.check() == 1) {
+    // Stack is more informative when called from within a function that might be stressing the stack
+    UpdateInfoBoxItem(IB_ITEM_STACK);
+    UpdateInfoBoxItem(IB_ITEM_HEAP);
+    UpdateInfoBoxItem(IB_ITEM_TEMP);
+    UpdateInfoBoxItem(IB_ITEM_LOAD);
+  }
+}
+
+void YieldToProcess(bool updateSpectrum) {
+  static long prevUpdate = 0;
+
+  if(updateSpectrum) {
+    // wait for spectrum data update
+    while(!ProcessIQData(true)) {
+      ProcessControls();
+    }
+    prevUpdate = millis();
+  } else {
+    // process controls and IQ data if 10ms has passed since last update
+    if(millis() - prevUpdate > 10) {
+      ProcessControls();
+
+      // process IQ data while sufficient data exists
+      // This allows the process to catch up after longer tasks
+      // such as the waterfall update. Failing to do this can
+      // result in poor audio.
+      while(ProcessIQData()) ;
+      prevUpdate = millis();
+    }
   }
 }

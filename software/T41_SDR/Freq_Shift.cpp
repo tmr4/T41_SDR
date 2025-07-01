@@ -35,12 +35,6 @@ double Osc_I = 0.0;
            xnew(0) =  xreal(0) + jximag(0)
                leave first value (DC component) as it is!
            xnew(1) =  - ximag(1) + jxreal(1)
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void FreqShift1() {
   float32_t hh1;
@@ -69,12 +63,6 @@ void FreqShift1() {
 
 /*****
   Purpose: Shift Receive frequency by an arbitray amount
-
-  Parameter list:
-    void
-
-  Return value:
-    void
     Notes:  Routine includes checks to ensure the frequency selection stays within the bounds of the
     displayed spectrum
     Also included a variable frequency step, depending on how fast the encoder id turned.  Step varies from 50Hz/step to 10KHz/step

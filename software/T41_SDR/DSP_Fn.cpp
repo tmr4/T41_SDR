@@ -80,10 +80,7 @@ void AltNoiseBlanking(float* insamp, int Nsam, float* E );
 /*****
   Purpose: void noiseblanker
   Parameter list:Figure 4.
-    void
-  Return value:
-    void
-*****/
+    void*****/
 FLASHMEM void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
   float32_t* Energy = 0;
 
@@ -98,11 +95,6 @@ FLASHMEM void NoiseBlanker(float32_t* inputsamples, float32_t* outputsamples) {
 
 /*****
   Purpose: void AltNoiseBlanking(
-  Parameter list:
-    void
-  Return value:
-    void
-
   alt noise blanking is trying to localize some impulse noise within the samples and after that
   trying to replace corrupted samples by linear predicted samples.
   therefore, first we calculate the lpc coefficients which represent the actual status of the
@@ -411,12 +403,7 @@ FLASHMEM void AGCLoadValues() {
 }
 
 /*****
-  Purpose: Setup AGC()
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: Setup AGC()*****/
 FLASHMEM void AGCPrep() {
   // Start variables taken from wdsp
 
@@ -446,12 +433,7 @@ FLASHMEM void AGCPrep() {
 #define RB_SIZE                     (int) (MAX_SAMPLE_RATE * MAX_N_TAU * MAX_TAU_ATTACK + 1)
 
 /*****
-  Purpose: Audio AGC()
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: Audio AGC()*****/
 void AGC() {
   int k;
   float32_t mult;

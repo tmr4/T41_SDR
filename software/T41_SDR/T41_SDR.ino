@@ -425,21 +425,24 @@ FASTRUN void loop() {
     ShowTransmitReceiveStatus();
   }
 
+  // *** TODO: consider if a control update is proper here ***
+  ProcessControls();
+
   // process radio state
   switch(radioState) {
     case SSB_RECEIVE_STATE:
     case CW_RECEIVE_STATE:
-      switch(displayScreen) {
+      switch(displayState) {
         case DISPLAY_T41:
           ShowSpectrum();
           break;
 
         case DISPLAY_BEACON_MONITOR:
-          ShowBeacon();
-          break;
-
         default:
-        // no screen updates at all
+        // process control and IQ signals without updating display
+        // (other events may still update display, clock for example)
+        // *** TODO: many control tasks still update screen.  Fix this. ***
+        YieldToProcess();
         break;
       }
       break;
@@ -556,6 +559,9 @@ FASTRUN void loop() {
   // save radio state for next loop
   lastState = radioState;
 
+  UpdateClock();
+  UpdateMemTempLoad();
+
 #ifdef T41_REMOTE_DISPLAY
   RemoteLoop();
 #endif
@@ -579,27 +585,6 @@ FASTRUN void loop() {
 #ifndef HOST_CAT_CONTROL_SUPPORT
   T41ControlLoop();
 #endif
-
-  // update memory usage about every second
-  if(elapsed_micros_idx_t > 100) {
-    // Stack is more informative when called from within a function that might be stressing the stack
-    UpdateInfoBoxItem(IB_ITEM_STACK);
-    UpdateInfoBoxItem(IB_ITEM_HEAP);
-  }
-
-  // update load/temp about every 15 seconds
-  if(elapsed_micros_idx_t > 1400) {
-    //Serial.println(millis());
-    UpdateInfoBoxItem(IB_ITEM_TEMP);
-    UpdateInfoBoxItem(IB_ITEM_LOAD);
-  }
-
-  if(volumeChangeFlag == true) {
-    volumeChangeFlag = false;
-    UpdateInfoBoxItem(IB_ITEM_VOL);
-  }
-
-  UpdateClock();
 
   #ifdef DEBUG_LOOP
   ExitLoop();

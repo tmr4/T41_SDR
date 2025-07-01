@@ -85,7 +85,7 @@ FLASHMEM void CalibratePreamble(int setZoom) {
   tft.print(correctionIncrement, 3);
   userScale = currentScale;  //  Remember user preference so it can be reset when done.  KF5N
   currentScale = 1;          //  Set vertical scale to 10 dB during calibration.  KF5N
-  updateSpectrumData = false;
+  //updateSpectrumData = false;
   digitalWrite(MUTE, LOW);  //turn off mute
 
   ConfigAudioState();
@@ -109,7 +109,7 @@ FLASHMEM void CalibratePreamble(int setZoom) {
  *****/
 FLASHMEM void CalibratePrologue() {
   digitalWrite(RXTX, LOW);  // Turn off the transmitter.
-  updateSpectrumData = false;
+  //updateSpectrumData = false;
   ShowTransmitReceiveStatus();
   // Clear queues to reduce transient.
   Q_in_L.clear();
@@ -372,13 +372,14 @@ FLASHMEM void ProcessIQData2() {
       CalcZoom1Magn();  //AFP Moved to display function
     }
 
-    if(spectrumZoom != 0 && updateSpectrumData) {
+    //if(spectrumZoom != 0 && updateSpectrumData) {
+    if(spectrumZoom != 0) {
       //AFP  Used to process Zoom>1 for display
       ZoomFFTExe(2048);  // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
       // does not work for magnifications > 8
     }
 
-    Codec_gain(); // *** T41EEE deletes this
+    //Codec_gain(); // *** T41EEE deletes this
   }
 }
 
@@ -386,12 +387,6 @@ FLASHMEM void ProcessIQData2() {
   Purpose: Show Spectrum display modified for IQ calibration.
            This is similar to the function used for normal reception, however, it has
            been simplified and streamlined for calibration.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ShowSpectrum2() {
   int x1 = 0;
@@ -467,9 +462,10 @@ FLASHMEM float PlotCalSpectrum(int x1, int cal_bins[2], int capture_bins) {
   int16_t y_old, y_new, y1_new, y_old2;
 
   if(x1 == (cal_bins[0] - capture_bins)) {  // Set flag at revised beginning.  KF5N
-    updateSpectrumData = true;                   //Set flag so the display data are saved only once during each display refresh cycle at the start of the cycle, not 512 times
+    //updateSpectrumData = true;                   //Set flag so the display data are saved only once during each display refresh cycle at the start of the cycle, not 512 times
     ShowBandwidthBarValues();                         // Without this call, the calibration value in dB will not be updated.  KF5N
-  } else updateSpectrumData = false;              //  Do not save the the display data for the remainder of the
+  //} else updateSpectrumData = false;              //  Do not save the the display data for the remainder of the
+  }
 
   ProcessIQData2();  // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
 

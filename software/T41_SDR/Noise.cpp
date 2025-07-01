@@ -104,12 +104,6 @@ float32_t ANR_two_mu = 0.0001;
 
 /*****
   Purpose: Kim1_NR()
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void Kim1_NR() {
   const arm_cfft_instance_f32* NR_FFT = &arm_cfft_sR_f32_len256;
@@ -321,12 +315,6 @@ void Kim1_NR() {
 
 /*****
   Purpose:   xanr
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void Xanr() {
   // variable leak LMS algorithm for automatic notch or noise reduction
@@ -380,11 +368,6 @@ void Xanr() {
 
 /*****
   Purpose: spectral_noise_reduction
-  Parameter list:
-    void
-  Return value:
-    void
-
       Noise reduction with spectral subtraction rule
       based on Romanin et al. 2009 & Schmitt et al. 2002
       and MATLAB voicebox
@@ -644,12 +627,6 @@ void SpectralNoiseReduction() {
 
 /*****
   Purpose: InitLMSNoiseReduction()
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void InitLMSNoiseReduction() {
   uint16_t  calc_taps = 96;
@@ -682,12 +659,7 @@ FLASHMEM void InitLMSNoiseReduction() {
 }
 
 /*****
-  Purpose:
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose:*****/
 FLASHMEM void InitSpectralNoiseReduction() {
   for(int i = 0; i < NR_FFT_L / 2; i++)
   {

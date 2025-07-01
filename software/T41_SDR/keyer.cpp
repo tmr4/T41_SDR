@@ -109,9 +109,6 @@ int msgIndexIn = 0;
 
   Parameter list:
     int wpm
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetTransmitDitLength() {
   transmitDitLength = 1200 / currentWPM;
@@ -215,9 +212,6 @@ void WordSpace() {
 
   Parameter list:
     char code       the code for the letter to send
-
-  Return value:
-    void
 *****/
 void SendCode(char code) {
   int i;
@@ -334,9 +328,6 @@ void Send(char chr) {
 
   Parameter list:
     char *msg         message to send
-
-  Return value:
-    void
 *****/
 void SendMessage(char *msg) {
   // configure radio for CW transmission
@@ -368,9 +359,6 @@ void SendMessage(char *msg) {
 
   Paramter list:
     int index    index of message to send
-
-  Return value:
-    void
 *****/
 void SendMessage(int index) {
   SendMessage(&keyerMessages[index][0]);
@@ -379,8 +367,6 @@ void SendMessage(int index) {
 /*****
   Purpose: checks if a message key has been pressed
 
-  Parameter list:
-    void
 
   Return value:
     int           the switch that was pressed or -1 if no switch

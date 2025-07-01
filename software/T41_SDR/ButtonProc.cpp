@@ -49,12 +49,6 @@ int currentDataMode = DEMOD_PSK31; // preserves data mode between mode and band 
 
 /*****
   Purpose: To process a band increase/decrease
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ChangeBand(int change) {
   // Added if so unused GPOs will not be touched
@@ -147,12 +141,6 @@ FLASHMEM void ChangeBand(int change) {
 
 /*****
   Purpose: Make a band change if needed due to a frequency change
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ChangeBand(long newFreq) {
   int newBand = BAND_80M;
@@ -172,12 +160,6 @@ FLASHMEM void ChangeBand(long newFreq) {
 
 /*****
   Purpose: Toggle which filter is adjusted by filter encoder
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ButtonFilter() {
   switch(bands[currentBand].demod) {
@@ -232,13 +214,7 @@ FLASHMEM void ButtonFilter() {
 
 /*****
   Purpose: Change the demodulation mode
-          *** TODO: rework this if modes are expanded ***
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
+          *** TODO: rework this if modes are expanded ********/
 FLASHMEM void ChangeDemodMode(int mode) {
   // wrap up current demod mode
   if(radioMode == DATA_MODE) {
@@ -287,7 +263,7 @@ FLASHMEM void ChangeDemodMode(int mode) {
 
   SetupDemodFilterBW();
 
-  switch(displayScreen) {
+  switch(displayState) {
     case DISPLAY_T41:
       ShowOperatingStats();
       ShowBandwidthBarValues();
@@ -305,12 +281,6 @@ FLASHMEM void ChangeDemodMode(int mode) {
 
 /*****
   Purpose: Sets operating mode, SSB, CW or Data
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ChangeMode(int mode) {
   if(mode > 2) {
@@ -394,7 +364,7 @@ FLASHMEM void ChangeMode(int mode) {
   SetupDemodFilterBW();
   UpdateCWFilter();
 
-  switch(displayScreen) {
+  switch(displayState) {
     case DISPLAY_T41:
       ShowOperatingStats();
       ShowBandwidthBarValues();
@@ -412,12 +382,6 @@ FLASHMEM void ChangeMode(int mode) {
 
 /*****
   Purpose: To process select noise reduction
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ButtonNR() {
   nrOptionSelect++;
@@ -430,12 +394,6 @@ FLASHMEM void ButtonNR() {
 
 /*****
   Purpose: To set the notch filter
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ButtonNotchFilter() {
   ANR_notchOn = !ANR_notchOn;
@@ -448,12 +406,6 @@ FLASHMEM void ButtonNotchFilter() {
             Saves current noise floor to EEPROM when toggled to Off.  A band's
             current noise floor isn't preserved in EEPROM if you switch bands while
             toggle is On.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ToggleLiveNoiseFloorFlag() {
   // save final noise floor setting if toggling from ON
@@ -470,12 +422,6 @@ FLASHMEM void ToggleLiveNoiseFloorFlag() {
 
 /*****
   Purpose: To process a frequency increment button push
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ChangeFreqIncrement(int change) {
   long incrementValues[] = { 10, 50, 100, 250, 1000, 10000, 100000, 1000000 };
@@ -495,12 +441,6 @@ FLASHMEM void ChangeFreqIncrement(int change) {
 
 /*****
   Purpose: To process a fine tune frequency increment button push
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ChangeFtIncrement(int change) {
   long selectFT[] = { 10, 50, 250, 500 };
@@ -520,12 +460,6 @@ FLASHMEM void ChangeFtIncrement(int change) {
 
 /*****
   Purpose: Direct Frequency Entry
-
-  Parameter list:
-    void
-
-  Return value:
-    void
     Base Code courtesy of Harry  GM3RVL
 *****/
 FLASHMEM void ButtonFrequencyEntry() {
@@ -744,12 +678,6 @@ FLASHMEM void ButtonFrequencyEntry() {
 
 /*****
   Purpose: Bearing display
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ButtonBearing() {
   int buttonIndex, doneViewing, valPin;

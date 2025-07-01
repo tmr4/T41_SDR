@@ -101,10 +101,7 @@ static volatile int buttonADCOut;
   Purpose: ISR to read button ADC and detect button presses
 
   Parameter list:
-    none
-  Return value:
-    void
-*****/
+    none*****/
 void ButtonISR() {
 #ifndef ALT_ISR
   int filteredADCValue;
@@ -202,10 +199,7 @@ void ButtonISR() {
            functions into interrupt mode.
 
   Parameter list:
-    none
-  Return value:
-    void
-*****/
+    none*****/
 FLASHMEM void EnableButtonInterrupts() {
   buttonADCOut = BUTTON_OUTPUT_UP;
   buttonFilterRegister = buttonADCOut << BUTTON_FILTER_SHIFT;
@@ -305,9 +299,6 @@ int ReadSelectedPushButton() {
 
   Parameter list:
     int vsl               the value from analogRead in loop()
-
-  Return value:
-    void
 *****/
 FLASHMEM void ExecuteButtonPress(int val) {
 #ifdef DEBUG_SW
@@ -506,12 +497,6 @@ FLASHMEM void ExecuteButtonPress(int val) {
 
 /*****
   Purpose: Error message if Select button pressed with no Menu active
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void NoActiveMenu() {
   tft.setFontScale((enum RA8875tsize)1);

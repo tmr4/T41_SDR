@@ -81,9 +81,6 @@ FLASHMEM void Cancel() {
   Parameter list:
     char *menuItem          pointers to the menu
     int where               PRIMARY_MENU or SECONDARY_MENU
-
-  Return value:
-    void
 *****/
 FLASHMEM void ShowMenu(const char *menu[], int where) {
   tft.setFontScale( (enum RA8875tsize) 1);
@@ -116,12 +113,6 @@ FLASHMEM void ShowMenu(const char *menu[], int where) {
 
 /*****
   Purpose: To process a menu up or down
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void MenuBarChange(int change) {
   switch(menuStatus) {
@@ -220,9 +211,6 @@ FLASHMEM void MenuBarSelect() {
     void (*ptrSetup)()          pointer to function that will run at setup
     void (*ptrValue)()          pointer to function that will run at the beginning of each loop
     void (*ptrFollowup)()       pointer to function that will run after Select button is pressed or on mouse left click
-
-  Return value:
-    void
 *****/
 FLASHMEM void GetMenuValue(int minValue, int maxValue, int *currentValue, int increment, const char *prompt, int offset, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)()) {
   getMenuMin = minValue;
@@ -314,9 +302,6 @@ void GetMenuValueLoop() {
     void (*ptrSetup)()          pointer to function that will run at setup
     void (*ptrValue)()          pointer to function that will run at the beginning of each loop
     void (*ptrFollowup)()       pointer to function that will run after Select button is pressed or on mouse left click
-
-  Return value:
-    void
 *****/
 FLASHMEM void GetMenuOption(int menuIndex, int *ptrCurrentValue, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)()) {
   getMenuOffset = menuIndex;

@@ -154,9 +154,6 @@ bool infoBoxItemActive[IB_NUM_ITEMS] = {
 
   Parameter list:
     infoBoxItem *item   Pointer to the info box item to update
-
-  Return value:
-    void
 *****/
 void UpdateInfoBoxItem(uint8_t item) {
   int label_x;
@@ -166,7 +163,7 @@ void UpdateInfoBoxItem(uint8_t item) {
   int yOffset = infoBox[item].row;
 
   // *** TODO: warning the following could be breaking for displays other than the T41 operating display ***
-  if(displayScreen == DISPLAY_T41) {
+  if(displayState == DISPLAY_T41) {
     if(!infoBoxItemActive[item] || (item >= IB_NUM_ITEMS)) return;
 
     //if(item == IB_ITEM_TUNE) Serial.println(tuneIndex);
@@ -199,12 +196,6 @@ void UpdateInfoBoxItem(uint8_t item) {
 
 /*****
   Purpose: Updates the information box
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void UpdateInfoBox() {
   ClearInfoBox();
@@ -237,9 +228,6 @@ void ClearInfoBoxRow(int row) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBTuneIncFollowup(int row, int col) {
   SetFtActive(!mouseCenterTuneActive);
@@ -251,9 +239,6 @@ void IBTuneIncFollowup(int row, int col) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBCompressionFollowup(int row, int col) {
   if(compressorFlag == 1) {
@@ -268,9 +253,6 @@ void IBCompressionFollowup(int row, int col) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBWPMFollowup(int row, int col) {
   if(EEPROMData.keyType == 1) { // 1 = paddles
@@ -290,9 +272,6 @@ void IBWPMFollowup(int row, int col) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBVolFollowup(int row, int col) {
   tft.setFontScale((enum RA8875tsize)1);
@@ -307,9 +286,6 @@ void IBVolFollowup(int row, int col) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBEQFollowup(int row, int col) {
   tft.setCursor(col, row);
@@ -347,9 +323,6 @@ void IBEQFollowup(int row, int col) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBTempFollowup(int row, int col) {
   char buff[10];
@@ -365,9 +338,6 @@ void IBTempFollowup(int row, int col) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBLoadFollowup(int row, int col) {
   char buff[10];
@@ -411,9 +381,6 @@ void ClearInfoBoxFT8() {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBFT8Followup(int row, int col) {
   tft.setTextColor(WHITE);
@@ -450,9 +417,6 @@ void ClearInfoBoxKeyer() {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBKeyerFollowup(int row, int col) {
   if(keyerState == 1) {
@@ -496,15 +460,10 @@ void IBKeyerFollowup(int row, int col) {
 }
 
 // *** TODO: eliminate hard coded column/row references in next two ***
+// *** TODO: CW decoder items are overwriting other infobox items ***
 /*****
   Purpose: Show estimated WPM in information box
            Assumes decoder is in column 1 row 9
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void UpdateIBWPM() {
   tft.setFontScale((enum RA8875tsize)0);
@@ -518,12 +477,6 @@ void UpdateIBWPM() {
 
 /*****
   Purpose: Update CW decode lock indicator in information box
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void UpdateDecodeLockIndicator() {
   int yOffset = infoBox[IB_ITEM_DECODER].row;
@@ -554,12 +507,6 @@ void ClearInfoBoxContents() {
 
 /*****
   Purpose: This function draws the Info Box frame and clears the region within it
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void ClearInfoBox() {
   ClearInfoBoxContents();
@@ -572,9 +519,6 @@ void ClearInfoBox() {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBStackFollowup(int row, int col) {
   // note: these values are defined by the linker, they are not valid memory
@@ -607,9 +551,6 @@ void IBStackFollowup(int row, int col) {
 
   Parameter list:
     int row, col  Row and column of info box item
-
-  Return value:
-    void
 *****/
 void IBHeapFollowup(int row, int col) {
   // note: these values are defined by the linker, they are not valid memory
@@ -780,7 +721,7 @@ void MouseWheelInfoBox(int wheel, int x, int y) {
               audioVolume = MIN_AUDIO_VOLUME;
           }
 
-          volumeChangeFlag = true;  // Need this because of unknown timing in display updating.
+          volumeChangeFlag = true;  // flag needed for display update
           break;
 
           case IB_ITEM_TUNE:

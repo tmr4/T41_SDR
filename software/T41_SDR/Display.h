@@ -138,13 +138,12 @@
 #define DISPLAY_T41                 0
 #define DISPLAY_BEACON_MONITOR      1
 
-extern int displayScreen;
+extern int displayState;
 
 extern int centerLine;
 
 extern int16_t pixelnew[SPECTRUM_RES];
 
-extern bool updateSpectrumData;
 extern int wfRows;
 
 extern RA8875 tft;
@@ -161,9 +160,6 @@ extern dispSc displayScale[];
 
 extern int newSpectrumFlag;
 extern int nf2PC;
-
-// *** TODO: this only needs to be global for the beacon monitor ***
-extern float32_t dbm;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -195,7 +191,6 @@ void SetZoom(int zoom);
 void ShowCurrentPowerSetting();
 
 void ShowSpectrum();
-void ShowBeacon();
 
 void UpdateCWFilter();
 

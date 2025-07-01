@@ -23,6 +23,7 @@
 #include "psk31.h"
 #include "Tune.h"
 #include "t41Control.h"
+#include "t41USBHost.h"
 #include "Utility.h"
 
 //-------------------------------------------------------------------------------------------------------------
@@ -57,6 +58,12 @@ int mute = 0; // 0 - normal volume, 1 - mute (*** this is never changed ***)
 float VolumeToAmplification(int volume);
 
 //-------------------------------------------------------------------------------------------------------------
+// Forwards
+//-------------------------------------------------------------------------------------------------------------
+
+void Codec_gain();
+
+//-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
 
@@ -86,14 +93,14 @@ FLASHMEM void InitAMDemodBiquadFilter() {
              Output audio to amplifier
 
    Parameter List:
-      void
+      bool updateSpectrumData: true: prepares frequency and audio spectrum data for display
+                               false (default): skips these calculations
 
    Return value:
-      void
-
-   CAUTION: Assumes a spaces[] array is defined
+      true: input stream was processed; false: not enough data to process
  *****/
-void ProcessIQData() {
+bool ProcessIQData(bool updateSpectrumData) {
+  bool success = false;
   static float32_t audiotmp = 0.0f;
   float32_t w;
   static float32_t wold = 0.0f;
@@ -204,7 +211,7 @@ void ProcessIQData() {
           Only go there from here, if magnification == 1
       ***********************************************************************************************/
 
-      if(spectrumZoom == 0) { // && display_S_meter_or_spectrum_state == 1)
+      if(spectrumZoom == 0 && updateSpectrumData) {
         CalcZoom1Magn();  // Moved to display function
       }
 
@@ -567,7 +574,7 @@ void ProcessIQData() {
 
         arm_cmplx_mult_cmplx_f32(FFT_buffer, FIR_filter_mask, iFFT_buffer, 512);
 
-        // process audio frequency spectrum only at the beginning of the show spectrum process
+        // process audio frequency spectrum if requested
         if(updateSpectrumData) {
           for(int k = 0; k < 1024; k++) {
             audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
@@ -808,7 +815,7 @@ void ProcessIQData() {
       arm_cfft_f32(S, FFT_buffer, 0, 1);
       arm_cmplx_mult_cmplx_f32(FFT_buffer, FIR_filter_mask, iFFT_buffer, 512);
 
-      // process audio frequency spectrum only at the beginning of the show spectrum process
+      // process audio frequency spectrum if requested
       if(updateSpectrumData) {
         for(int k = 0; k < 1024; k++) {
           audioSpectBuffer[1023 - k] = (iFFT_buffer[k] * iFFT_buffer[k]);
@@ -970,7 +977,11 @@ void ProcessIQData() {
 
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
-  } // end of if(audio blocks available)
+
+    success = true;
+  }
+
+  return success;
 }
 
 /*****
@@ -978,9 +989,6 @@ void ProcessIQData() {
 
   Parameter list:
     int volume        the current reading
-
-  Return value:
-    void
 *****/
 float VolumeToAmplification(int volume) {
   float x = volume / 100.0f;  //"volume" Range 0..100
@@ -998,13 +1006,6 @@ float VolumeToAmplification(int volume) {
 
 /*****
   Purpose: To set the codec gain
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-
 *****/
 void Codec_gain() {
   static uint32_t timer = 0;
@@ -1043,4 +1044,134 @@ void Codec_gain() {
   }
   half_clip = 0;     // clear "half clip" indicator that tells us that we should decrease gain
   quarter_clip = 0;  // clear indicator that, if not triggered, indicates that we can increase gain
+}
+
+/*****
+  Purpose: Process any updates to the following controls:
+            Audio filter encoder
+            Keyboard and mouse
+            Course and Fine tune encoders
+            Live menus
+            Volume encoder
+*****/
+// *** TODO: consider what controls are proper in various radio and display states and if to control them here ***
+FASTRUN void ProcessControls() {
+  bool updateDisplay = false;
+
+  switch(displayState) {
+    case DISPLAY_T41:
+      updateDisplay = true;
+      break;
+
+    case DISPLAY_BEACON_MONITOR:
+    default:
+    // no screen updates at all
+    break;
+  }
+
+  // update volume if changed
+  if(volumeChangeFlag) {
+    if(updateDisplay) {
+      UpdateInfoBoxItem(IB_ITEM_VOL);
+    }
+    volumeChangeFlag = false;
+  }
+
+  // update filters if changed
+  if(posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
+    SetBWFilters();
+
+    if(updateDisplay) {
+      ShowBandwidthBarValues();
+      DrawBandwidthBar();
+      DrawAudioFilterLines();
+    }
+  }
+
+  // handle USB Host
+#ifdef USB_HOST_SUPPORT
+  static unsigned long last_usb_read = 0;
+
+  // poll USB Host at about 125 Hz
+  int now = millis();
+  if (now - last_usb_read > 8) {
+    UsbHostLoop();
+    last_usb_read = now;
+  }
+#endif
+
+  // Handle tuning changes
+  // There may seem some duplication of display updates here, but these tuning events
+  // shouldn't occur on the same loop so little efficiency to be gained by changing
+  EncoderCenterTune();
+  if(fineTuneFlag) {
+    if(updateDisplay) {
+      ShowFrequency();
+      DrawBandwidthBar();
+    }
+    fineTuneFlag = false;
+  }
+  if(resetTuningFlag) {
+    resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
+    ResetTuning();
+  }
+
+  // handle any live menu items
+  if(getMenuValueActive) {
+    if(getMenuSelected) {
+      ptrMenuFollowup();
+
+      // wrap up menu
+      getMenuSelected = false;
+      getMenuValueActive = false;
+      ptrMenuLoop = NULL;
+      ptrMenuFollowup = NULL;
+
+      EraseMenus();
+      menuStatus = NO_MENUS_ACTIVE;
+    } else {
+      GetMenuValueLoop();
+    }
+  }
+  if(getMenuOptionActive) {
+    if(getMenuSelected) {
+      ptrMenuFollowup();
+
+      // wrap up menu
+      getMenuSelected = false;
+      getMenuOptionActive = false;
+      ptrMenuLoop = NULL;
+      ptrMenuFollowup = NULL;
+
+      EraseMenus();
+      menuStatus = NO_MENUS_ACTIVE;
+    } else {
+      GetMenuOptionLoop();
+    }
+  }
+}
+
+float32_t CalcSignalStrength() {
+  float32_t dBm = -131.0;
+  //float32_t dbm_calibration = 22.0;
+  //const float32_t slope = 10.0;
+  //const float32_t cons = -92.0;
+  //const int attenuator = 0;
+
+  // prevent NAN dBm
+  if(audioMaxSquaredAve > 0.0) {
+    // dbm_calibration set to 22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
+    // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
+    //  rfGainAllBands is initialized to 0
+    //dBm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) + cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
+    dBm = 22.0 + bands[currentBand].gainCorrection + 0.0 + 10.0 * log10f_fast(audioMaxSquaredAve) + (-92.0) - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
+  } else {
+
+    // reset audioMaxSquaredAve to a small value
+    // with default parameters and audioMaxSquaredAve = 1.778e-6, dBm = -131
+    audioMaxSquaredAve = 0.0;
+    //Serial.println("dBm is NAN");
+  }
+
+  return dBm;
 }

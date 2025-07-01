@@ -26,7 +26,8 @@
 
 //------------------------- Global Variables ----------
 bool volumeChangeFlag, resetTuningFlag, fineTuneFlag, getEncoderValueFlag;
-long posFilterEncoder, lastFilterEncoder, filter_pos_BW, last_filter_pos_BW;
+long posFilterEncoder, filter_pos_BW, last_filter_pos_BW;
+long lastFilterEncoder = 1; // force initial update
 
 volatile int menuEncoderMove;
 volatile long fineTuneEncoderMove;
@@ -65,9 +66,6 @@ void EncodersInit() {
 
   Parameter list:
     int FW - filter width
-
-  Return value:
-    void
 *****/
 void SetBWFilters() {
   int filter_change = posFilterEncoder - lastFilterEncoder;
@@ -123,12 +121,6 @@ void SetBWFilters() {
 
 /*****
   Purpose: Set center tune frequency based on
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void EncoderCenterTune() {
   long tuneChange = 0L;
@@ -206,12 +198,6 @@ float GetEncoderValueLive(float minValue, float maxValue, float startValue, floa
 
 /*****
   Purpose: Encoder volume control ISR
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 // why not FASTRUN
 void EncoderVolumeISR() {
@@ -253,17 +239,11 @@ void EncoderVolumeISR() {
       audioVolume = MIN_AUDIO_VOLUME;
   }
 
-  volumeChangeFlag = true;  // Need this because of unknown timing in display updating.
+  volumeChangeFlag = true; // flag needed for display update
 }
 
 /*****
   Purpose: Fine tune control ISR
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FASTRUN void EncoderFineTuneISR() {
   char result;
@@ -287,12 +267,6 @@ FASTRUN void EncoderFineTuneISR() {
 
 /*****
   Purpose: Menu/Change/Filter encoder movement ISR
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FASTRUN void EncoderMenuChangeFilterISR() {
   char result;

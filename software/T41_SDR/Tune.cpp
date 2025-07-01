@@ -44,12 +44,6 @@ void SetSI5351FreqCorFactor(int factor) {
 /*****
   Purpose: A special variant of SetFreq() used only for calibration.
 
-  Parameter list:
-    void
-
-  Return value:
-    void
-
   CAUTION: SI5351_FREQ_MULT is set in the si5253.h header file and is 100UL
 *****/
 FLASHMEM void SetFreqCal(long calFreqShift) {
@@ -82,19 +76,13 @@ FLASHMEM void SetFreqCal(long calFreqShift) {
 /*****
   Purpose: Set center tuning frequency
            NCOFreq is unchanged
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void SetTxRxFreq(long freq) {
   TxRxFreq = freq;
 
   SetFreq();
 
-  switch(displayScreen) {
+  switch(displayState) {
     case DISPLAY_T41:
       ShowFrequency();          // update frequency display
       ShowOperatingStats();     // update center frequency in band info
@@ -135,9 +123,6 @@ void ResetTuning() {
 
   Parameter list:
     long tuneChange - amound to change center freq
-
-  Return value:
-    void
 *****/
 void SetCenterTune(long tuneChange) {
   centerFreq += tuneChange;  // tune the master vfo
@@ -147,12 +132,6 @@ void SetCenterTune(long tuneChange) {
 
 /*****
   Purpose: Set NCO frequency
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void SetNCOFreq(long newNCOFreq) {
   NCOFreq = newNCOFreq;
@@ -189,12 +168,6 @@ void SetNCOFreq(long newNCOFreq) {
 
 /*****
   Purpose: Set fine tuning frequency
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void SetFineTune(long tuneChange) {
   SetNCOFreq(NCOFreq + tuneChange);
@@ -202,12 +175,6 @@ void SetFineTune(long tuneChange) {
 
 /*****
   Purpose: Set si5351 frequency
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 
   CAUTION: SI5351_FREQ_MULT is set in the si5253.h header file and is 100UL
 *****/
@@ -257,12 +224,6 @@ FLASHMEM void SplitVFOFollowup() {
 
 /*****
   Purpose: Set VFO A to receive frequency and VFO B to the transmit frequency
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void DoSplitVFO() {
   currentFreqB = currentFreqA;

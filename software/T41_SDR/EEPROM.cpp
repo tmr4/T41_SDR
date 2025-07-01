@@ -133,9 +133,6 @@ config_t EEPROMData {
 
   Parameter list:
     struct EEPROMData       pointer to the EEPROM structure
-
-  Return value:
-    void
 *****/
 FLASHMEM void EEPROMWrite() {
   EEPROM.put(EEPROM_BASE_ADDRESS + sizeof(int), EEPROMData);
@@ -146,9 +143,6 @@ FLASHMEM void EEPROMWrite() {
 
   Parameter list:
   None
-
-  Return value:
-    void
 *****/
 FLASHMEM void EEPROMRead() {
   EEPROM.get(EEPROM_BASE_ADDRESS + sizeof(int), EEPROMData);
@@ -159,9 +153,6 @@ FLASHMEM void EEPROMRead() {
 
   Parameter list:
   None
-
-  Return value:
-    void
 *****/
 FLASHMEM void EEPROMWriteSize(int structSize) {
   EEPROM.put(EEPROM_BASE_ADDRESS, structSize);
@@ -172,9 +163,6 @@ FLASHMEM void EEPROMWriteSize(int structSize) {
 
   Parameter list:
   None
-
-  Return value:
-    void
 *****/
 FLASHMEM int EEPROMReadSize() {
   int structSize;
@@ -208,9 +196,6 @@ static char* EEPROMSetVersion(void) {
 
   Parameter list:
     struct config_t e[]       pointer to the EEPROM structure
-
-  Return value:
-    void
 *****/
 FLASHMEM void EEPROMShow() {
    int i;
@@ -466,9 +451,6 @@ FLASHMEM void EEPROMShow() {
 
   Parameter list:
     struct config_t e[]       pointer to the EEPROM structure
-
-  Return value:
-    void
 *****/
 FLASHMEM void EEPROMStuffFavorites(unsigned long current[]) {
   int i;
@@ -482,9 +464,6 @@ FLASHMEM void EEPROMStuffFavorites(unsigned long current[]) {
   Purpose: Used to save a favortie frequency to EEPROM
 
   Parameter list:
-
-  Return value:
-    void
 
   CAUTION: This code assumes you have set the curently active VFO frequency to the new
            frequency you wish to save. You them use the menu encoder to scroll through
@@ -546,9 +525,6 @@ FLASHMEM void SetFavoriteFrequency() {
            frequency to the currently active VFO
 
   Parameter list:
-
-  Return value:
-    void
 *****/
 FLASHMEM void GetFavoriteFrequency() {
   int index = 0;
@@ -651,9 +627,6 @@ FLASHMEM void GetFavoriteFrequency() {
 
   Parameter list:
     struct config_t e[]       pointer to the EEPROM structure
-
-  Return value:
-    void
 *****/
 FLASHMEM void EEPROMSaveDefaults2() {
   strcpy(EEPROMData.versionSettings, EEPROMSetVersion());  // Update version
@@ -1468,8 +1441,6 @@ FLASHMEM int CopySDToEEPROM() {
   Purpose: Writes the current values of the working variable
            to the SD card as SDEEPROMData.txt
 
-  Parameter list:
-    void
 
   Return value:
     int               0 = no write, 1 = write
@@ -1855,8 +1826,6 @@ FLASHMEM int CopyEEPROMToSD() {
 /*****
   Purpose: Reads the SD EEPROM data and writes it to the Serial object
 
-  Parameter list:
-    void
 
   Return value:
     int               0 = SD is untouched, 1 = has data
@@ -1894,12 +1863,6 @@ FLASHMEM void SDEEPROMDump() {
 
 /*****
   Purpose: Manage EEPROM memory at radio start-up.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void EEPROMStartup() {
   int eepromStructSize;

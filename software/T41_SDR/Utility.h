@@ -55,3 +55,5 @@ time_t GetTeensyTime();
 void SetTeensyTime(time_t time);
 
 void UpdateClock();
+void UpdateMemTempLoad();
+void YieldToProcess(bool updateSpectrum = false);

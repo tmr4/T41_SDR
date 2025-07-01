@@ -20,9 +20,6 @@
   Purpose: Create I and Q signals from Mic input
 
   Parameter list:
-
-  Return value:
-    void
     Notes:
     There are several actions in this function
     1.  Read in the data from the ADC into the Left Channel at 192KHz
@@ -122,9 +119,6 @@ void ExciterIQData() {
 
   Parameter list:
     int state             OFF = 0, ON = 1
-
-  Return value:
-    void
 *****/
 void SetBandRelay(int state) {
   // There are 4 physical relays.  Turn all of them off.

@@ -7,6 +7,7 @@
 #include "Bearing.h"
 #include "ButtonProc.h"
 #include "Display.h"
+#include "Process.h"
 #include "t41Beacon.h"
 #include "Tune.h"
 
@@ -105,12 +106,6 @@ void DrawBeaconBearing(char *beaconPrefix, int color);
 
 /*****
   Purpose: Initialize beacon monitor
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 void BeaconInit() {
   // clear screen and set display to beacon monitor
@@ -118,8 +113,8 @@ void BeaconInit() {
   tft.writeTo(L2); // clear layer 2 as well
   tft.fillWindow();
   tft.writeTo(L1);
-  displayScreen = DISPLAY_BEACON_MONITOR;
-  //displayScreen = 2; // use for testing that normal updates have been eliminated, should be a blank display with the exception of the xmit indicator
+  displayState = DISPLAY_BEACON_MONITOR;
+  //displayState = 2; // use for testing that normal updates have been eliminated, should be a blank display with the exception of the xmit indicator
 
   // *** temporary ***
   // create area on T41 display for beacon info
@@ -150,16 +145,10 @@ void BeaconInit() {
 
 /*****
   Purpose: Restore T41 operating state
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 void BeaconExit() {
   // set display screen
-  displayScreen = DISPLAY_T41;
+  displayState = DISPLAY_T41;
 
   // clear layer 2
   tft.writeTo(L2);
@@ -430,12 +419,6 @@ void DisplayBeaconsSNR(int beacon) {
 
 /*****
   Purpose: sync beacon monitor loop to transmit cycle
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 void autoSyncBeacon() {
   // loop until we're at a 10 boundary
@@ -448,12 +431,6 @@ void autoSyncBeacon() {
 
 /*****
   Purpose: beacon monitor loop
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 #define NOISE_LO 3
 #define NOISE_HI 28
@@ -465,6 +442,7 @@ void BeaconLoop() {
   static bool changeBandFlag = false;
   static int currentBeacon = 0;
   int beacon;
+  float32_t dbm;
 
   if(beaconSyncFlag) {
     if(count == 0 && changeBandFlag) {
@@ -503,6 +481,8 @@ void BeaconLoop() {
       // some detail we need.  Perhaps we need to get our data from ProcessIQData() in
       // Process.cpp.
       // #1
+      dbm = CalcSignalStrength();
+
       if(dbm < min) {
         min = dbm;
       }

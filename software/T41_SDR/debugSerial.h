@@ -24,7 +24,6 @@
 
   Member functions:
     print - sends debug message over Serial
-
 *****/
 class DebugSerial {
   private:

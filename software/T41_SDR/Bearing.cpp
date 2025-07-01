@@ -572,12 +572,6 @@ void WaitforWRComplete();
 
 /*****
   Purpose: To draw the onscreen keyboard and prompts
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void DrawKeyboard() {
   int i;
@@ -669,12 +663,6 @@ FLASHMEM void DrawKeyboard() {
 
 /*****
   Purpose: To process the user keystrokes for the onscreen keyboard
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void CaptureKeystrokes() {
   int keyWidth = 60;
@@ -866,9 +854,6 @@ FLASHMEM void CaptureKeystrokes() {
     int whichLetterIndex      which letter is being drawn from the letters[] array
     int keyWidth,             the width of the drawn key
     int keyHeight                 height
-
-  Return value:
-    void
 *****/
 FLASHMEM void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
@@ -898,9 +883,6 @@ FLASHMEM void DrawNormalLetter(int row, int horizontalSpacer, int whichLetterInd
     int whichLetterIndex      which letter is being drawn from the letters[] array
     int keyWidth,             the width of the drawn key
     int keyHeight                 height
-
-  Return value:
-    void
 *****/
 FLASHMEM void DrawActiveLetter(int row, int horizontalSpacer, int whichLetterIndex, int keyWidth, int keyHeight) {
   tft.setTextColor(RA8875_WHITE, RA8875_BLACK);
@@ -1404,8 +1386,6 @@ FLASHMEM void writeClippedRect(int x, int y, int cx, int cy, uint16_t *pixels, b
 /*****
   Purpose: Initialize the SD card
 
-  Parameter list:
-    void
 
   Return value:
     int                   0 if cannot initialize, 1 otherwise
@@ -1436,12 +1416,6 @@ FLASHMEM void WaitforWRComplete() {
 
 /*****
   Purpose: TO present a list of the bearing maps on the SD card.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void BearingMaps() {
   char ptrMaps[10][50];

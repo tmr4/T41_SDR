@@ -227,6 +227,7 @@ void AudioSetup() {
 
   // *** TODO: examine need for these with regards to audio memory ***
   // enabling these causes unstable CW behavior *** TODO: examine this and provide details ***
+  // *** TODO: consider activating these only when needed, like FT8 for Q_out_L
   Q_out_L.setBehaviour(AudioPlayQueue::NON_STALLING); // FT8 decoding slow without this *** TODO: examine audio memory issues ***
   //Q_out_L_Ex.setBehaviour(AudioPlayQueue::NON_STALLING);
   //Q_out_R_Ex.setBehaviour(AudioPlayQueue::NON_STALLING);
@@ -347,12 +348,7 @@ void ConfigAudioState() {
 
 #ifdef USE_MIC_COMPRESSION
 /*****
-  Purpose: Setup Teensy Mic Compressor
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: Setup Teensy Mic Compressor*****/
 FLASHMEM void SetupMicCompressors(float knee_dBFS, float attack_sec, float release_sec) {
   boolean use_HP_filter = true; //enable the software HP filter to get rid of DC?
   float comp_ratio = 5.0;

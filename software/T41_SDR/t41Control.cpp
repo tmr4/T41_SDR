@@ -12,6 +12,7 @@
 #include "InfoBox.h"
 #include "MenuProc.h"
 #include "mouse.h"
+#include "Process.h"
 #include "Tune.h"
 #include "Utility.h"
 
@@ -194,8 +195,8 @@ int GetMode() {
   return mode;
 }
 
-void T41ControlLoop()
-{
+void T41ControlLoop() {
+  float32_t dbm;
   //int avail;
 
   //avail = controlSerial.available();
@@ -436,6 +437,8 @@ void T41ControlLoop()
         break;
 
       case 'S': // SM;
+        dbm = CalcSignalStrength();
+
         // One of the following:
         // send dBm
         //sprintf(cmd, "SM0%+05d;", (int)(dbm * 10));
@@ -469,7 +472,7 @@ void T41ControlLoop()
         if(cmd[1] == 'O' && cmd[5] == ';') {
           // set transmitter power level
           audioVolume = atoi(&cmd[2]);
-          volumeChangeFlag = true;
+          volumeChangeFlag = true;  // flag needed for display update
         }
         return;
         break;

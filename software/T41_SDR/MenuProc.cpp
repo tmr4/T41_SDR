@@ -42,12 +42,6 @@ void ProcessEqualizerChoices(int EQType, char *title);
 
 /*****
   Purpose: Present the CW options available and return the selection
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void CWOptions() {
   // const char *cwChoices[] = { "WPM", "Key Type", "CW Filter", "Paddle Flip", "Sidetone Volume", "Transmit Delay", "Cancel" };  // AFP 10-18-22
@@ -115,12 +109,6 @@ FLASHMEM void RFGainFollowup() {
 
 /*****
   Purpose: Process RF options
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void RFOptions() {
   //  const char *rfOptions[] = { "Power level", "Gain", "Cancel" };
@@ -139,12 +127,6 @@ FLASHMEM void RFOptions() {
 
 /*****
   Purpose: Used to change the currently active VFO
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void VFOSelect(int32_t index) {
   if(radioMode == DATA_MODE) {
@@ -216,12 +198,6 @@ FLASHMEM void VFOSelect() {
 
 /*****
   Purpose: Allow user to set current EEPROM values or restore default settings
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void EEPROMOptions() {
   //  const char *EEPROMOpts[] = { "Save Current", "Set Defaults", "Get Favorite", "Set Favorite",
@@ -267,12 +243,6 @@ FLASHMEM void EEPROMOptions() {
 
 /*****
   Purpose: Present the bands available and return the selection
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void AGCOptions() {
   // const char *AGCChoices[] = { "Off", "Long", "Slow", "Medium", "Fast", "Cancel" }; // G0ORX (Added Long) September 5, 2023
@@ -287,12 +257,6 @@ FLASHMEM void AGCOptions() {
 
 /*****
   Purpose: Show the list of scales for the spectrum divisions
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void SpectrumOptions() {
   const char *spectrumChoices[] = { "20 dB/unit", "10 dB/unit", "5 dB/unit", "2 dB/unit", "1 dB/unit", "Cancel" };
@@ -310,12 +274,6 @@ FLASHMEM void SpectrumOptions() {
 
 /*****
   Purpose: Receive EQ set
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void EqualizerRecOptions() {
   //  const char *RecEQChoices[] = { "On", "Off", "EQSet", "Cancel" };
@@ -340,12 +298,6 @@ FLASHMEM void EqualizerRecOptions() {
 
 /*****
   Purpose: Xmit EQ options
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void EqualizerXmtOptions() {
   //  const char *XmtEQChoices[] = { "On", "Off", "EQSet", "Cancel" };
@@ -373,12 +325,6 @@ FLASHMEM void MicGainFollowup() {
 
 /*****
   Purpose: Set mic gain level
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void MicGainSet() {
   //  const char *micGainChoices[] = { "Set Mic Gain", "Cancel" };
@@ -428,12 +374,6 @@ FLASHMEM void SetCompressionReleaseFollowup() {
 
 /*****
   Purpose: Turn mic compression on and set the level
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void MicOptions() {
   //  const char *micChoices[] = { "On", "Off", "Set Threshold", "Set Comp_Ratio", "Set Attack", "Set Decay", "Cancel" };
@@ -484,8 +424,6 @@ FLASHMEM void MicOptions() {
 /*****
   Purpose: Present the Calibrate options available and return the selection
 
-  Parameter list:
-    void
 
   Return value
    void
@@ -747,12 +685,6 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
 
 /*****
   Purpose: Process bearing map options
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void BearingOptions() {
   //  const char *BearingChoices[] = { "Show Map", "Set Prefix", "Cancel" };
@@ -770,12 +702,6 @@ FLASHMEM void BearingOptions() {
 
 /*****
   Purpose: Turn beacon monitor on or off
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void BeaconOptions() {
   //  const char *BeaconChoices[] = { "On", "Off", "Cancel" };

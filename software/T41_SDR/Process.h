@@ -16,5 +16,6 @@ extern float32_t audioMaxSquaredAve;
 
 void InitAMDemodBiquadFilter();
 
-void ProcessIQData();
-void Codec_gain();
+bool ProcessIQData(bool updateSpectrumData = false);
+void ProcessControls();
+float32_t CalcSignalStrength();

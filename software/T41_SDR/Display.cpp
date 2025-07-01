@@ -23,11 +23,10 @@
 #include "Process.h"
 #include "Tune.h"
 #include "t41Control.h"
-#include "t41USBHost.h"
+//#include "t41USBHost.h"
 #include "Utility.h"
 
 #include "keyboard.h"
-unsigned long last_usb_read = 0;
 
 //-------------------------------------------------------------------------------------------------------------
 /*
@@ -85,7 +84,7 @@ unsigned long last_usb_read = 0;
 
   We can clear these as follows:
   For all of these items, I've added switch statements to allow for alernate screens while the radio
-  is operating. The switch statement with on the "displayScreen" variable.
+  is operating. The switch statement with on the "displayState" variable.
 
   With this, the transmit indicator is the only remaining normal operating element on the display.  I've left that for now.
 */
@@ -101,14 +100,13 @@ unsigned long last_usb_read = 0;
 
 //------------------------- Global Variables ----------
 
-int displayScreen = DISPLAY_T41;
+int displayState = DISPLAY_T41;
 
 int centerLine = SPECTRUM_RES / 2 + SPECTRUM_LEFT_X;
 
 int16_t pixelnew[SPECTRUM_RES];
 int nf2PC;
 
-bool updateSpectrumData = true;
 int wfRows = WATERFALL_H;
 
 #ifdef RA8875_DISPLAY
@@ -146,7 +144,6 @@ int16_t pos_x_time = 390;
 int16_t pos_y_time = 5;
 int16_t spectrum_x = 10;
 float xExpand = 1.4;
-int attenuator = 0;
 
 /* PROGMEM */ const uint16_t gradient[] = {  // Color array for waterfall background
   0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9,
@@ -163,7 +160,6 @@ int attenuator = 0;
   0xF87E, 0xF87E, 0xF87E, 0xF87E, 0xF88F, 0xF88F, 0xF88F
 };
 
-uint16_t waterfall[WATERFALL_W];
 int maxYPlot;
 int filterWidthX;  // The current filter X.
 
@@ -228,12 +224,6 @@ void InitDisplay() {
 
 /*****
   Purpose: Show the program name and version number
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ShowName() {
   tft.fillRect(RIGNAME_X_OFFSET, 0, XPIXELS - RIGNAME_X_OFFSET, tft.getFontHeight(), RA8875_BLACK);
@@ -349,107 +339,9 @@ void DrawAudioFilterLines() {
 }
 
 /*****
-  Purpose: Process any updates to the following controls:
-            Audio filter encoder
-            Keyboard and mouse
-            Course and Fine tune encoders
-            Live menus
-            *** TODO: consider putting volume here as well instead of in main loop ***
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FASTRUN void UpdateControls(bool updateDisplay) {
-  // update filters if changed
-  if(posFilterEncoder != lastFilterEncoder || filter_pos_BW != last_filter_pos_BW) {
-    SetBWFilters();
-
-    //if(updateDisplay)
-    {
-      ShowBandwidthBarValues();
-      DrawBandwidthBar();
-      DrawAudioFilterLines();
-    }
-  }
-
-  // handle USB Host
-#ifdef USB_HOST_SUPPORT
-  // poll USB Host at about 125 Hz
-  int now = millis();
-  if(now - last_usb_read > 8) {
-    UsbHostLoop();
-    last_usb_read = now;
-  }
-#endif
-
-  // Handle tuning changes
-  // There may seem some duplication of display updates here, but these tuning events
-  // shouldn't occur on the same loop so little efficiency to be gained by changing
-  EncoderCenterTune();
-  if(fineTuneFlag) {
-    if(updateDisplay) {
-      ShowFrequency();
-      DrawBandwidthBar();
-    }
-    fineTuneFlag = false;
-  }
-  if(resetTuningFlag) {
-    resetTuningFlag = false; // DrawBandwidthBar relies on this being set prior to the ResetTuning call
-    ResetTuning();
-  }
-
-  // handle any live menu items
-  if(getMenuValueActive) {
-    if(getMenuSelected) {
-      ptrMenuFollowup();
-
-      // wrap up menu
-      getMenuSelected = false;
-      getMenuValueActive = false;
-      ptrMenuLoop = NULL;
-      ptrMenuFollowup = NULL;
-
-      EraseMenus();
-      menuStatus = NO_MENUS_ACTIVE;
-    } else {
-      GetMenuValueLoop();
-    }
-  }
-  if(getMenuOptionActive) {
-    if(getMenuSelected) {
-      ptrMenuFollowup();
-
-      // wrap up menu
-      getMenuSelected = false;
-      getMenuOptionActive = false;
-      ptrMenuLoop = NULL;
-      ptrMenuFollowup = NULL;
-
-      EraseMenus();
-      menuStatus = NO_MENUS_ACTIVE;
-    } else {
-      GetMenuOptionLoop();
-    }
-  }
-}
-
-/*****
-  Purpose: Update normal T41 operating display
-            This routine calls the Audio process Function during each display cycle,
-            for each of the 512 display frequency bins.  This means that the audio is
-            refreshed at the maximum rate and does not have to wait for the display to
-            complete drawing the full spectrum.  However, the display data are only
-            updated ONCE during each full display cycle, ensuring consistent data for
-            the erase/draw cycle at each frequency point.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
+  Purpose: Update spectrum and waterfall on T41 display
+            This is is a long running process.  It yields periodically to allow normal
+            radio operations to continue.
 *****/
 FASTRUN void ShowSpectrum() {
   int yPlot, y1Plot;
@@ -458,6 +350,9 @@ FASTRUN void ShowSpectrum() {
   static uint16_t yOldPlot[SPECTRUM_RES];
   static int yOldAudioPlot[AUDIO_SPEC_RES];
   static int currentNF = 0;
+  uint16_t waterfall[WATERFALL_W];
+
+  YieldToProcess(true);
 
   // set current noise flow level for this loop
   // noise floor is constant for each spectrum update
@@ -473,26 +368,11 @@ FASTRUN void ShowSpectrum() {
     newSpectrumFlag = 1;
   }
 
-  // Draw the main Spectrum, Waterfall and Audio displays
+  // Draw the frequency and audio spectrums, gather data for waterfall
   for(int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
-    // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
-    if(x1 == 0) {
-      // Set flag so the display FFTs are calculated only once during each display refresh cycle
-      updateSpectrumData = true;
-    } else {
-      // Do not save the the display data for the remainder of the display update
-      updateSpectrumData = false;
-    }
+    bool drawSpec = true, eraseSpec = true, inBoxLow = true, inBoxHigh = true;
 
-    // Process any control updates here to minimize interruption to signal stream
-    UpdateControls(true);
-
-    if(GetXRState()) {
-      // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
-      ProcessIQData();
-    }
-
-    // FFT function generates the pixelnew spectrum
+    // calculate the freq spectrum plot value; pixelnew spectrum is calculated in ZoomFFTExe
     yPlot = spectrumNoiseFloor - pixelnew[x1] - currentNF;
     y1Plot = spectrumNoiseFloor - pixelnew[x1 + 1] - currentNF;
 
@@ -516,10 +396,21 @@ FASTRUN void ShowSpectrum() {
       }
     }
 
-    bool drawSpec = true, eraseSpec = true, inBoxLow = true, inBoxHigh = true;
+    // clear erase flag if we don't need to erase anything
+    if((yOldPlot[x1] == SPECTRUM_BOTTOM) && (yOldPlot[x1 + 1] == SPECTRUM_BOTTOM)) {
+      eraseSpec = false;
+    }
+    if((yOldPlot[x1] == SPECTRUM_TOP_Y) && (yOldPlot[x1 + 1] == SPECTRUM_TOP_Y)) {
+      eraseSpec = false;
+    }
 
-    // Prevent spectrum from going below the bottom of the spectrum area
-    // Prevent spectrum from going above the top of the spectrum area
+    // erase the old spectrum if needed
+    if(eraseSpec) {
+      tft.drawLine(SPECTRUM_LEFT_X + x1, yOldPlot[x1 + 1], SPECTRUM_LEFT_X + x1, yOldPlot[x1], RA8875_BLACK);
+    }
+
+    // prevent drawing spectrum outside of the spectrum area
+    // also clear draw flag if we don't need to draw anything
     if(yPlot > SPECTRUM_BOTTOM) {
       yPlot = SPECTRUM_BOTTOM;
       inBoxLow = false;
@@ -537,23 +428,12 @@ FASTRUN void ShowSpectrum() {
       drawSpec = inBoxHigh ? true : false;
     }
 
-    // should we erase old spectrum
-    if((yOldPlot[x1] == SPECTRUM_BOTTOM) && (yOldPlot[x1 + 1] == SPECTRUM_BOTTOM)) {
-      eraseSpec = false;
-    }
-    if((yOldPlot[x1] == SPECTRUM_TOP_Y) && (yOldPlot[x1 + 1] == SPECTRUM_TOP_Y)) {
-      eraseSpec = false;
-    }
-
-    // Erase the old spectrum, and draw the new spectrum.
-    if(eraseSpec) {
-      tft.drawLine(SPECTRUM_LEFT_X + x1, yOldPlot[x1 + 1], SPECTRUM_LEFT_X + x1, yOldPlot[x1], RA8875_BLACK);
-    }
+    // draw the new spectrum if needed
     if(drawSpec) {
       tft.drawLine(SPECTRUM_LEFT_X + x1, y1Plot, SPECTRUM_LEFT_X + x1, yPlot, RA8875_YELLOW);
     }
 
-    // save values to erase spectrum next loop
+    // save pot value to erase spectrum next loop
     yOldPlot[x1] = yPlot;
 
 #ifdef T41_REMOTE_DISPLAY
@@ -562,7 +442,7 @@ FASTRUN void ShowSpectrum() {
     }
 #endif
 
-    // update audio spectrum
+    // update audio spectrum if within range
     // don't overwrite audio filter lines
     if(x1 < AUDIO_SPEC_RES && (x1 != filterLoPosition) && (x1 != filterHiPosition)) {
       // *** TODO: consider adding audio spectrum for transmission ***
@@ -599,6 +479,8 @@ FASTRUN void ShowSpectrum() {
     // PC control app.  These may not be needed if that app isn't used.
     delayMicroseconds(147);
 #endif
+
+    YieldToProcess();
   }
 
   // save last plot value for erasing on next loop
@@ -642,15 +524,9 @@ FASTRUN void ShowSpectrum() {
   //     buffers have sufficient data to process at the start of the next
   //     loop.  Spectrum updates are skipped if this isn't the case.
   tft.BTE_move(WATERFALL_L, WATERFALL_T, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 1, 2);
-
-  // process controls and audio here to make radio appear more responsive
-  // Adding a call to ProcessIQ also shortens overall process loop time and smooths display updates somewhat.
-  // We can add another call to ProcessIQData later in the waterfall update with proper care to ensure IQ
-  // input buffers will be full at start of next loop.  However, this doesn't seem to add much value.
-  UpdateControls(true);
-  ProcessIQData();
-
   tft.readStatus(); // Make sure it is done.  Memory moves can take time. This is blocking. *** might need to be changed back to original if blocking nature is modified ***
+
+  YieldToProcess();
 
   // copy the waterfall back to layer 1, row 2
   tft.BTE_move(WATERFALL_L, WATERFALL_T + 1, WATERFALL_W, wfRows, WATERFALL_L, WATERFALL_T + 1, 2);
@@ -669,12 +545,6 @@ FASTRUN void ShowSpectrum() {
 /*****
   Purpose: this routine prints the frequency bars under the spectrum display
            and displays the bandwidth bar indicating demodulation bandwidth
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ShowBandwidthBarValues() {
   char buff[10];
@@ -762,12 +632,7 @@ FLASHMEM void ShowBandwidthBarValues() {
 }
 
 /*****
-  Purpose: ShowSpectrumdBScale()
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: ShowSpectrumdBScale()*****/
 FLASHMEM void ShowSpectrumdBScale() {
   tft.writeTo(L2);
   tft.setFontScale((enum RA8875tsize)0);
@@ -785,12 +650,6 @@ FLASHMEM void ShowSpectrumdBScale() {
   Purpose: This function draws the frequency bar at the bottom of the spectrum scope, putting markers at every
             graticule and the full frequency
             *** this can be more efficient by moving the tick marks to the static function, but this increases code size ***
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ShowSpectrumFreqValues() {
   char txt[16];
@@ -892,13 +751,6 @@ FLASHMEM void ShowSpectrumFreqValues() {
 
 /*****
   Purpose: To display the current transmission frequency, band, mode, and sideband above the spectrum display
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-
 *****/
 FLASHMEM void ShowOperatingStats() {
   tft.setFontScale((enum RA8875tsize)0);
@@ -981,12 +833,6 @@ FLASHMEM void ShowOperatingStats() {
 
 /*****
   Purpose: Display current power setting
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void ShowCurrentPowerSetting() {
   tft.setFontScale((enum RA8875tsize)0);
@@ -999,12 +845,6 @@ FLASHMEM void ShowCurrentPowerSetting() {
 
 /*****
   Purpose: Update CW Filter
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void UpdateCWFilter() {
   float CWFilterPosition = 85.0; // max filter position
@@ -1032,6 +872,7 @@ FLASHMEM void UpdateCWFilter() {
         break;
     }
 
+    // *** TODO: drawing and clearing filter lines needs updated ***
     tft.fillRect(AUDIO_SPEC_L, AUDIO_SPEC_T, CWFilterPosition, 120, MAROON);
     // this bounding line is confusing given the filter lines already in the audio spectrum box
     //tft.drawFastVLine(AUDIO_SPEC_BOX_L + 2 + CWFilterPosition, AUDIO_SPEC_BOX_T, AUDIO_SPEC_BOX_H, RA8875_LIGHT_GREY);
@@ -1045,12 +886,6 @@ FLASHMEM void UpdateCWFilter() {
 
 /*****
   Purpose: Show main frequency display at top
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FASTRUN void ShowFrequency() {
   char freqBuffer[15];
@@ -1098,52 +933,29 @@ FASTRUN void ShowFrequency() {
   tft.print(freqBuffer); // Show the other one
 }
 
-// *** TODO: this only needs to be global for the beacon monitor ***
-float32_t dbm;
 // this variable determines the pixels per S step. In the original code it was 12.2 pixels !?
 const float pixels_per_s = 12;
 /*****
   Purpose: Display dBm
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FASTRUN void DrawSmeterBar() {
   char buff[10];
   //const char *unit_label;
   int16_t smeterPad;
-  float32_t dbm_calibration = 22.0;
-  const float32_t slope = 10.0;
-  const float32_t cons = -92.0;
+  float32_t dbm;
 
   // *** it's easiest for now to handle multiple display "pages" by limiting S-meter display
-  // updates here to when displayScreen is set to DISPLAY_T41, messy, but it works.
+  // updates here to when displayState is set to DISPLAY_T41, messy, but it works.
   // Refinesments are possible. ***
 
   // the S-Meter bar and the dBm value were inconsistent, as they were using different base values.
   // Moreover the bar could go over the limits of the S-meter box, as the map() function, does not constrain the values
   // S-Meter bar is consistent with the dBm value and the S-Meter bar will always be restricted to the box
-  if(displayScreen == DISPLAY_T41) {
+  if(displayState == DISPLAY_T41) {
     tft.fillRect(SMETER_X + 1, SMETER_Y + 1, SMETER_BAR_LENGTH, SMETER_BAR_HEIGHT, RA8875_BLACK); // Erase old bar
   }
 
-  if(audioMaxSquaredAve > 0.0) {
-    // dbm_calibration set to 22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
-    // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
-    //  rfGainAllBands is initialized to 0
-    dbm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) +
-          cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
-  } else {
-
-    // reset audioMaxSquaredAve to a small value
-    // with default parameters and audioMaxSquaredAve = 1.778e-6, dBm = -131
-    audioMaxSquaredAve = 0.0;
-    //Serial.println("dBm is NAN");
-    dbm = -131;
-  }
+  dbm = CalcSignalStrength();
 
   // determine length of S-meter bar, limit it to the box and draw it
   smeterPad = map(dbm, -73.0-9*6.0 /*S1*/, -73.0 /*S9*/, 0, 9*pixels_per_s);
@@ -1151,13 +963,13 @@ FASTRUN void DrawSmeterBar() {
   // make sure, that it does not extend beyond the field
   smeterPad = max(0, smeterPad);
   smeterPad = min(SMETER_BAR_LENGTH, smeterPad);
-  if(displayScreen == DISPLAY_T41) {
+  if(displayState == DISPLAY_T41) {
     tft.fillRect(SMETER_X + 1, SMETER_Y + 2, smeterPad, SMETER_BAR_HEIGHT-2, RA8875_RED); // bar 2*1 pixel smaller than the field
 
     tft.setTextColor(RA8875_WHITE);
   }
 
-  if(displayScreen == DISPLAY_T41) {
+  if(displayState == DISPLAY_T41) {
     //unit_label = "dBm";
     tft.setFontScale((enum RA8875tsize)0);
 
@@ -1182,9 +994,6 @@ FASTRUN void DrawSmeterBar() {
     int decimals      the number of decimal places
     int x             the x coordinate for display
     int y                 y          "
-
-  Return value:
-    void
 *****/
 FLASHMEM void MyDrawFloat(float val, int decimals, int x, int y, char *buff) {
   MyDrawFloatP(val, decimals, x, y, buff, FLOAT_PRECISION);
@@ -1201,12 +1010,6 @@ FLASHMEM void MyDrawFloatP(float val, int decimals, int x, int y, char *buff, in
 
 /*****
   Purpose: This function redraws the entire display screen where the equalizers appeared
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void RedrawDisplayScreen() {
   // clear display
@@ -1233,12 +1036,6 @@ FLASHMEM void RedrawDisplayScreen() {
 
 /*****
   Purpose: Draw Tuned Bandwidth on Spectrum Plot
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FASTRUN void DrawBandwidthBar() {
   float zoomMultFactor = 0.0;
@@ -1355,12 +1152,6 @@ FASTRUN void DrawBandwidthBar() {
 
 /*****
   Purpose: This function draws spectrum display container
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void DrawSpectrumFrame() {
   tft.drawRect(SPEC_BOX_L, SPEC_BOX_T, SPEC_BOX_W, SPEC_BOX_H, RA8875_YELLOW);
@@ -1368,12 +1159,6 @@ FLASHMEM void DrawSpectrumFrame() {
 
 /*****
   Purpose: This function removes the spectrum display container
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void EraseSpectrumDisplayContainer() {
   tft.fillRect(SPECTRUM_LEFT_X - 2, SPECTRUM_TOP_Y - 1, SPECTRUM_RES + 6, SPECTRUM_HEIGHT + 8, RA8875_BLACK);  // Spectrum box
@@ -1381,12 +1166,6 @@ FLASHMEM void EraseSpectrumDisplayContainer() {
 
 /*****
   Purpose: This function erases the contents of the spectrum display
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void EraseSpectrumWindow() {
   newSpectrumFlag = 0; // old noise floor needs reset
@@ -1395,12 +1174,6 @@ FLASHMEM void EraseSpectrumWindow() {
 
 /*****
   Purpose: Draw S-Meter container
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void DrawSMeterContainer() {
   int i;
@@ -1452,9 +1225,6 @@ FLASHMEM void DrawSMeterContainer() {
   Purpose: Draw audio spectrum box
 
   Parameter list:
-
-  Return value:
-    void
 *****/
 FLASHMEM void DrawAudioSpectContainer() {
   float ticks = (float)(AUDIO_SPEC_RES) / AUDIO_SPEC_SPAN * 1000.0;
@@ -1476,9 +1246,6 @@ FLASHMEM void DrawAudioSpectContainer() {
   Purpose: To erase both primary and secondary menus from display
 
   Parameter list:
-
-  Return value:
-    void
 *****/
 FLASHMEM void EraseMenus() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, BOTH_MENU_WIDTHS, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
@@ -1489,9 +1256,6 @@ FLASHMEM void EraseMenus() {
   Purpose: To erase primary menu from display
 
   Parameter list:
-
-  Return value:
-    void
 *****/
 FLASHMEM void ErasePrimaryMenu() {
   tft.fillRect(PRIMARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
@@ -1502,9 +1266,6 @@ FLASHMEM void ErasePrimaryMenu() {
   Purpose: To erase secondary menu from display
 
   Parameter list:
-
-  Return value:
-    void
 *****/
 FLASHMEM void EraseSecondaryMenu() {
   tft.fillRect(SECONDARY_MENU_X, MENUS_Y, EACH_MENU_WIDTH, CHAR_HEIGHT + 1, RA8875_BLACK);  // Erase menu choices
@@ -1515,9 +1276,6 @@ FLASHMEM void EraseSecondaryMenu() {
   Purpose: Shows transmit (red) and receive (green) mode
 
   Parameter list:
-
-  Return value:
-    void
 *****/
 FLASHMEM void ShowTransmitReceiveStatus() {
   tft.setFontScale((enum RA8875tsize)1);
@@ -1543,12 +1301,6 @@ FLASHMEM void ShowTransmitReceiveStatus() {
 /*****
   Purpose: Set frequency display to specified level
     *** TODO: needs reset tuning if bandwidth
-  Parameter list:
-    void
-
-  Return value:
-    void
-
 *****/
 FLASHMEM void SetZoom(int zoom) {
   spectrumZoom = zoom;
@@ -1568,13 +1320,6 @@ FLASHMEM void SetZoom(int zoom) {
 
 /*****
   Purpose: Draw static items on display
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-
 *****/
 FLASHMEM void DrawStaticDisplayItems() {
   ShowName();
@@ -1595,45 +1340,3 @@ FLASHMEM void PrintKeyboardBuffer() {
   tft.print((char *)kbBuffer);
 }
 #endif
-
-/*****
-  Purpose: Update Beacon display
-            See notes for ShowSpectrum()
-            Currently this is just a copy of ShowSpectrum() with anything that updates the diplay commented out
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-*****/
-FASTRUN void ShowBeacon() {
-  for(int x1 = 0; x1 < SPECTRUM_RES - 1; x1++) {
-    // Update the frequency here only.  This is the beginning of the 512 wide spectrum display
-    if(x1 == 0) {
-      // Set flag so the display FFTs are calculated only once during each display refresh cycle
-      updateSpectrumData = true;
-    } else {
-      // Do not save the the display data for the remainder of the display update
-      updateSpectrumData = false;
-    }
-
-    // Process any control updates here to minimize interruption to signal stream
-    UpdateControls(false);
-
-    if(GetXRState()) {
-      // Call the Audio process from within the display routine to eliminate conflicts with drawing the spectrum and waterfall displays
-      ProcessIQData();
-    }
-
-  }
-
-  // update S-meter once per loop
-  DrawSmeterBar(); // can't get rid of this yet, need dbm calc
-
-  // update FT8 msg if appropriate
-  //if(ft8MsgSelectActive) {
-  if(ft8MsgSelectActive) {
-    DisplayMessages();
-  }
-}

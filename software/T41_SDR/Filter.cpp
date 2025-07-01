@@ -121,12 +121,6 @@ arm_biquad_cascade_df2T_instance_f32 S14_Xmt = { IIR_NUMSTAGES, xmt_EQ_Band14_st
 
 /*****
   Purpose: set_IIR_coeffs
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetIIRCoeffs(float32_t *coefficient_set, float32_t f0, float32_t Q, float32_t sample_rate, uint8_t filter_type) {
 
@@ -172,12 +166,6 @@ FLASHMEM void SetIIRCoeffs(float32_t *coefficient_set, float32_t f0, float32_t Q
 
 /*****
   Purpose: DoReceiveEQ
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void DoReceiveEQ() {
   for(int i = 0; i < 14; i++) {
@@ -231,12 +219,6 @@ void DoReceiveEQ() {
 
 /*****
   Purpose: DoExciterEQ
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void DoExciterEQ() {
   for(int i = 0; i < 14; i++) {
@@ -290,12 +272,6 @@ void DoExciterEQ() {
 
 /*****
   Purpose: calculates decimation, interpolation and audio filters
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void CalcFilters() {
   if(bands[currentBand].demod == DEMOD_NFM && nfmBWFilterActive) {
@@ -311,12 +287,6 @@ void CalcFilters() {
 
 /*****
   Purpose: UpdateFFTFilterMask()
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void UpdateFFTFilterMask() {
   const arm_cfft_instance_f32* maskS = &arm_cfft_sR_f32_len512;
@@ -348,12 +318,6 @@ void UpdateFFTFilterMask() {
 /*****
   Purpose: changes audio filters appropriate for the current demod mode and calculates new filters based on BW
            *** evaluate using just high/low audio filters, without changing back and forth; lilely big code change ***
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetupDemodFilterBW() {
   //float temp;

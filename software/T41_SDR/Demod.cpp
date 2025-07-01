@@ -31,12 +31,7 @@ float32_t omega2 = 0.0;
 //-------------------------------------------------------------------------------------------------------------
 
 /*****
-  Purpose: AMDecodeSAM()
-  Parameter list:
-    void
-  Return value:
-    void
-  Notes:  Synchronous AM detection.  Determines the carrier frequency, adjusts freq and replaces the received carrier with a steady signal to prevent fading.
+  Purpose: AMDecodeSAM()  Notes:  Synchronous AM detection.  Determines the carrier frequency, adjusts freq and replaces the received carrier with a steady signal to prevent fading.
   This alogorithm works best of those implimented
       // taken from Warren Pratt´s WDSP, 2016
   // http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp/
@@ -143,12 +138,7 @@ void AMDecodeSAM() {
 }
 
 /*****
-  Purpose: ApproxAtan2
-  Parameter list:
-    void
-  Return value:
-    void
-*****/
+  Purpose: ApproxAtan2*****/
 float ApproxAtan2(float y, float x) {
   if(x != 0.0f)
   {

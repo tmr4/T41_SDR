@@ -120,12 +120,6 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
 
 /*****
   Purpose: wrap up SetWPM and save to EEPROM
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetWPMFollowup() {
   SetTransmitDitLength();
@@ -144,12 +138,6 @@ FLASHMEM void SetKeyTypeFollowup() {
 }
 /*****
   Purpose: Select straight key or keyer
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetKeyType() {
   if(USE_FULL_MENU) {
@@ -163,12 +151,6 @@ FLASHMEM void SetKeyType() {
 
 /*****
   Purpose: Set up key at power-up.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetKeyPowerUp() {
   if(keyType == 0) {
@@ -203,12 +185,6 @@ FLASHMEM void SelectCWFilterFollowup() {
            3 = 1.8kHz
            4 = 2kHz
            5 = Off
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SelectCWFilter() {
   // save CW filter index for later
@@ -236,12 +212,6 @@ FLASHMEM void DoPaddleFlipFollowup() {
 
 /*****
   Purpose: This option reverses the dit and dah paddles on the keyer
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void DoPaddleFlip() {
   getMenuInc = paddleDah == KEYER_DAH_INPUT_RING ? 0 : 1;
@@ -253,12 +223,6 @@ FLASHMEM void DoPaddleFlip() {
 
 /*****
   Purpose: Allow user to set the sidetone volume
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetSideToneVolumeSetup() {
   // I assume this is supposed to play a tone, varying the volume as we make the adjustment
@@ -294,12 +258,6 @@ FLASHMEM void SetSideToneVolumeFollowup() {
 
 /*****
   Purpose: Determines how long the transmit relay remains on after last CW atom is sent.
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetTransmitDelayFollowup() {
   EEPROMData.cwTransmitDelay = cwTransmitDelay;
@@ -308,13 +266,6 @@ FLASHMEM void SetTransmitDelayFollowup() {
 
 /*****
   Purpose: to process CW specific signals
-
-  Parameter list:
-    void
-
-  Return value:
-    void
-
 *****/
 void DoCWReceiveProcessing() {
   float goertzelMagnitude1;
@@ -378,9 +329,6 @@ void DoCWReceiveProcessing() {
 
   Parameter list:
     int wpm
-
-  Return value:
-    void
 *****/
 FLASHMEM void SetDitLength(int wpm) {
   ditLength = 1200 / wpm;
@@ -395,9 +343,6 @@ static int col = 0;  // Start at lower left
 
   Parameter list:
     char currentLetter
-
-  Return value
-    void
 *****/
 void MorseCharacterDisplay(char currentLetter) {
   if(col < MAX_DECODE_CHARS) {  // Start scrolling??
@@ -421,12 +366,6 @@ void MorseCharacterDisplay(char currentLetter) {
 /*****
   Purpose: This function uses the current WPM to set an estimate ditLength any time the tune
            endcoder is changed
-
-  Parameter list:
-    void
-
-  Return value
-    void
 *****/
 FLASHMEM void ResetHistograms() {
   gapAtom = 80;
@@ -460,9 +399,6 @@ FLASHMEM void ResetHistograms() {
 
   Parameter list:
     float audioValue        the strength of audio signal
-
-  Return value:
-    void
 *****/
 // charProcessFlag means a character is being decoded.  blankFlag indicates a blank has already been printed.
 bool charProcessFlag, blankFlag;
@@ -577,10 +513,6 @@ void DoCWDecoding(int audioValue) {
 
   Parameter list:
     long val        the duration of the signal gap (ms)
-
-  Return value:
-    void
-
 *****/
 void DoGapHistogram(long gapLen) {
   int32_t tempAtom, tempChar;
@@ -642,9 +574,6 @@ void DoGapHistogram(long gapLen) {
     int32_t *firstNonZero  the first cell that has a non-zero value
     int32_t clusterSpread  tells how far previous and ahead elements are to be included in the measure.
                             Must be an odd integer > 1.
-
-  Return value:
-    void
 *****/
 void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, int32_t *maxIndex, int32_t *firstNonZero, int32_t spread) {
   int32_t i, j, clusteredIndex;
@@ -684,7 +613,6 @@ void JackClusteredArrayMax(int32_t *array, int32_t elements, int32_t *maxCount, 
 
   Return value:
   void
-
 *****/
 void DoSignalHistogram(long val) {
   float compareFactor = 2.0;
@@ -755,7 +683,6 @@ void DoSignalHistogram(long val) {
 
   Return value:
     float magnitude     //magnitude of the transform at the target frequency
-
 *****/
 float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, float *data) {
   int k, i;

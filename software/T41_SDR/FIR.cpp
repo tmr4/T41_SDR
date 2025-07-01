@@ -160,9 +160,6 @@ void InitFIRFilter() {
     int type
     float dfc
     float Fsamprate
-
-  Return value:
-    void
 *****/
 void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop, int type, float dfc, float Fsamprate) {
   // modified by WMXZ and DD4WH after
@@ -259,9 +256,6 @@ void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop
     float32_t fLoCut
     float32_t FHiCut
     float sampleRate
-
-  Return value:
-    void
 *****/
 void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float32_t fLoCut, float32_t fHiCut, float sampleRate) {
   //calculate some normalized filter parameters
@@ -322,12 +316,6 @@ void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float3
 
 /*****
   Purpose: SetDecIntFilters()
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void SetDecIntFilters() {
   /****************************************************************************************
@@ -357,9 +345,6 @@ void SetDecIntFilters() {
 
   Parameter list:
     int filter_BW - desired bandwidth
-
-  Return value:
-    void
 *****/
 void SetDecIntFilters(int filter_BW) {
   int LP_F_help = filter_BW;

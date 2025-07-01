@@ -26,12 +26,6 @@ uint8_t keyPressedOn = 0;
 
 /*****
   Purpose: CW key interrupt
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void KeyTipOn() {
   if(digitalRead(KEYER_DIT_INPUT_TIP) == LOW && radioMode == CW_MODE ) {
@@ -41,12 +35,6 @@ void KeyTipOn() {
 
 /*****
   Purpose: CW key interrupt
-
-  Parameter list:
-    void
-
-  Return value:
-    void
 *****/
 void KeyRingOn() {
   if(keyType == 1) {
@@ -70,9 +58,6 @@ void KeyRingOn() {
     bool pause      pause for 10ms while signal plays
     int timeAdjust  shorten the ramp block by timeAdjust ms
     bool pwrScale   scale signal for loses during interpolation
-
-  Return value:
-    void
 *****/
 void CW_ExciterIQData(int state = ON, bool ramp = false, bool pause = true, float timeAdjust = 0.0, bool pwrScale = true) {
   float cwPwr = (-.0133 * transmitPowerLevel * transmitPowerLevel + .7884 * transmitPowerLevel + 4.5146) * CWPowerCalibrationFactor[currentBand];
@@ -215,9 +200,6 @@ void CW_ExciterIQData(int state = ON, bool ramp = false, bool pause = true, floa
 
   Parameter list:
     unsigned long signalLength
-
-  Return value:
-    void
 *****/
 void CreateCWSignal(unsigned long signalLength) {
   // # of full 10ms blocks (less initial on and final off 10 ms blocks) required to create signal
