@@ -653,7 +653,7 @@ FLASHMEM void ProcessEqualizerChoices(int EQType, char *title) {
 
       val = ReadSelectedPushButton();  // Read the ladder value
 
-      if(val != -1 && val < (EEPROMData.switchValues[0] + WIGGLE_ROOM)) {
+      if(val != BOGUS_PIN_READ) {
         val = ProcessButtonPress(val);  // Use ladder value to get menu choice
         delay(100L);
 

@@ -49,20 +49,14 @@ void AMDecodeSAM() {
   float32_t onem_mtauI = 1.0 - mtauI;
   uint8_t fade_leveler = 1;
   float32_t SAM_carrier = 0.0;
-  float32_t SAM_lowpass = 2700.0;
   float32_t SAM_carrier_freq_offset = 0.0;
-  float32_t SAM_carrier_freq_offsetOld = 0.0;
+
+  static float32_t SAM_carrier_freq_offsetOld = 0.0;
 
   // taken from Warren Pratt´s WDSP, 2016
   // http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp/
   // http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp/
-  //phzerror = 0;
-  tft.setFontScale( (enum RA8875tsize) 0);
-  tft.fillRect(OPERATION_STATS_L + 125 + 160, OPERATION_STATS_T, tft.getFontWidth() * 11, tft.getFontHeight(), RA8875_BLUE);        // AFP 11-01-22 Clear top-left menu area
-  tft.setCursor(OPERATION_STATS_L + 125 + 160, OPERATION_STATS_T);   // AFP 11-01-22
-  tft.setTextColor(RA8875_WHITE);
-  // tft.fill//Rect(OPERATION_STATS_L + 125 + 155, OPERATION_STATS_T, tft.getFontWidth() * 11, tft.getFontHeight(), RA8875_BLUE);
-    tft.print("(SAM) ");  //AFP 11-01-22
+
   for(unsigned i = 0; i < 256; i++)
   {
     float32_t Sin, Cos;
@@ -84,8 +78,7 @@ void AMDecodeSAM() {
 
     audio = (ai - bi) + (aq + bq);
 
-    if(fade_leveler)
-    {
+    if(fade_leveler) {
       dc = mtauR * dc + onem_mtauR * audio;
       dc_insert = mtauI * dc_insert + onem_mtauI * corr[0];
       audio = audio + dc_insert - dc;
@@ -93,8 +86,7 @@ void AMDecodeSAM() {
 
     float_buffer_L[i] = audio;
 
-    if(fade_leveler)
-    {
+    if(fade_leveler) {
       dcu = mtauR * dcu + onem_mtauR * audiou;
       dc_insertu = mtauI * dc_insertu + onem_mtauI * corr[0];
       audiou = audiou + dc_insertu - dcu;
@@ -104,8 +96,11 @@ void AMDecodeSAM() {
 
     del_out = fil_out;
     omega2 = omega2 + g2 * det;
-    if(omega2 < omega_min) omega2 = omega_min;
-    else if(omega2 > omega_max) omega2 = omega_max;
+    if(omega2 < omega_min) {
+      omega2 = omega_min;
+    } else if(omega2 > omega_max) {
+      omega2 = omega_max;
+    }
     fil_out = g1 * det + omega2;
     phzerror = phzerror + del_out;
 
@@ -114,27 +109,17 @@ void AMDecodeSAM() {
     while(phzerror < 0.0) phzerror += TWO_PI;
   }
 
-  //arm_copy_f32(float_buffer_L, float_buffer_R, 512);
-  //}
-  //        SAM_display_count++;
-  //        if(SAM_display_count > 50) // to display the exact carrier frequency that the PLL is tuned to
-  //        if(0)
-  // in the small frequency display
-  // we calculate carrier offset here and the display function is
-  // then called in main loop every 100ms
-  //{ // to make this smoother, a simple lowpass/exponential averager here . . .
-  SAM_carrier = 0.08 * (omega2 * 24000) / (2 * TWO_PI);
-  SAM_carrier = SAM_carrier + 0.92 * SAM_lowpass;
-  SAM_carrier_freq_offset =  (int)10*SAM_carrier;
-  SAM_carrier_freq_offset=0.9*SAM_carrier_freq_offsetOld+0.1*SAM_carrier_freq_offset;
-  //            SAM_display_count = 0;
-  SAM_lowpass = SAM_carrier;
+  SAM_carrier =  (omega2 * 24000) / (2 * TWO_PI);
 
-  if(SAM_carrier_freq_offset != SAM_carrier_freq_offsetOld) {
-    tft.fillRect(OPERATION_STATS_L + 125 + 200, OPERATION_STATS_T, tft.getFontWidth() * 8, tft.getFontHeight(), RA8875_BLUE);
-    tft.print(0.20024*SAM_carrier_freq_offset, 1); //AFP 11-01-22
-  }
-  SAM_carrier_freq_offsetOld=SAM_carrier_freq_offset;
+  SAM_carrier_freq_offset = 10.0 * SAM_carrier;
+  SAM_carrier_freq_offset = 0.95 * SAM_carrier_freq_offsetOld + 0.05 * SAM_carrier_freq_offset;
+
+  tft.setFontScale( (enum RA8875tsize) 0);
+  tft.setCursor(OPERATION_STATS_DMD + 25, OPERATION_STATS_T);
+  tft.fillRect(OPERATION_STATS_DMD + 25, OPERATION_STATS_T, tft.getFontWidth() * 7, tft.getFontHeight(), RA8875_BLUE);
+  tft.print(0.20000012146 * SAM_carrier_freq_offset, 2);
+
+  SAM_carrier_freq_offsetOld = SAM_carrier_freq_offset;
 }
 
 /*****

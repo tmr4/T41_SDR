@@ -141,7 +141,8 @@ FLASHMEM void SetKeyTypeFollowup() {
 *****/
 FLASHMEM void SetKeyType() {
   if(USE_FULL_MENU) {
-    keyType = SetSecondaryMenuIndex();
+    SetSecondaryMenuIndex();
+    keyType = secondaryMenuIndex;
     SetKeyTypeFollowup();
   } else {
     //GetMenuOption(optionIndex, *currentValue, *setup(), *getValue(), *followup());

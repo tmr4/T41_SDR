@@ -4,6 +4,7 @@
 
 #include "SDT.h"
 
+#include "Filter.h"
 #include "Noise.h"
 #include "pi.h"
 #include "Process.h"
@@ -144,16 +145,16 @@ void Kim1_NR() {
     float32_t NR_onemtwobeta = (1.0 - (2.0 * NR_beta));
     float32_t NR_T;
 
-    if(bands[currentBand].FLoCut <= 0 && bands[currentBand].FHiCut >= 0) {
+    if(currentFilterLoCut <= 0 && currentFilterHiCut >= 0) {
       lf_freq = 0.0;
-      uf_freq = fmax(-(float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut);
+      uf_freq = fmax(-(float32_t)currentFilterLoCut, (float32_t)currentFilterHiCut);
     } else {
-      if(bands[currentBand].FLoCut > 0) {
-        lf_freq = (float32_t)bands[currentBand].FLoCut;
-        uf_freq = (float32_t)bands[currentBand].FHiCut;
+      if(currentFilterLoCut > 0) {
+        lf_freq = (float32_t)currentFilterLoCut;
+        uf_freq = (float32_t)currentFilterHiCut;
       } else {
-        uf_freq = -(float32_t)bands[currentBand].FLoCut;
-        lf_freq = -(float32_t)bands[currentBand].FHiCut;
+        uf_freq = -(float32_t)currentFilterLoCut;
+        lf_freq = -(float32_t)currentFilterHiCut;
       }
     }
     lf_freq /= (24000.0 / NR_FFT_L); // bin BW is 46.9Hz [12000Hz / 256 bins] @96kHz
@@ -414,16 +415,16 @@ void SpectralNoiseReduction() {
   float32_t ph1y[NR_FFT_L / 2];
   static int NR_first_time_2 = 1;
 
-  if(bands[currentBand].FLoCut <= 0 && bands[currentBand].FHiCut >= 0) {
+  if(currentFilterLoCut <= 0 && currentFilterHiCut >= 0) {
     lf_freq = 0.0;
-    uf_freq = fmax(-(float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut);
+    uf_freq = fmax(-(float32_t)currentFilterLoCut, (float32_t)currentFilterHiCut);
   } else {
-    if(bands[currentBand].FLoCut > 0) {
-      lf_freq = (float32_t)bands[currentBand].FLoCut;
-      uf_freq = (float32_t)bands[currentBand].FHiCut;
+    if(currentFilterLoCut > 0) {
+      lf_freq = (float32_t)currentFilterLoCut;
+      uf_freq = (float32_t)currentFilterHiCut;
     } else {
-      uf_freq = -(float32_t)bands[currentBand].FLoCut;
-      lf_freq = -(float32_t)bands[currentBand].FHiCut;
+      uf_freq = -(float32_t)currentFilterLoCut;
+      lf_freq = -(float32_t)currentFilterHiCut;
     }
   }
 

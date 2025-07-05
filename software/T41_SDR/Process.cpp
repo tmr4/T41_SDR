@@ -68,6 +68,8 @@ void Codec_gain();
 //-------------------------------------------------------------------------------------------------------------
 
 FLASHMEM void InitAMDemodBiquadFilter() {
+  // *** TODO: seems this should be calc on filter BW change, but isn't ***
+/*
   int LP_F_help = bands[currentBand].FHiCut;
 
   if(LP_F_help < -bands[currentBand].FLoCut) {
@@ -75,6 +77,8 @@ FLASHMEM void InitAMDemodBiquadFilter() {
   }
 
   SetIIRCoeffs(biquad_lowpass1_coeffs, (float32_t)LP_F_help, 1.3, 24000.0, 0);  // 1st stage
+*/
+  SetIIRCoeffs(biquad_lowpass1_coeffs, currentFilterHiCut, 1.3, 24000.0, 0);  // 1st stage
 
   biquad_lowpass1.numStages = 1;  // set number of stages
   biquad_lowpass1.pCoeffs = biquad_lowpass1_coeffs;      // set pointer to coefficients file
@@ -168,8 +172,8 @@ bool ProcessIQData(bool updateSpectrumData) {
           and subtract the Means from the float L and R buffer data arrays.  Again use Arm_Math functions
           to manipulate the arrays.  Arrays are all 2048 long
       **********************************************************************************/
-      arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
-      arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
+      //arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
+      //arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
 
       /**********************************************************************************
           Scale the data buffers by the RFgain value defined in bands[currentBand] structure
@@ -237,7 +241,7 @@ bool ProcessIQData(bool updateSpectrumData) {
 
           Spectrum Zoom uses the shifted spectrum, so the center "hump" around DC is shifted by fs/4
       **********************************************************************************/
-      // Run display FFT routine only once for each Audio process FFT
+      // Run frequency spectrum FFT routine only once for each audio process loop
       if(spectrumZoom != 0 && updateSpectrumData) {
         ZoomFFTExe(2048); // there seems to be a BUG here, because the blocksize has to be adjusted according to magnification,
         // does not work for magnifications > 8
@@ -279,13 +283,8 @@ bool ProcessIQData(bool updateSpectrumData) {
 
     switch(bands[currentBand].demod) {
       case DEMOD_NFM:
-        // a NFM signal needs to be demodulated prior to audio processing so all we do here
-        // is decimate and prepare the audio signal buffers
-
-        // set NFM filter to decimate
-        // fixed at 6 kHz for now
-        // make variable (including separate visual BW on frequency spectrum and audio filter on audio spectrum)
-        SetDecIntFilters(nfmFilterBW);
+        // a NFM signal needs to be demodulated prior to audio processing so
+        // all we do here is decimate and prepare the audio signal buffers
 
         // decimation-by-4 in-place!
         arm_fir_decimate_f32(&FIR_dec1_I, float_buffer_L, float_buffer_L, 2048);
@@ -507,15 +506,9 @@ bool ProcessIQData(bool updateSpectrumData) {
         arm_fir_decimate_f32(&FIR_dec2_Q, float_buffer_R, float_buffer_R, 512);
 
         // =================  Level Adjust ===========
-        float freqKHzFcut;
         float volScaleFactor;
-        if(bands[currentBand].demod == DEMOD_LSB) {
-          freqKHzFcut = -(float32_t)bands[currentBand].FLoCut * 0.001;
-        } else {
-          freqKHzFcut = (float32_t)bands[currentBand].FHiCut * 0.001;
-        }
 
-        volScaleFactor = 7.0874 * pow(freqKHzFcut, -1.232);
+        volScaleFactor = 7.0874 * pow(currentFilterHiCut * 0.001, -1.232);
         arm_scale_f32(float_buffer_L, volScaleFactor, float_buffer_L, 256);
         arm_scale_f32(float_buffer_R, volScaleFactor, float_buffer_R, 256);
 
@@ -564,15 +557,12 @@ bool ProcessIQData(bool updateSpectrumData) {
 
         /**********************************************************************************
           Continuing FFT Convolution
-              Next, prepare the filter mask (done in the Filter.cpp file).  Only need to do this once for each filter setting.
-              Allows efficient real-time variable LP and HP audio filters, without the overhead of time-domain convolution filtering.
-
-              After the Filter mask in the frequency domain is created, complex multiply  filter mask with the frequency domain audio data.
-              Filter mask previously calculated in setup Array of filter mask coefficients:
-              FIR_filter_mask[]
+              Apply FFT filter mask in the frequency domain
+              Complex multiply filter mask with the frequency domain audio data.
+              Filter mask previously calculated in setup of filter mask coefficients: audioFIRFilterMask[]
         **********************************************************************************/
 
-        arm_cmplx_mult_cmplx_f32(FFT_buffer, FIR_filter_mask, iFFT_buffer, 512);
+        arm_cmplx_mult_cmplx_f32(FFT_buffer, audioFIRFilterMask, iFFT_buffer, 512);
 
         // process audio frequency spectrum if requested
         if(updateSpectrumData) {
@@ -583,11 +573,8 @@ bool ProcessIQData(bool updateSpectrumData) {
           for(int k = 0; k < AUDIO_SPEC_RES; k++) {
             if(bands[currentBand].demod == DEMOD_USB || bands[currentBand].demod == DEMOD_FT8 || bands[currentBand].demod == DEMOD_AM || bands[currentBand].demod == DEMOD_SAM) {
               audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, AUDIO_SPEC_H);
-            }
-            else {
-              if(bands[currentBand].demod == 1) {
-                audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, AUDIO_SPEC_H);
-              }
+            } else if(bands[currentBand].demod == 1) {
+              audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, AUDIO_SPEC_H);
             }
             if(audioYPixel[k] < 0) {
               audioYPixel[k] = 0;
@@ -791,6 +778,7 @@ bool ProcessIQData(bool updateSpectrumData) {
     // update audio spectrum for NFM or FT8_WAV
     //if(bands[currentBand].demod == DEMOD_NFM || bands[currentBand].demod == DEMOD_FT8_WAV) {
     if(bands[currentBand].demod == DEMOD_NFM || bands[currentBand].demod == DEMOD_FT8_WAV || bands[currentBand].demod == DEMOD_PSK31_WAV) {
+      // *** TODO: NFM demod sound rough, similar to when buffers aren't prepared properly one loop to next.  Investigate ***
 
       // Prepare the audio signal buffers
       for(unsigned i = 0; i < 256; i++) {
@@ -813,7 +801,7 @@ bool ProcessIQData(bool updateSpectrumData) {
 
       // prepare audio box spectrum and filter per the audio cutoff frequency
       arm_cfft_f32(S, FFT_buffer, 0, 1);
-      arm_cmplx_mult_cmplx_f32(FFT_buffer, FIR_filter_mask, iFFT_buffer, 512);
+      arm_cmplx_mult_cmplx_f32(FFT_buffer, audioFIRFilterMask, iFFT_buffer, 512);
 
       // process audio frequency spectrum if requested
       if(updateSpectrumData) {
@@ -961,16 +949,14 @@ bool ProcessIQData(bool updateSpectrumData) {
     **********************************************************************************/
     if(mute == 1) {
       arm_scale_f32(float_buffer_L, 0.0, float_buffer_L, 2048);
-    } else {
-      if(mute == 0) {
-        arm_scale_f32(float_buffer_L, 8.0 * VolumeToAmplification(audioVolume), float_buffer_L, 2048);
-      }
+    } else if(mute == 0) {
+      arm_scale_f32(float_buffer_L, 8.0 * VolumeToAmplification(audioVolume), float_buffer_L, 2048);
     }
 
     /**********************************************************************************
       CONVERT TO INTEGER AND PLAY AUDIO
     **********************************************************************************/
-    arm_float_to_q15 (float_buffer_L, q15_buffer_LTemp, 2048);
+    arm_float_to_q15(float_buffer_L, q15_buffer_LTemp, 2048);
     Q_out_L.play(q15_buffer_LTemp, 2048);
 
     //Codec_gain();

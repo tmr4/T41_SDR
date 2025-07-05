@@ -26,8 +26,8 @@
 
 //------------------------- Global Variables ----------
 bool volumeChangeFlag, resetTuningFlag, fineTuneFlag, getEncoderValueFlag;
-long posFilterEncoder, filter_pos_BW, last_filter_pos_BW;
-long lastFilterEncoder = 1; // force initial update
+long filter_pos_BW, last_filter_pos_BW;
+int posFilterEncoder, lastFilterEncoder;
 
 volatile int menuEncoderMove;
 volatile long fineTuneEncoderMove;
@@ -61,6 +61,21 @@ void EncodersInit() {
   attachInterrupt(digitalPinToInterrupt(FINETUNE_ENCODER_B), EncoderFineTuneISR, CHANGE);
 }
 
+void AdjustFilterBW(int filterChange) {
+  if(lowerAudioFilterActive) { // false - high, true - low filter
+    currentFilterLoCut = currentFilterLoCut - filterChange * 50 * ENCODER_FACTOR;
+
+    // restrain filter
+    if(currentFilterLoCut < 0.0) currentFilterLoCut = 0.0;
+    if(currentFilterLoCut > currentFilterHiCut) currentFilterLoCut = currentFilterHiCut;
+  } else {
+    currentFilterHiCut = currentFilterHiCut - filterChange * 50 * ENCODER_FACTOR;
+
+    // restrain filter
+    if(currentFilterHiCut < currentFilterLoCut) currentFilterHiCut = currentFilterLoCut;
+  }
+}
+
 /*****
   Purpose: Set bandwidth filters based on accumulated filter encoder changes, update BW values on display
 
@@ -68,50 +83,33 @@ void EncodersInit() {
     int FW - filter width
 *****/
 void SetBWFilters() {
-  int filter_change = posFilterEncoder - lastFilterEncoder;
+  int filterChange = posFilterEncoder - lastFilterEncoder;
 
   lastFilterEncoder = posFilterEncoder;
 
   switch(bands[currentBand].demod) {
     case DEMOD_USB:
+    case DEMOD_LSB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
     case DEMOD_FT8:
     case DEMOD_FT8_WAV:
-      if(lowerAudioFilterActive) { // false - high, true - low filter
-        bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
-      } else {
-        bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
-      }
-      break;
-
-    case DEMOD_LSB:
-      if(lowerAudioFilterActive) {
-        bands[currentBand].FHiCut = bands[currentBand].FHiCut + filter_change * 50 * ENCODER_FACTOR;
-      } else {
-        bands[currentBand].FLoCut = bands[currentBand].FLoCut + filter_change * 50 * ENCODER_FACTOR;
-      }
+      AdjustFilterBW(filterChange);
       break;
 
     case DEMOD_AM:
     case DEMOD_SAM:
-      bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
-      bands[currentBand].FLoCut = -bands[currentBand].FHiCut;
+      currentFilterHiCut = currentFilterHiCut - filterChange * 50 * ENCODER_FACTOR;
+      currentFilterLoCut = -currentFilterHiCut;
       break;
 
     case DEMOD_NFM:
       if(nfmBWFilterActive) {
-        filter_change = filter_pos_BW - last_filter_pos_BW;
+        filterChange = filter_pos_BW - last_filter_pos_BW;
         last_filter_pos_BW = filter_pos_BW;
-        nfmFilterBW = (nfmFilterBW / 2.0 - filter_change * 50 * ENCODER_FACTOR) * 2;
+        nfmFilterBW = (nfmFilterBW / 2.0 - filterChange * 50 * ENCODER_FACTOR) * 2;
       } else {
-        //bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
-        //bands[currentBand].FLoCut = -bands[currentBand].FHiCut;
-        if(lowerAudioFilterActive) { // false - high, true - low filter
-          bands[currentBand].FLoCut = bands[currentBand].FLoCut - filter_change * 50 * ENCODER_FACTOR;
-        } else {
-          bands[currentBand].FHiCut = bands[currentBand].FHiCut - filter_change * 50 * ENCODER_FACTOR;
-        }
+        AdjustFilterBW(filterChange);
       }
       break;
   }
@@ -290,7 +288,7 @@ FASTRUN void EncoderMenuChangeFilterISR() {
   if(calibrateFlag >= 0) return; // we're calibrating
 
   // interpret encoder according to flag settings
-  if(getEncoderValueFlag) {
+  if(getEncoderValueFlag || (displayState == DISPLAY_FULL_MENU)) {
     return; // menuEncoderMove processed in GetEncoderValueLive and GetMenuValueLoop routines
   }
 

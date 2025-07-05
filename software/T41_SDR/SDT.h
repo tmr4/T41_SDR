@@ -83,7 +83,7 @@ extern float32_t float_buffer_R_EX[];
 extern float32_t float_buffer_Temp[];
 
 typedef struct {
-  long freq;      // Current frequency in Hz * 100
+  long freq;      // Current frequency in Hz
   long fBandLow;  // Lower band edge
   long fBandHigh; // Upper band edge
   const char* name; // name of band
@@ -91,7 +91,7 @@ typedef struct {
   int FHiCut;
   int FLoCut;
   int RFgain;
-  uint8_t band_type;
+  long calFreq; // receive IQ calibration frequency
   float32_t gainCorrection; // is hardware dependent and has to be calibrated ONCE and hardcoded in the band table
   int AGC_thresh;
   int16_t pixel_offset;

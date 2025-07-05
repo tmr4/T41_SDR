@@ -129,7 +129,7 @@ void SendSmeter(int smeterPad, float dbm) {
 void SendAS() {
   char cmd[19];
 
-  sprintf(cmd, "AS%011ld%d%d%d;",
+  sprintf(cmd, "AS%011d%d%d%d;",
     TxRxFreq,                       // freq in Hz (%011d) at index 2
     currentBand,                    // current band (%d) at index 13
     radioMode,                        // transmission mode (%d) at index 14
@@ -142,7 +142,7 @@ void SendIF() {
   char cmd[50];
 
   // *** Warning: this is not the Kenwood implimentation ***
-  sprintf(cmd, "IF%011ld%d%d%d%03d%+06ld%04d%d%d%d%d%d%d%d%ld%011d;",
+  sprintf(cmd, "IF%011d%d%d%d%03d%+06d%04d%d%d%d%d%d%d%d%d%011d;",
     // active VFO Freq = TxRxFreq, centerFreq = TxRxFreq - NCOFreq
     //  *** TODO: we only need 8 digits for first field for T41, consider using other 3 for something ***
     TxRxFreq,                       // freq in Hz (%011d) at index 2
@@ -150,7 +150,7 @@ void SendIF() {
     radioMode,                        // transmission mode (%d) at index 14
     bands[currentBand].demod,        // demodulation mode (%d)  at index 15
     audioVolume,                    // audio volume (%03d) at index 16
-    NCOFreq,                        // NCO freq (%+06ld) at index 19
+    NCOFreq,                        // NCO freq (%+06d) at index 19
     currentNoiseFloor[currentBand], // noise floor (%04d) at index 25 *** TODO: verify need for +- or number of digits ***
     liveNoiseFloorFlag,             // set noise floor active/inactive 1/0 (%d) at index 29
     !GetXRState(),                       // RX/TX (1/0) (%d) at index 30
@@ -159,7 +159,7 @@ void SendIF() {
     ftIndex,                        // fine tune index (%d) at index 33
     tuneIndex,                      // center tune index (%d) at index 34
     AGCMode,                        // AGC mode (%d) at index 35
-    spectrumZoom,                   // spectrum zoom (%ld) at index 36
+    spectrumZoom,                   // spectrum zoom (%d) at index 36
     activeVFO == 0 ? currentFreqB : currentFreqA // inactive VFO freq in Hz (%011d) at index 37
     //splitVFO ? 1 : 0,               // VFO split status (%d) at index xx
   );
@@ -287,7 +287,7 @@ void T41ControlLoop() {
               return;
             } else if(cmd[2] == ';') {
               // read center frequency
-              sprintf(cmd,"FC%011ld;",centerFreq);
+              sprintf(cmd,"FC%011d;",centerFreq);
             }
             break;
 
@@ -342,7 +342,7 @@ void T41ControlLoop() {
           // retrieves transceiver status
           if(useKenwoodIF) {
             // *** TODO: not set up, just for testing ***
-            sprintf(cmd, "IF%011ld%04d%+06d%d%d%d%02d%d%d%d%d%d%d%02d%d;",
+            sprintf(cmd, "IF%011d%04d%+06d%d%d%d%02d%d%d%d%d%d%d%02d%d;",
               TxRxFreq,     // freq in Hz
               0,            // freq step size
               0,            // RIT/XIT freq in Hz, +-99999, this isn't preserved in the T41 but would be VFO A - VFO B if split
@@ -403,21 +403,8 @@ void T41ControlLoop() {
           return;
         } else if(cmd[1] == 'W' && cmd[2] == ';') {
           // sets 0.5kHz-1.5kHz audio filter
-          switch(bands[currentBand].demod) {
-            case DEMOD_USB:
-              bands[currentBand].FLoCut = 500;
-              bands[currentBand].FHiCut = 1500;
-              break;
-
-            case DEMOD_LSB:
-              bands[currentBand].FLoCut = -1500;
-              bands[currentBand].FHiCut = -500;
-              break;
-
-            default:
-              return;
-              //break;
-          }
+          currentFilterLoCut = 500;
+          currentFilterHiCut = 1500;
 
           CalcFilters();
           //updateDisplay = true;

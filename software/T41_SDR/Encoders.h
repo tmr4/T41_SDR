@@ -40,8 +40,7 @@ extern bool fineTuneFlag;
 extern bool resetTuningFlag;  // Experimental flag for ResetTuning() due to possible timing issues.  KF5N July 31, 2023
 extern bool getEncoderValueFlag;
 
-extern long posFilterEncoder;
-extern long lastFilterEncoder;
+extern int posFilterEncoder, lastFilterEncoder;
 extern long filter_pos_BW;
 extern long last_filter_pos_BW;
 

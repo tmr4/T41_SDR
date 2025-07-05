@@ -1,6 +1,7 @@
 
 #include "SDT.h"
 #include "CWProcessing.h"
+#include "Filter.h"
 #include "FIR.h"
 #include "pi.h"
 #include "Utility.h"
@@ -142,9 +143,8 @@ void InitFIRFilter() {
   arm_fir_init_f32(&FIR_CW_DecodeL, 64, CW_Filter_Coeffs2, FIR_CW_DecodeL_state, 256);
   arm_fir_init_f32(&FIR_CW_DecodeR, 64, CW_Filter_Coeffs2, FIR_CW_DecodeR_state, 256);
 
-  // set filter BW based on current band filter cutoffs
-  CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, 256 + 1, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, 24000.0);
-  SetDecIntFilters();
+  // set audio, decimate and interpolate filters based on current band filter cutoffs
+  SetupDemodFilterBW();
 }
 
 /*****
@@ -247,7 +247,7 @@ void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop
 //////////////////////////////////////////////////////////////////////
 
 /*****
-  Purpose: calc_cplx_FIR_coeffs
+  Purpose: Calculate audio FFT FIR filter coefficients
 
   Parameter list:
     float *coeffs_I
@@ -312,47 +312,4 @@ void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float3
     coeffs_I[i]   = z * cosf(nFs * x);
     coeffs_Q[i]   = z * sinf(nFs * x);
   }
-}
-
-/*****
-  Purpose: SetDecIntFilters()
-*****/
-void SetDecIntFilters() {
-  /****************************************************************************************
-     Recalculate decimation and interpolation FIR filters
-  ****************************************************************************************/
-  int filter_BW_highest = bands[currentBand].FHiCut;
-  int LP_F_help;
-
-  if(filter_BW_highest < -bands[currentBand].FLoCut) {
-    filter_BW_highest = -bands[currentBand].FLoCut;
-  }
-  LP_F_help = filter_BW_highest;
-
-  if(LP_F_help > 10000) {
-    LP_F_help = 10000;
-  }
-
-  CalcFIRCoeffs(FIR_dec1_coeffs, 27, (float32_t)LP_F_help, 90.0, 0, 0.0, 192000.0);
-  CalcFIRCoeffs(FIR_dec2_coeffs, 33, (float32_t)LP_F_help, 90.0, 0, 0.0, 48000.0);
-
-  CalcFIRCoeffs(FIR_int1_coeffs, 48, (float32_t)(LP_F_help), 90.0, 0, 0.0, 48000.0);
-  CalcFIRCoeffs(FIR_int2_coeffs, 32, (float32_t)(LP_F_help), 90.0, 0, 0.0, 192000.0);
-}
-
-/*****
-  Purpose: Set the decimate coefs for the specified BW
-
-  Parameter list:
-    int filter_BW - desired bandwidth
-*****/
-void SetDecIntFilters(int filter_BW) {
-  int LP_F_help = filter_BW;
-
-  //if(LP_F_help > 10000) {
-  //  LP_F_help = 10000;
-  //}
-
-  CalcFIRCoeffs(FIR_dec1_coeffs, 27, (float32_t)(LP_F_help), 90.0, 0, 0.0, 192000.0);
-  CalcFIRCoeffs(FIR_dec2_coeffs, 33, (float32_t)(LP_F_help), 90.0, 0, 0.0, 48000.0);
 }

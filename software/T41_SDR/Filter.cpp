@@ -32,7 +32,11 @@ extern float32_t EQ_Band14Coeffs[];
 #define IIR_ORDER 8
 #define IIR_NUMSTAGES (IIR_ORDER / 2)
 
+// *** TODO: document functionality of nfmBWFilterActive in relation to nfmFilterBW ***
+// see: https://www.reddit.com/r/T41_EP/comments/1bddhj5/the_t41_does_narrow_band_fm/
+// and https://github.com/tmr4/T41_SDR/tree/feature/NFMDemod
 int nfmFilterBW = 12000;
+int currentFilterLoCut, currentFilterHiCut;
 
 float32_t recEQ_LevelScale[14];
 
@@ -52,7 +56,7 @@ float32_t DMAMEM EQ12_float_buffer_L[256];
 float32_t DMAMEM EQ13_float_buffer_L[256];
 float32_t DMAMEM EQ14_float_buffer_L[256];
 
-float32_t DMAMEM FIR_filter_mask[1024] __attribute__((aligned(4)));
+float32_t DMAMEM audioFIRFilterMask[1024] __attribute__((aligned(4)));
 
 float32_t rec_EQ_Band1_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //declare and zero biquad state variables
 float32_t rec_EQ_Band2_state[IIR_NUMSTAGES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -271,25 +275,15 @@ void DoExciterEQ() {
 }
 
 /*****
-  Purpose: calculates decimation, interpolation and audio filters
+  Purpose:  Prepare audio FFT FIR filter mask
+            Only need to do this once for each filter setting.
+            Allows efficient real-time variable LP and HP audio filters, without the overhead of time-domain convolution filtering.
 *****/
-void CalcFilters() {
-  if(bands[currentBand].demod == DEMOD_NFM && nfmBWFilterActive) {
-
-  } else {
-    CalcCplxFIRCoeffs(FIR_Coef_I, FIR_Coef_Q, 256 + 1, (float32_t)bands[currentBand].FLoCut, (float32_t)bands[currentBand].FHiCut, 24000.0);
-    UpdateFFTFilterMask();
-
-    // and adjust decimation and interpolation filters
-    SetDecIntFilters();
-  }
-}
-
-/*****
-  Purpose: UpdateFFTFilterMask()
-*****/
-void UpdateFFTFilterMask() {
+void UpdateAudioFilterMask(float *coeffs_I, float *coeffs_Q, int numCoeffs, float32_t fLoCut, float32_t fHiCut, float sampleRate) {
   const arm_cfft_instance_f32* maskS = &arm_cfft_sR_f32_len512;
+
+  // calculate audio FFT filter coefficients
+  CalcCplxFIRCoeffs(coeffs_I, coeffs_Q, numCoeffs, fLoCut, fHiCut, sampleRate);
 
   /****************************************************************************************
      Calculate the FFT of the FIR filter coefficients once to produce the FIR filter mask
@@ -301,65 +295,119 @@ void UpdateFFTFilterMask() {
   for(unsigned i = 0; i < 256 + 1; i++) {
     // try out a window function to eliminate ringing of the filter at the stop frequency
     //             sd.FFT_Samples[i] = (float32_t)((0.53836 - (0.46164 * arm_cos_f32(PI*2 * (float32_t)i / (float32_t)(FFT_IQ_BUFF_LEN-1)))) * sd.FFT_Samples[i]);
-    FIR_filter_mask[i * 2] = FIR_Coef_I[i];
-    FIR_filter_mask[i * 2 + 1] = FIR_Coef_Q[i];
+    audioFIRFilterMask[i * 2] = FIR_Coef_I[i];
+    audioFIRFilterMask[i * 2 + 1] = FIR_Coef_Q[i];
   }
 
   for(unsigned i = 512 + 1; i < 1024; i++) {
-    FIR_filter_mask[i] = 0.0;
+    audioFIRFilterMask[i] = 0.0;
   }
 
-  // FFT of FIR_filter_mask
+  // FFT of audioFIRFilterMask
   // perform FFT (in-place), needs only to be done once (or every time the filter coeffs change)
-  arm_cfft_f32(maskS, FIR_filter_mask, 0, 1);
+  arm_cfft_f32(maskS, audioFIRFilterMask, 0, 1);
 
 }
 
 /*****
-  Purpose: changes audio filters appropriate for the current demod mode and calculates new filters based on BW
-           *** evaluate using just high/low audio filters, without changing back and forth; lilely big code change ***
+  Purpose: Calculate IQ signals decimate/interpolate FIR filter coefficients
+
+          if decFilterBW <= 0:
+            Calculates decimate/interpolate filters with current high cutoff
+
+          if decFilterBW > 0:
+            Calculates a decimation filter distinct from the interpolation filter.
+            Uses specified BW for the decimate coefs (currently used in NFM)
+            Uses high cutoff for audio interpolation filter
+
+  Parameter list:
+    int decFilterBW - desired decimate bandwidth (default 0)
 *****/
-FLASHMEM void SetupDemodFilterBW() {
-  //float temp;
+void SetDecIntFIRFilters(int decFilterBW = 0) {
+  float limit = currentFilterHiCut;
+
+  if(limit > 10000.0) {
+    limit = 10000.0;
+  }
+
+  if(decFilterBW > 0) {
+    CalcFIRCoeffs(FIR_dec1_coeffs, 27, decFilterBW, 90.0, 0, 0.0, 192000.0);
+    CalcFIRCoeffs(FIR_dec2_coeffs, 33, decFilterBW, 90.0, 0, 0.0, 48000.0);
+  } else {
+    CalcFIRCoeffs(FIR_dec1_coeffs, 27, limit, 90.0, 0, 0.0, 192000.0);
+    CalcFIRCoeffs(FIR_dec2_coeffs, 33, limit, 90.0, 0, 0.0, 48000.0);
+  }
+
+  CalcFIRCoeffs(FIR_int1_coeffs, 48, limit, 90.0, 0, 0.0, 48000.0);
+  CalcFIRCoeffs(FIR_int2_coeffs, 32, limit, 90.0, 0, 0.0, 192000.0);
+}
+
+/*****
+  Purpose: calculates decimation, interpolation and audio filters with current BW
+*****/
+void CalcFilters() {
+  int loCut = 0, hiCut = 0;
 
   switch(bands[currentBand].demod) {
     case DEMOD_USB:
+    case DEMOD_AM:
+    case DEMOD_NFM:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
     case DEMOD_FT8:
     case DEMOD_FT8_WAV:
-      //temp = bands[currentBand].FHiCut;
-      //bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
-      //bands[currentBand].FLoCut = -temp;
-      bands[currentBand].FHiCut =  3000;
-      bands[currentBand].FLoCut = 200;
+    case DEMOD_SAM:
+      loCut = currentFilterLoCut;
+      hiCut = currentFilterHiCut;
       break;
 
     case DEMOD_LSB:
-      //temp = bands[currentBand].FHiCut;
-      //bands[currentBand].FHiCut = -bands[currentBand].FLoCut;
-      //bands[currentBand].FLoCut = -temp;
-      bands[currentBand].FHiCut =  -200;
-      bands[currentBand].FLoCut = -3000;
+      loCut = -currentFilterHiCut;
+      hiCut = -currentFilterLoCut;
+      break;
+
+    default:
+      loCut = 200;
+      hiCut = 3000;
+      break;
+  }
+
+  // update audio filter
+  UpdateAudioFilterMask(FIR_Coef_I, FIR_Coef_Q, 256 + 1, loCut, hiCut, 24000.0);
+
+  // update decimation and interpolation filters
+  if(bands[currentBand].demod == DEMOD_NFM) {
+    SetDecIntFIRFilters(nfmFilterBW);
+  } else {
+    SetDecIntFIRFilters();
+  }
+}
+
+/*****
+  Purpose: set filter BW appropriate for the current demod mode and updates filters
+*****/
+FLASHMEM void SetupDemodFilterBW() {
+  switch(bands[currentBand].demod) {
+    case DEMOD_USB:
+    case DEMOD_LSB:
+    case DEMOD_NFM:
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8:
+    case DEMOD_FT8_WAV:
+      currentFilterLoCut = bands[currentBand].FLoCut;
+      currentFilterHiCut = bands[currentBand].FHiCut;
       break;
 
     case DEMOD_AM:
     case DEMOD_SAM:
-      //bands[currentBand].FHiCut =  -bands[currentBand].FLoCut;
-      bands[currentBand].FHiCut =  3000;
-      bands[currentBand].FLoCut = -3000;
-      break;
-
-    case DEMOD_NFM:
-      //temp = min(abs(bands[currentBand].FHiCut), abs(bands[currentBand].FLoCut));
-      //bands[currentBand].FHiCut = max(abs(bands[currentBand].FHiCut), abs(bands[currentBand].FLoCut));
-      bands[currentBand].FHiCut =  3000;
-      bands[currentBand].FLoCut = 200;
+      currentFilterLoCut = -bands[currentBand].FHiCut;
+      currentFilterHiCut = bands[currentBand].FHiCut;
       break;
 
     default:
-      bands[currentBand].FHiCut =  3000;
-      bands[currentBand].FLoCut = 200;
+      currentFilterLoCut = 200;
+      currentFilterHiCut = 3000;
       break;
   }
 

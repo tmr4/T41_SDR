@@ -5,9 +5,10 @@
 
 extern uint32_t m_NumTaps;
 
-extern float32_t FIR_filter_mask[1024];
+extern float32_t audioFIRFilterMask[1024];
 
 extern int nfmFilterBW;
+extern int currentFilterLoCut, currentFilterHiCut;
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -18,6 +19,5 @@ void SetIIRCoeffs(float32_t *coefficient_set, float32_t f0, float32_t Q, float32
 void DoReceiveEQ();
 void DoExciterEQ();
 void CalcFilters();
-void UpdateFFTFilterMask();
 
 void SetupDemodFilterBW();

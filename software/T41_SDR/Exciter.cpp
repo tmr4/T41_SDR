@@ -106,8 +106,8 @@ void ExciterIQData() {
     for(unsigned  i = 0; i < 16; i++) {
       sp_L = Q_out_L_Ex.getBuffer();
       sp_R = Q_out_R_Ex.getBuffer();
-      arm_float_to_q15 (&float_buffer_L_EX[128 * i], sp_L, 128);
-      arm_float_to_q15 (&float_buffer_R_EX[128 * i], sp_R, 128);
+      arm_float_to_q15(&float_buffer_L_EX[128 * i], sp_L, 128);
+      arm_float_to_q15(&float_buffer_R_EX[128 * i], sp_R, 128);
       Q_out_L_Ex.playBuffer();
       Q_out_R_Ex.playBuffer();
     }

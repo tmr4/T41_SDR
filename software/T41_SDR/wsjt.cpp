@@ -256,7 +256,7 @@ void WSJTLoop()
               return;
             } else if(cmd[2] == ';') {
               // read center frequency
-              sprintf(cmd,"FC%011ld;",centerFreq);
+              sprintf(cmd,"FC%011d;",centerFreq);
             }
             break;
 
@@ -323,7 +323,7 @@ void WSJTLoop()
           //sprintf(cmd,"ID019;"); // TS-2000
         } else if(cmd[1] == 'F' && cmd[2] == ';') {
           // retrieves transceiver status
-          sprintf(cmd, "IF%011ld%04d%+06d%d%d%d%02d%d%d%d%d%d%d%02d%d;",
+          sprintf(cmd, "IF%011d%04d%+06d%d%d%d%02d%d%d%d%d%d%d%02d%d;",
             TxRxFreq,     // freq in Hz
             5000,            // freq step size
             0,            // RIT/XIT freq in Hz, +-99999, this isn't preserved in the T41 but would be VFO A - VFO B if split
@@ -620,7 +620,7 @@ void WSJTLoopTS2000()
           sprintf(cmd,"ID019;"); // TS-2000
         } else if(cmd[1] == 'F' && cmd[2] == ';') {
           // retrieves transceiver status
-          sprintf(cmd, "IF%011ld%04d%+06d%d%d%d%02d%d%d%d%d%d%d%02d%d;",
+          sprintf(cmd, "IF%011d%04d%+06d%d%d%d%02d%d%d%d%d%d%d%02d%d;",
             TxRxFreq,     // freq in Hz
             5000,            // freq step size
             0,            // RIT/XIT freq in Hz, +-99999, this isn't preserved in the T41 but would be VFO A - VFO B if split

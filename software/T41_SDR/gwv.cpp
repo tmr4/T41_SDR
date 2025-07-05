@@ -22,7 +22,7 @@ int transmitPowerLevel = DEFAULT_POWER_LEVEL;
 int radioMode = SSB_MODE;  // 0 = SSB, 1 = CW, 2 = FT8
 int nrOptionSelect = 0;
 int currentScale = 1;  // 20 dB/division
-long spectrumZoom = 1; // SPECTRUM_ZOOM_2
+int spectrumZoom = 1; // SPECTRUM_ZOOM_2
 float spectrum_display_scale = 20.0;     // 30.0
 
 int CWFilterIndex = 5;
@@ -77,7 +77,7 @@ long favoriteFreqs[13] = { 3560000, 3690000, 7030000, 7200000, 14060000, 1420000
 //int lastFrequencies[NUMBER_OF_BANDS][2] = { { 3548000, 3560000 }, { 7048000, 7030000 }, { 14048000, 14100000 }, { 18116000, 18110000 }, { 21048000, 21150000 }, { 24937000, 24930000 }, { 28048000, 28200000 } };
 int lastFrequencies[NUMBER_OF_BANDS][2] = { { 3548000, 3560000 }, { 7074000, 7030000 }, { 14074000, 14100000 }, { 18116000, 18110000 }, { 21048000, 21150000 }, { 24937000, 24930000 }, { 28048000, 28200000 } };
 
-long centerFreq = 7048000;
+int centerFreq = 7048000;
 char mapFileName[50];
 char myCall[10];
 char myTimeZone[10];

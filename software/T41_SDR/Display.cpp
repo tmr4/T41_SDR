@@ -248,10 +248,8 @@ int filterHiPosition;
 
 void CalcAudioFilterLinePositions() {
   // map filter position to audio spectrum box
-  // abs prevents these from going below the bottom of the audio spectrum display but the
-  // resulting filter value isn't meaningful, should fix at the encoder
-  filterLoPosition = abs(map(bands[currentBand].FLoCut, 0, AUDIO_SPEC_SPAN, 0, AUDIO_SPEC_RES));
-  filterHiPosition = abs(map(bands[currentBand].FHiCut, 0, AUDIO_SPEC_SPAN, 0, AUDIO_SPEC_RES));
+  filterLoPosition = map(currentFilterLoCut, 0, AUDIO_SPEC_SPAN, 0, AUDIO_SPEC_RES);
+  filterHiPosition = map(currentFilterHiCut, 0, AUDIO_SPEC_SPAN, 0, AUDIO_SPEC_RES);
 }
 
 // *** pulling this out of ShowSpectrum allows the screen to update about 35% faster
@@ -268,6 +266,7 @@ void DrawAudioFilterLines() {
   // set color of active filter bar to green
   switch(bands[currentBand].demod) {
     case DEMOD_USB:
+    case DEMOD_LSB:
     case DEMOD_PSK31_WAV:
     case DEMOD_PSK31:
     case DEMOD_FT8_WAV:
@@ -283,16 +282,6 @@ void DrawAudioFilterLines() {
           filterLoColor = RA8875_LIGHT_GREY;
           filterHiColor = RA8875_GREEN;
         }
-      }
-      break;
-
-    case DEMOD_LSB:
-      if(lowerAudioFilterActive) {
-        filterLoColor = RA8875_LIGHT_GREY;
-        filterHiColor = RA8875_GREEN;
-      } else {
-        filterLoColor = RA8875_GREEN;
-        filterHiColor = RA8875_LIGHT_GREY;
       }
       break;
 
@@ -551,23 +540,11 @@ FASTRUN void ShowSpectrum() {
 FLASHMEM void ShowBandwidthBarValues() {
   char buff[10];
   int posLeft, posRight;
-  //int hi_offset = 80;
   int loColor = RA8875_LIGHT_GREY;
   int hiColor = RA8875_LIGHT_GREY;
-  //float32_t pixel_per_khz;
-  float loValue = (float)(bands[currentBand].FLoCut / 1000.0f);
-  float hiValue = (float)(bands[currentBand].FHiCut / 1000.0f);
-
-  //pixel_per_khz = 0.0055652173913043;  // Al: I factored this constant: 512/92000;
-  //pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES * 1000.0 / 192000.0) ;
-  //pos_left = centerLine + ((int)(bands[currentBand].FLoCut / 1000.0 * pixel_per_khz));
-  //if(pos_left < spectrum_x) {
-  //  pos_left = spectrum_x;
-  //}
-
-  // Need to add in code for zoom factor here
-
-  //filterWidthX = pos_left + newFilterX - centerLine;
+  float loValue = (float)currentFilterLoCut * 0.001;
+  float hiValue = (float)currentFilterHiCut * 0.001;
+  float tmp;
 
   tft.writeTo(L2); // switch to layer 2
 
@@ -595,6 +572,9 @@ FLASHMEM void ShowBandwidthBarValues() {
       break;
 
     case DEMOD_LSB:
+      tmp = hiValue;
+      hiValue = -loValue;
+      loValue = -tmp;
       if(lowerAudioFilterActive) {
         hiColor = RA8875_GREEN;
       } else {
@@ -608,12 +588,15 @@ FLASHMEM void ShowBandwidthBarValues() {
       }
       hiValue = (float)(nfmFilterBW / 1000.0f);
       posRight = centerLine - tft.getFontWidth() * 5 - 4;
-      //hiValue = (float)(nfmFilterBW / 2000.0f);
-      //loValue = -hiValue;
       break;
 
     case DEMOD_AM:
     case DEMOD_SAM:
+      loValue = -hiValue;
+      loColor = RA8875_GREEN;
+      hiColor = RA8875_GREEN;
+      break;
+
     default:
       loColor = RA8875_GREEN;
       hiColor = RA8875_GREEN;
@@ -818,15 +801,15 @@ FLASHMEM void ShowOperatingStats() {
       break;
 
     case DEMOD_AM:
-      tft.print("(AM)");
+      tft.print("AM");
       break;
 
     case DEMOD_NFM:
-      tft.print("(NFM)");
+      tft.print("NFM");
       break;
 
     case DEMOD_SAM:
-      tft.print("(SAM) ");
+      tft.print("SAM ");
       break;
   }
 
@@ -1064,7 +1047,7 @@ FASTRUN void DrawBandwidthBar() {
   NCOFreqX = (int)(NCOFreq * 0.0053333) * zoomMultFactor - Zoom1Offset;
 
   pixel_per_khz = ((1 << spectrumZoom) * SPECTRUM_RES / 192.0);
-  newFilterWidth = (int)(((bands[currentBand].FHiCut - bands[currentBand].FLoCut) / 1000.0) * pixel_per_khz * 1.06);
+  newFilterWidth = (int)(((float)(currentFilterHiCut - currentFilterLoCut) / 1000.0) * pixel_per_khz * 1.06);
 
   // make sure bandwidth is within zoom range
   switch(bands[currentBand].demod) {
@@ -1109,11 +1092,11 @@ FASTRUN void DrawBandwidthBar() {
       case DEMOD_PSK31:
       case DEMOD_FT8:
       case DEMOD_FT8_WAV:
-        newFilterX = centerLine + NCOFreqX;
+        newFilterX = centerLine + NCOFreqX + (float)currentFilterLoCut / 1000.0 * pixel_per_khz;
         break;
 
       case DEMOD_LSB:
-        newFilterX = centerLine - newFilterWidth + NCOFreqX + bands[currentBand].FHiCut / 1000.0 * pixel_per_khz;
+        newFilterX = centerLine - newFilterWidth + NCOFreqX - (float)currentFilterLoCut / 1000.0 * pixel_per_khz;
         break;
 
       case DEMOD_NFM:
@@ -1129,7 +1112,7 @@ FASTRUN void DrawBandwidthBar() {
         break;
     }
 
-    // draw bandwidth bar
+    // draw bandwidth bar and centerline
     tft.fillRect(newFilterX, SPECTRUM_TOP_Y + 20, newFilterWidth, SPECTRUM_HEIGHT - 20, FILTER_WIN);
     tft.drawFastVLine(centerLine + NCOFreqX, SPECTRUM_TOP_Y + 20, SPECTRUM_HEIGHT - 20, RA8875_CYAN);
 

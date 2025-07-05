@@ -35,6 +35,11 @@ extern float32_t *mag_coeffs[];
 extern float32_t FIR_Coef_I[256 + 1];
 extern float32_t FIR_Coef_Q[256 + 1];
 
+extern float32_t /* DMAMEM */ FIR_dec1_coeffs[27];
+extern float32_t /* DMAMEM */ FIR_dec2_coeffs[33];
+extern float32_t /* DMAMEM */ FIR_int1_coeffs[48];
+extern float32_t /* DMAMEM */ FIR_int2_coeffs[32];
+
 //-------------------------------------------------------------------------------------------------------------
 // Code
 //-------------------------------------------------------------------------------------------------------------
@@ -42,7 +47,4 @@ extern float32_t FIR_Coef_Q[256 + 1];
 void InitFIRFilter();
 
 void CalcFIRCoeffs(float *coeffs_I, int numCoeffs, float32_t fc, float32_t Astop, int type, float dfc, float Fsamprate);
-void CalcCplxFIRCoeffs(float * coeffs_I, float * coeffs_Q, int numCoeffs, float32_t fLoCut, float32_t fHiCut, float sampleRate);
-
-void SetDecIntFilters();
-void SetDecIntFilters(int filter_BW);
+void CalcCplxFIRCoeffs(float *coeffs_I, float *coeffs_Q, int numCoeffs, float32_t fLoCut, float32_t fHiCut, float sampleRate);

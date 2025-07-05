@@ -17,7 +17,7 @@ extern int transmitPowerLevel;
 extern int radioMode;
 extern int nrOptionSelect;
 extern int currentScale;
-extern long spectrumZoom;
+extern int spectrumZoom;
 extern float spectrum_display_scale;
 
 extern int CWFilterIndex;
@@ -70,7 +70,7 @@ extern float IQXPhaseCorrectionFactor[];
 extern long favoriteFreqs[13];
 extern int lastFrequencies[][2];
 
-extern long centerFreq;
+extern int centerFreq;
 extern char mapFileName[];
 extern char myCall[];
 extern char myTimeZone[];

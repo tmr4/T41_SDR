@@ -6,6 +6,7 @@
 #include "Button.h"
 #include "Display.h"
 #include "Encoders.h"
+#include "Filter.h"
 #include "InfoBox.h"
 #include "Menu.h"
 #include "Tune.h"
@@ -15,13 +16,12 @@
 // Data
 //-------------------------------------------------------------------------------------------------------------
 
-long TxRxFreq;
-long NCOFreq;
+int TxRxFreq, NCOFreq;
 
 bool splitVFO;
 
-long CWFreqShift = 750;
-long calFreqShift = 0;
+int CWFreqShift = 750;
+int calFreqShift = 0;
 
 Si5351 si5351;
 
@@ -77,7 +77,7 @@ FLASHMEM void SetFreqCal(long calFreqShift) {
   Purpose: Set center tuning frequency
            NCOFreq is unchanged
 *****/
-void SetTxRxFreq(long freq) {
+void SetTxRxFreq(int freq) {
   TxRxFreq = freq;
 
   SetFreq();
@@ -129,7 +129,7 @@ void ResetTuning() {
   Parameter list:
     long tuneChange - amound to change center freq
 *****/
-void SetCenterTune(long tuneChange) {
+void SetCenterTune(int tuneChange) {
   centerFreq += tuneChange;  // tune the master vfo
 
   SetTxRxFreq(centerFreq + NCOFreq);
@@ -138,7 +138,32 @@ void SetCenterTune(long tuneChange) {
 /*****
   Purpose: Set NCO frequency
 *****/
-void SetNCOFreq(long newNCOFreq) {
+void SetNCOFreq(int newNCOFreq) {
+  int lowSideAdj = 0, highSideAdj = 0;
+
+  switch(bands[currentBand].demod) {
+    case DEMOD_USB:
+    case DEMOD_PSK31_WAV:
+    case DEMOD_PSK31:
+    case DEMOD_FT8:
+    case DEMOD_FT8_WAV:
+      lowSideAdj = 0;
+      highSideAdj = currentFilterHiCut;
+      break;
+
+    case DEMOD_LSB:
+      lowSideAdj = currentFilterHiCut;
+      highSideAdj = 0;
+      break;
+
+    case DEMOD_AM:
+    case DEMOD_SAM:
+      break;
+
+    case DEMOD_NFM:
+      break;
+  }
+
   NCOFreq = newNCOFreq;
   fineTuneFlag = true;
   if(activeVFO == VFO_A) {
@@ -146,26 +171,25 @@ void SetNCOFreq(long newNCOFreq) {
   } else {
     currentFreqB = centerFreq + NCOFreq;
   }
-  // ===============  Recentering at band edges ==========
+
+  // recenter at band edges
   if(spectrumZoom != 0) {
-    if((NCOFreq + bands[currentBand].FHiCut) >= (96000 / (1 << spectrumZoom))) {
-      NCOFreq += bands[currentBand].FHiCut;
+    if((NCOFreq + highSideAdj) >= (96000 / (1 << spectrumZoom))) {
+      NCOFreq += highSideAdj;
       fineTuneFlag = false;
       resetTuningFlag = true;
       return;
     }
-    if((NCOFreq + bands[currentBand].FLoCut) <= (-96000 / (1 << spectrumZoom))) {
-      NCOFreq += bands[currentBand].FLoCut;
+    if((NCOFreq - lowSideAdj) <= (-96000 / (1 << spectrumZoom))) {
+      NCOFreq -= lowSideAdj;
       fineTuneFlag = false;
       resetTuningFlag = true;
       return;
     }
-  } else {
-    if(NCOFreq > 142000 || NCOFreq < -43000) {  // Offset tuning window in zoom 1x
-      fineTuneFlag = false;
-      resetTuningFlag = true;
-      return;
-    }
+  } else if(NCOFreq > 142000 || NCOFreq < -43000) {  // Offset tuning window in zoom 1x
+    fineTuneFlag = false;
+    resetTuningFlag = true;
+    return;
   }
 
   TxRxFreq = centerFreq + NCOFreq;
@@ -174,7 +198,7 @@ void SetNCOFreq(long newNCOFreq) {
 /*****
   Purpose: Set fine tuning frequency
 *****/
-void SetFineTune(long tuneChange) {
+void SetFineTune(int tuneChange) {
   SetNCOFreq(NCOFreq + tuneChange);
 }
 

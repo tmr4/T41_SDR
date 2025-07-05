@@ -90,7 +90,7 @@ FLASHMEM void InitFFTFilter() {
 }
 
 /*****
-  Purpose: Display FFT routine
+  Purpose: Calculate frequency spectrum
            Intended for spectrumZoom > 1
 *****/
 void ZoomFFTExe(uint32_t blockSize) {

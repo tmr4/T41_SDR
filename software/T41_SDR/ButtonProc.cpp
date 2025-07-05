@@ -29,7 +29,7 @@
 bool lowerAudioFilterActive = false; // false - upper, true - lower audio filter active
 int liveNoiseFloorFlag = OFF;         // ON=1, OFF=0, Auto=-1
 
-bool nfmBWFilterActive = false; // false - audio, true - demod BW filter active
+bool nfmBWFilterActive = false; // false - audio filters active, true - NFM BW demod filter active
 bool ft8MsgSelectActive = false; // false - audio filters, true - msg select active
 
 //------------------------- Local Variables ----------
@@ -268,6 +268,7 @@ FLASHMEM void ChangeDemodMode(int mode) {
       ShowOperatingStats();
       ShowBandwidthBarValues();
       DrawBandwidthBar();
+      DrawAudioFilterLines();
       break;
 
     case DISPLAY_BEACON_MONITOR:

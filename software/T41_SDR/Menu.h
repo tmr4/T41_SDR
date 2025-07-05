@@ -58,6 +58,6 @@ void GetMenuValueLoop();
 void GetMenuOption(int menuIndex, int *ptrCurrentValue, void (*ptrSetup)(), void (*ptrValue)(), void (*ptrFollowup)());
 void GetMenuOptionLoop();
 
-int DrawMenuDisplay();
-int SetPrimaryMenuIndex();
-int SetSecondaryMenuIndex();
+void DrawMenuDisplay();
+void SetPrimaryMenuIndex();
+void SetSecondaryMenuIndex();

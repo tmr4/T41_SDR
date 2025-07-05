@@ -412,7 +412,7 @@ void DisplayClock() {
 FLASHMEM void SetBand() {
   SetFreq();
 
-  CalcFilters();
+  SetupDemodFilterBW();
 
   switch(displayState) {
     case DISPLAY_T41:
