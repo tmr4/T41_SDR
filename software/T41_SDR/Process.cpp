@@ -571,10 +571,13 @@ bool ProcessIQData(bool updateSpectrumData) {
           }
           //for(int k = 0; k < 256; k++) {
           for(int k = 0; k < AUDIO_SPEC_RES; k++) {
+            // calibrated to put peak at same level as audio spectrum on v12 (~3/4 scale) with AD3 (1mW -73dB external attenuation, 223.6mVrms @7.047MHz; see "Wavegen for RF in - S9 - 1mW with 73dB external atten.dwf3work")
             if(bands[currentBand].demod == DEMOD_USB || bands[currentBand].demod == DEMOD_FT8 || bands[currentBand].demod == DEMOD_AM || bands[currentBand].demod == DEMOD_SAM) {
-              audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, AUDIO_SPEC_H);
+              //audioYPixel[k] = 50 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, AUDIO_SPEC_H);
+              audioYPixel[k] = 90 +  map(15 * log10f((audioSpectBuffer[1021 - k] + audioSpectBuffer[1022 - k] + audioSpectBuffer[1023 - k]) / 3), 0, 100, 0, AUDIO_SPEC_H);
             } else if(bands[currentBand].demod == 1) {
-              audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, AUDIO_SPEC_H);
+              //audioYPixel[k] = 50 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, AUDIO_SPEC_H);
+              audioYPixel[k] = 90 +   map(15 * log10f((audioSpectBuffer[k] + audioSpectBuffer[k + 1] + audioSpectBuffer[k + 2]) / 3), 0, 100, 0, AUDIO_SPEC_H);
             }
             if(audioYPixel[k] < 0) {
               audioYPixel[k] = 0;
@@ -1144,17 +1147,18 @@ FASTRUN void ProcessControls() {
 float32_t CalcSignalStrength() {
   float32_t dBm = -131.0;
   //float32_t dbm_calibration = 22.0;
+  //float32_t dbm_calibration = 25.0; // calibrated with AD3 (1mW -73dB external attenuation, 223.6mVrms @7.047MHz; see "Wavegen for RF in - S9 - 1mW with 73dB external atten.dwf3work")
   //const float32_t slope = 10.0;
   //const float32_t cons = -92.0;
   //const int attenuator = 0;
 
   // prevent NAN dBm
   if(audioMaxSquaredAve > 0.0) {
-    // dbm_calibration set to 22 above; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
+    // dbm_calibration set to 25; gainCorrection is a value between -2 and +6 to compensate the frequency dependant pre-Amp gain
     // attenuator is 0 and could be set in a future HW revision; RFgain is initialized to 1 in the bands[] init in SDT.ino; cons=-92; slope=10
     //  rfGainAllBands is initialized to 0
     //dBm = dbm_calibration + bands[currentBand].gainCorrection + (float32_t)attenuator + slope * log10f_fast(audioMaxSquaredAve) + cons - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
-    dBm = 22.0 + bands[currentBand].gainCorrection + 0.0 + 10.0 * log10f_fast(audioMaxSquaredAve) + (-92.0) - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
+    dBm = 25.0 + bands[currentBand].gainCorrection + 0.0 + 10.0 * log10f_fast(audioMaxSquaredAve) + (-92.0) - (float32_t)bands[currentBand].RFgain * 1.5 - rfGainAllBands;
   } else {
 
     // reset audioMaxSquaredAve to a small value

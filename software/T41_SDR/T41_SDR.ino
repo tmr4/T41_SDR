@@ -96,21 +96,19 @@ typedef struct {
 } band;
 */
 
-// old v49.2k gainCorrection note
-//     Calibration of gainCorrection done with TinySA as signal generator with -73dBm levels (S9)
-//     at the FT8 frequencies with V010 QSD with the 12V mod of the pre-amp
-// *** TODO: redo gainCorrection ***
+// gainCorrection used in signal strength calculation; value for 40m retained from original version, other values
+// set with signal from AD3 (1mW -73dB external attenuation, 223.6mVrms @ 1kHz w/ default freq for band; see "Wavegen for RF in - S9 - 1mW with 73dB external atten.dwf3work")
 band bands[NUMBER_OF_BANDS] = {
-//  freq      band low   band hi   name    demod        Hi   Low     Gain  calFreq         gain     AGC   pixel
+//  freq      band low   band hi   name    demod        Hi   Low     Gain  calFreq      gain     AGC   pixel
 //                                                       filter                         correct        offset
 //  freq      fBandLow   fBandHigh name    demod       FHiCut FLoCut RFgain             gainCorrection
-    3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  3000, 200,    1,    3750000,     -2.0,    20,    20,
+    3700000,  3500000,   4000000,  "80M",  DEMOD_LSB,  3000, 200,    1,    3750000,     -4.0,    20,    20,
     7150000,  7000000,   7300000,  "40M",  DEMOD_LSB,  3000, 200,    1,    7150000,     -2.0,    20,    20,
-    14200000, 14000000, 14350000,  "20M",  DEMOD_USB,  3000, 200,    1,    14175000,    2.0,     20,    20,
-    18100000, 18068000, 18168000,  "17M",  DEMOD_USB,  3000, 200,    1,    18118000,    2.0,     20,    20,
-    21200000, 21000000, 21450000,  "15M",  DEMOD_USB,  3000, 200,    1,    21225000,    5.0,     20,    20,
-    24920000, 24890000, 24990000,  "12M",  DEMOD_USB,  3000, 200,    1,    24940000,    6.0,     20,    20,
-    28350000, 28000000, 29700000,  "10M",  DEMOD_USB,  3000, 200,    1,    28850000,    8.5,     20,    20
+    14200000, 14000000, 14350000,  "20M",  DEMOD_USB,  3000, 200,    1,    14175000,    -3.0,    20,    20,
+    18100000, 18068000, 18168000,  "17M",  DEMOD_USB,  3000, 200,    1,    18118000,    -3.0,    20,    20,
+    21200000, 21000000, 21450000,  "15M",  DEMOD_USB,  3000, 200,    1,    21225000,    -1.0,    20,    20,
+    24920000, 24890000, 24990000,  "12M",  DEMOD_USB,  3000, 200,    1,    24940000,    -1.0,    20,    20,
+    28350000, 28000000, 29700000,  "10M",  DEMOD_USB,  3000, 200,    1,    28850000,    -1.0,    20,    20 // gainCorrection set to 12m band value as AD3 can't generate this signal
 };
 
 int bandswitchPins[] = {

@@ -127,12 +127,14 @@ RA8875 tft = RA8875();
 
 dispSc displayScale[] =
 {
-  // *dbText,dBScale, pixelsPerDB, baseOffset, offsetIncrement
-  { "20 dB/", 10.0,  2,  24, 1.00 },
-  { "10 dB/", 20.0,  4,  10, 0.50 },
-  { "5 dB/",  40.0,  8,  58, 0.25 },
-  { "2 dB/", 100.0, 20, 120, 0.10 },
-  { "1 dB/", 200.0, 40, 200, 0.05 }
+  //                     not used                  not used
+  // dbText    dBScale   pixelsPerDB   baseOffset  offsetIncrement
+  { "20 dB/",  10.0,     2,            24,         1.00 },
+  //{ "10 dB/",  20.0,     4,            10,         0.50 },
+  { "10 dB/",  20.0,     4,            80,          0.50 }, // baseOffset calibrated at 7.048MHz to put peak at same level as audio spectrum (~3/4 scale) with AD3 (1mW -73dB external attenuation, 223.6mVrms @7.047MHz; see "Wavegen for RF in - S9 - 1mW with 73dB external atten.dwf3work")
+  { " 5 dB/",  40.0,     8,            58,         0.25 },
+  { " 2 dB/",  100.0,    20,           120,        0.10 },
+  { " 1 dB/",  200.0,    40,           200,        0.05 }
 };
 
 int newSpectrumFlag = 0; // 0 - oldNF needs initialized in ShowSpectrum(), 1 - it doesn't need initialized
