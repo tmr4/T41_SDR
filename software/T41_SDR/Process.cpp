@@ -172,8 +172,9 @@ bool ProcessIQData(bool updateSpectrumData) {
           and subtract the Means from the float L and R buffer data arrays.  Again use Arm_Math functions
           to manipulate the arrays.  Arrays are all 2048 long
       **********************************************************************************/
-      //arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
-      //arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
+      // *** TODO: examine these, not used in v12, but give a flatter spectrum toward the edges of the 2x zoom 96k
+      arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_L, float_buffer_L, 2048);
+      arm_biquad_cascade_df2T_f32(&s1_Receive2, float_buffer_R, float_buffer_R, 2048);
 
       /**********************************************************************************
           Scale the data buffers by the RFgain value defined in bands[currentBand] structure
