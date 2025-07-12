@@ -989,7 +989,12 @@ float VolumeToAmplification(int volume) {
                               //  if(x < 0.1f) ampl *= x * 10.0f;
                               //#else
   //Approximation:
-  float ampl = 5 * x * x * x * x * x;  //70dB
+  //float ampl = 5 * x * x * x * x * x;  //70dB
+  // adjust volume higher
+  // gives reasonable (but low) speaker volume at vol=60 for S-3 signal and at vol=30 for S-9 signal
+  // this is similar to v12 with earbud and the original 5x factor
+  // *** TODO: examine v11/v12 hardware differences; experiment with volume gain with earbud on v11; set v11/v12 to be similar ***
+  float ampl = 200 * x * x * x * x * x;
                                        //#endif
   return ampl;
 }
