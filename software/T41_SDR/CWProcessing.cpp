@@ -74,11 +74,7 @@ int endGapFlag = 0;
 int topGapIndex;
 int topGapIndexOld;
 
-//float32_t float_Corr_Buffer[511];
-float32_t *float_Corr_Buffer;
-
-//int32_t gapHistogram[HISTOGRAM_ELEMENTS];
-//int32_t signalHistogram[HISTOGRAM_ELEMENTS];
+float32_t *corrBuffer, *cwDecodeBuffer;
 int32_t *gapHistogram, *signalHistogram;
 
 long valRef1;
@@ -91,14 +87,11 @@ long aveDahLength = 200;
 float thresholdGeometricMean = 140.0;  // This changes as decoder runs
 float thresholdArithmeticMean;
 
-char decodeBuffer[33];    // The buffer for holding the decoded characters
 byte currentDashJump = DECODER_BUFFER_SIZE;
 byte currentDecoderIndex = 0;
 int dahLength;
 int gapAtom;  // Space between atoms
 int gapChar;  // Space between characters
-
-float32_t DMAMEM float_buffer_CW[256];
 
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
@@ -275,33 +268,33 @@ void DoCWReceiveProcessing() {
 
   if(decoderFlag == ON) {
     // left channel first
-    arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, float_buffer_CW, 256); // Park McClellan FIR filter const Group delay
+    arm_fir_f32(&FIR_CW_DecodeL, float_buffer_L, cwDecodeBuffer, 256); // Park McClellan FIR filter const Group delay
 
     // ----------------------  Correlation calculation  -------------------------
     //Calculate correlation between calc sine and incoming signal
-    arm_correlate_f32(float_buffer_CW, 256, sinBuffer, 256, float_Corr_Buffer);
+    arm_correlate_f32(cwDecodeBuffer, 256, sinBuffer, 256, corrBuffer);
 
     //get max value of correlation
-    arm_max_f32(float_Corr_Buffer, 511, &corrResultL, &corrResultIndexL);
+    arm_max_f32(corrBuffer, 511, &corrResultL, &corrResultIndexL);
 
     //running average of corr coeff. L
     aveCorrResultL = .7 * corrResultL + .3 * aveCorrResultL;
 
     // Calculate Goertzel Mahnitude of incomming signal
-    goertzelMagnitude1 = goertzel_mag(256, 750, 24000, float_buffer_CW);
+    goertzelMagnitude1 = goertzel_mag(256, 750, 24000, cwDecodeBuffer);
 
     // now right channel
-    arm_fir_f32(&FIR_CW_DecodeR, float_buffer_R, float_buffer_CW, 256);
+    arm_fir_f32(&FIR_CW_DecodeR, float_buffer_R, cwDecodeBuffer, 256);
 
-    arm_correlate_f32(float_buffer_CW, 256, sinBuffer, 256, float_Corr_Buffer);
-    arm_max_f32(float_Corr_Buffer, 511, &corrResultR, &corrResultIndexR);
+    arm_correlate_f32(cwDecodeBuffer, 256, sinBuffer, 256, corrBuffer);
+    arm_max_f32(corrBuffer, 511, &corrResultR, &corrResultIndexR);
 
     //running average of corr coeff. R
     aveCorrResultR = .7 * corrResultR + .3 * aveCorrResultR;
 
     aveCorrResult = (corrResultR + corrResultL) / 2;
 
-    goertzelMagnitude2 = goertzel_mag(256, 750, 24000, float_buffer_CW);
+    goertzelMagnitude2 = goertzel_mag(256, 750, 24000, cwDecodeBuffer);
 
     goertzelMagnitude = (goertzelMagnitude1 + goertzelMagnitude2) / 2;
 
@@ -337,8 +330,6 @@ FLASHMEM void SetDitLength(int wpm) {
 
 //==================================== Decoder =================
 
-static int col = 0;  // Start at lower left
-
 /*****
   Purpose: This function displays the decoded Morse code below waterfall. Arranged as:
 
@@ -346,6 +337,9 @@ static int col = 0;  // Start at lower left
     char currentLetter
 *****/
 void MorseCharacterDisplay(char currentLetter) {
+  static char decodeBuffer[33]; // The buffer for holding the decoded characters
+  static int col = 0; // Start at lower left
+
   if(col < MAX_DECODE_CHARS) {  // Start scrolling??
     decodeBuffer[col] = currentLetter;
     col++;
@@ -714,23 +708,24 @@ float goertzel_mag(int numSamples, int TARGET_FREQUENCY, int SAMPLING_RATE, floa
   return magnitude;
 }
 
-FLASHMEM void initCW(void) {
-  //Serial.println(sizeof(float32_t));
+FLASHMEM void InitCW(void) {
+  // *** TODO: validate which of these need to be properly alligned for CW decoding (old alignment: _attribute__ ((aligned (4)))) ***
+  corrBuffer = (float32_t *)extmem_malloc(511 * sizeof(float32_t));
+  gapHistogram = (int32_t *)extmem_malloc(HISTOGRAM_ELEMENTS * sizeof(int32_t));
+  signalHistogram = (int32_t *)extmem_malloc(HISTOGRAM_ELEMENTS * sizeof(int32_t));;
+  cwDecodeBuffer = (float32_t *)extmem_malloc(256 * sizeof(float32_t));
 
-  // decoder is sharing memory with FT8
-  int offset1 = 0;
-  int offset2 = 0;
+  if((corrBuffer == NULL) || (gapHistogram == NULL) || (signalHistogram == NULL) || (cwDecodeBuffer == NULL)) {
+    decoderFlag = OFF;
+    ExitCW();
 
-  // sharedRAM1 is 8k, we're using 2k here
-  float_Corr_Buffer = (float32_t *)&sharedRAM1[offset1]; // 511 * 4 bytes (round up to 512 * 4 = 2048)
-  offset1 += 512 * sizeof(float32_t);
+    Debug("InitCW failed");
+  }
+}
 
-  // sharedRAM2 is 26k, we're using 6k here
-  gapHistogram = (int32_t *)&sharedRAM2[offset2]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 768 * 4 = 3072)
-  offset2 += 768 * sizeof(int32_t);
-  signalHistogram = (int32_t *)&sharedRAM2[offset2]; // HISTOGRAM_ELEMENTS * 4 bytes (round up to 3072)
-  offset2 += 768 * sizeof(int32_t);
-
-  //Serial.println(offset);
-
+FLASHMEM void ExitCW(void) {
+  extmem_free(corrBuffer);
+  extmem_free(gapHistogram);
+  extmem_free(signalHistogram);
+  extmem_free(cwDecodeBuffer);
 }

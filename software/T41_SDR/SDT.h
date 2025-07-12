@@ -23,6 +23,12 @@ typedef __uint8_t uint8_t;
 #define CW_RECEIVE_STATE 2
 #define CW_TRANSMIT_STRAIGHT_STATE 3
 #define CW_TRANSMIT_KEYER_STATE 4
+#define DATA_RECEIVE_STATE 5
+#define CALIBRATE_RECEIVE_STATE 6
+#define CALIBRATE_TRANSMIT_STATE 7
+#define CALIBRATE_TWOTONE_STATE 8
+#define CALIBRATE_DONE_STATE 9
+
 #define CALIBRATE_STATE 5
 
 // demodulation modes
@@ -100,8 +106,3 @@ typedef struct {
 extern band bands[];
 
 extern int bandswitchPins[];
-
-// shared memory to allow added features (FT8 for example which uses a lot of heap)
-// *** these need to be properly alligned for some CW functions ***
-extern byte sharedRAM1[1024 * 8] __attribute__ ((aligned (4)));
-extern byte /*DMAMEM*/ sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));

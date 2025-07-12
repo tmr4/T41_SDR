@@ -468,7 +468,7 @@ FLASHMEM void ExecuteButtonPress(int val) {
 
           case DEMOD_FT8:
             // try to load wav file
-            if(setupFT8Wav()) {
+            if(SetupFT8Wav()) {
               // switch to play a wav file
               bands[currentBand].demod = DEMOD_FT8_WAV;
               currentDataMode = DEMOD_FT8_WAV;

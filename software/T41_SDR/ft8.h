@@ -39,8 +39,8 @@ void DisplayActiveMessageDetails(int row, int col);
 
 void update_synchronization();
 
-bool setupFT8();
-bool setupFT8Wav();
-void exitFT8();
+bool SetupFT8();
+bool SetupFT8Wav();
+void ExitFT8();
 
 void auto_sync_FT8();

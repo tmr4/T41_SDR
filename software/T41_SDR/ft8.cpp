@@ -27,13 +27,29 @@
 
 #define ft8_msg_samples 92
 
-//q15_t DMAMEM ft8_dsp_buffer[3*input_gulp_size] __attribute__ ((aligned (4)));
-//q15_t DMAMEM dsp_output[FFT_SIZE *2] __attribute__ ((aligned (4)));
-//q15_t DMAMEM window_ft8_dsp_buffer[FFT_SIZE] __attribute__ ((aligned (4)));
-//float DMAMEM window[FFT_SIZE];
+#define FT8_ALIGNED_MEMORY true
 
-q15_t *ft8_dsp_buffer, *dsp_output, *window_ft8_dsp_buffer;
-float *window;
+typedef struct
+{
+  char field1[20];
+  char field2[20];
+  char field3[20];
+  int  freq_hz;
+  //char decode_time[10];
+  uint8_t hour, min, sec;
+  int  sync_score;
+  int  snr;
+  int  distance;
+
+  int count;
+} Decode;
+
+Decode *decoded;
+
+uint8_t *export_fft_power;
+q15_t *ft8_dsp_buffer, *dsp_output, *window_ft8_dsp_buffer, *FFT_Scale, *FFT_Magnitude;
+float *window, *mag_db;
+int32_t *FFT_Mag_10;
 
 int activeMsg = 0;
 
@@ -49,16 +65,7 @@ int master_offset, offset_step;
 bool ft8Init = false;
 bool syncFlag = false;
 
-//q15_t DMAMEM FFT_Scale[FFT_SIZE * 2];
-q15_t DMAMEM FFT_Magnitude[FFT_SIZE];
-int32_t DMAMEM FFT_Mag_10[FFT_SIZE/2];
-float  DMAMEM mag_db[FFT_SIZE/2 + 1];
-
-q15_t *FFT_Scale; //, *FFT_Magnitude;
-
 arm_rfft_instance_q15 fft_inst;
-//uint8_t DMAMEM export_fft_power[ft8_msg_samples*ft8_buffer*4] ;
-uint8_t *export_fft_power;
 
 int max_score;
 // from: https://github.com/kgoba/ft8_lib/issues/3
@@ -84,24 +91,6 @@ typedef struct Candidate {
     uint8_t      time_sub;
     uint8_t      freq_sub;
 } Candidate;
-
-typedef struct
-{
-  char field1[20];
-  char field2[20];
-  char field3[20];
-  int  freq_hz;
-  //char decode_time[10];
-  uint8_t hour, min, sec;
-  int  sync_score;
-  int  snr;
-  int  distance;
-
-  int count;
-} Decode;
-
-Decode decoded[20];
-//Decode *decoded;
 
 //-------------------------------------------------------------------------------------------------------------
 // forwards
@@ -179,43 +168,122 @@ float ft_blackman_i(int i, int N) {
   return a0 - a1*x1 + a2*x2;
 }
 
-FLASHMEM bool init_DSP(void) {
-  //Serial.println(sizeof(float32_t));
+/* Quickly aligns the given pointer to a power of two boundaries.
+@return An aligned pointer of typename T.
+@desc Algorithm is a 2's compliment trick that works by masking off
+the desired number in 2's compliment and adding them to the
+pointer. Please note how I took the horizontal comment whitespace back.
+@param pointer The pointer to align.
+@param mask Mask for the lower LSb, which is one less than the power of
+2 you wish to align too. */
+template <typename T = char>
+inline T* AlignUp(void* pointer, uintptr_t mask) {
+  intptr_t value = reinterpret_cast<intptr_t>(pointer);
+  value += (-value) & mask;
+  return reinterpret_cast<T*>(value);
+}
 
-  export_fft_power = new uint8_t[ft8_msg_samples*ft8_buffer*4];
+uint8_t *buf1;
+q15_t *buf2, *buf3, *buf4, *buf5, *buf6;
+float *buf7, *buf8;
+int32_t *buf9;
+Decode *buf10;
 
-  if(export_fft_power == NULL) {
+#ifndef FT8_EXTERNAL_MEMORY
+// as of 7/11/2025 there is 16k remaining in DMAMEM with FT8 data in there
+// buf9 can be placed in RAM1 if needed
+//char buf9Temp[FFT_SIZE / 2 * sizeof(int32_t) + 32];
+#endif
+
+FLASHMEM bool InitFT8DSP(void) {
+#ifdef FT8_EXTERNAL_MEMORY
+  // force FT8 data into external memory if available
+  buf1 = (uint8_t *)extmem_malloc(ft8_msg_samples * ft8_buffer * 4 * sizeof(uint8_t) + 32);
+  buf2 = (q15_t *)extmem_malloc(3 * input_gulp_size * sizeof(q15_t) + 32);
+  buf3 = (q15_t *)extmem_malloc(FFT_SIZE * 2 * sizeof(q15_t) + 32);
+  buf4 = (q15_t *)extmem_malloc(FFT_SIZE * sizeof(q15_t) + 32);
+  buf5 = (q15_t *)extmem_malloc(FFT_SIZE * 2 * sizeof(q15_t) + 32);
+  buf6 = (q15_t *)extmem_malloc(FFT_SIZE * sizeof(q15_t) + 32);
+  buf7 = (float *)extmem_malloc(FFT_SIZE * sizeof(float) + 32);
+  buf8 = (float *)extmem_malloc((FFT_SIZE / 2 + 1) * sizeof(float) + 32);
+  buf9 = (int32_t *)extmem_malloc(FFT_SIZE / 2 * sizeof(int32_t) + 32);
+  buf10 = (Decode *)extmem_malloc(20 * sizeof(Decode) + 32); // using 1280
+#else
+  // FT8 decode takes 106ms with the below arrays (and candidate_list) in internal memory.
+  // FT8 decode of wave file takes 81ms.
+  buf1 = (uint8_t *)malloc(ft8_msg_samples * ft8_buffer * 4 * sizeof(uint8_t) + 32);
+  buf2 = (q15_t *)malloc(3 * input_gulp_size * sizeof(q15_t) + 32);
+  buf3 = (q15_t *)malloc(FFT_SIZE * 2 * sizeof(q15_t) + 32);
+  buf4 = (q15_t *)malloc(FFT_SIZE * sizeof(q15_t) + 32);
+  buf5 = (q15_t *)malloc(FFT_SIZE * 2 * sizeof(q15_t) + 32);
+  buf6 = (q15_t *)malloc(FFT_SIZE * sizeof(q15_t) + 32);
+  buf7 = (float *)malloc(FFT_SIZE * sizeof(float) + 32);
+  buf8 = (float *)malloc((FFT_SIZE / 2 + 1) * sizeof(float) + 32);
+  buf9 = (int32_t *)malloc(FFT_SIZE / 2 * sizeof(int32_t) + 32); // as of 7/11/2025 there is 16k remaining in DMAMEM with FT8 data in there
+  //buf9 = (int32_t *)buf9Temp;
+  buf10 = (Decode *)malloc(20 * sizeof(Decode) + 32); // using 1280
+#endif
+
+  if((buf1 == NULL) || (buf2 == NULL) || (buf3 == NULL) || (buf4 == NULL) || (buf5 == NULL) || (buf6 == NULL) || (buf7 == NULL) || (buf8 == NULL) || (buf9 == NULL) || (buf10 == NULL)) {
     Serial.println("Insufficient memory to activate FT8");
+    Serial.println((int)buf1, HEX);
+    Serial.println((int)buf2, HEX);
+    Serial.println((int)buf3, HEX);
+    Serial.println((int)buf4, HEX);
+    Serial.println((int)buf5, HEX);
+    Serial.println((int)buf6, HEX);
+    Serial.println((int)buf7, HEX);
+    Serial.println((int)buf8, HEX);
+    Serial.println((int)buf9, HEX);
+    Serial.println((int)buf10, HEX);
+
+    extmem_free(buf1);
+    extmem_free(buf2);
+    extmem_free(buf3);
+    extmem_free(buf4);
+    extmem_free(buf5);
+    extmem_free(buf6);
+    extmem_free(buf7);
+    extmem_free(buf8);
+    extmem_free(buf9);
+    extmem_free(buf10);
     return false;
   }
 
-  int offset = 0;
-
-  ft8_dsp_buffer = (q15_t *)&sharedRAM2[offset]; // 3 * input_gulp_size * 2 bytes = 3 * FFT_SIZE / 2 * 2 bytes
-  offset += 3 * input_gulp_size * 2;
-  dsp_output = (q15_t *)&sharedRAM2[offset]; // FFT_SIZE * 2 * 2 bytes
-  offset += FFT_SIZE * 2 * 2;
-  window_ft8_dsp_buffer = (q15_t *)&sharedRAM2[offset]; // FFT_SIZE * 2 bytes
-  offset += FFT_SIZE * 2;
-  window = (float *)&sharedRAM2[offset]; // FFT_SIZE * 4 bytes
-  offset += FFT_SIZE * 4;
-
-  //Serial.println(offset);
-
-  offset = 0;
-  //decoded = (Decode *)&sharedRAM1[offset]; // using 1280
-  //offset += 1280;
-  FFT_Scale = (q15_t *)&sharedRAM1[offset]; // FFT_SIZE * 2 * 2
-  offset += FFT_SIZE * 2 * 2;
-  //FFT_Magnitude = (q15_t *)&sharedRAM1[offset]; // FFT_SIZE * 2
-  //offset += FFT_SIZE * 2;
-
-  //Serial.println(offset);
+  // 32-byte alignment isn't required for the FT8 arrays below (and candidate_list) in external memory,
+  // though external memory, though some of these may have been aligned just by their placement.  There
+  // is no performance difference with or without 32-byte alignment.  The FT8 decode takes about 117ms
+  // with no FT8 traffic.
+  // FT8 decode of wave file takes 79ms with aligned memory and non-aligned memory.
+  if(FT8_ALIGNED_MEMORY) {
+    export_fft_power = (uint8_t *)AlignUp<>(buf1, 31);
+    ft8_dsp_buffer = (q15_t *)AlignUp<>(buf2, 31);
+    dsp_output = (q15_t *)AlignUp<>(buf3, 31);
+    window_ft8_dsp_buffer = (q15_t *)AlignUp<>(buf4, 31);
+    FFT_Scale = (q15_t *)AlignUp<>(buf5, 31);
+    FFT_Magnitude = (q15_t *)AlignUp<>(buf6, 31);
+    window = (float *)AlignUp<>(buf7, 31);
+    mag_db = (float *)AlignUp<>(buf8, 31);
+    FFT_Mag_10 = (int32_t *)AlignUp<>(buf9, 31);
+    decoded = (Decode *)AlignUp<>(buf10, 31);
+  } else {
+    export_fft_power = buf1;
+    ft8_dsp_buffer = buf2;
+    dsp_output = buf3;
+    window_ft8_dsp_buffer = buf4;
+    FFT_Scale = buf5;
+    FFT_Magnitude = buf6;
+    window = buf7;
+    mag_db = buf8;
+    FFT_Mag_10 = buf9;
+    decoded = buf10;
+  }
 
   arm_rfft_init_q15(&fft_inst, FFT_SIZE, 0, 1);
   for(int i = 0; i < FFT_SIZE; ++i) {
     window[i] = ft_blackman_i(i, FFT_SIZE);
   }
+
   offset_step = (int) ft8_buffer*4;
 
   return true;
@@ -728,7 +796,20 @@ int validate_locator(char locator[]) {
 
 int ft8_decode(void) {
   //char rtc_string[10];   // print format stuff
+#ifdef FT8_EXTERNAL_MEMORY
+  // force FT8 data into external memory if available
+  Candidate *buf11 = (Candidate *)extmem_malloc(kMax_candidates * sizeof(Candidate) + 32);
+  Candidate *candidate_list;
+
+  if(FT8_ALIGNED_MEMORY) {
+    candidate_list = (Candidate *)AlignUp<>(buf11, 31);
+  } else {
+    candidate_list = buf11;
+  }
+#else
   Candidate candidate_list[kMax_candidates];
+#endif
+
   Candidate cand;
   char newlyDecoded[kMax_decoded_messages][kMax_message_length];
   float freq_hz;
@@ -883,6 +964,11 @@ int ft8_decode(void) {
       }
     }
   }  //End of big decode loop
+
+#ifdef FT8_EXTERNAL_MEMORY
+  //extmem_free(candidate_list);
+  extmem_free(buf11);
+#endif
 
   num_decoded_msg = nDecoded;
   return numNewlyDecoded;
@@ -1346,10 +1432,10 @@ char charn(int c, int table_idx) {
 // other
 //-------------------------------------------------------------------------------------------------------------
 
-FLASHMEM bool setupFT8() {
+FLASHMEM bool SetupFT8() {
   if(!ft8Init) {
     initalize_constants();
-    if(init_DSP()) {
+    if(InitFT8DSP()) {
       ft8Init = true;
 
       syncFlag = false;
@@ -1372,7 +1458,7 @@ FLASHMEM bool setupFT8() {
   return false;
 }
 
-FLASHMEM bool setupFT8Wav() {
+FLASHMEM bool SetupFT8Wav() {
   int result;
   uint32_t slot_period = 15;
   uint32_t sample_rate = 12000;
@@ -1389,8 +1475,19 @@ FLASHMEM bool setupFT8Wav() {
   return true;
 }
 
-FLASHMEM void exitFT8() {
-  delete[] export_fft_power;
+FLASHMEM void ExitFT8() {
+  extmem_free(buf1);
+  extmem_free(buf2);
+  extmem_free(buf3);
+  extmem_free(buf4);
+  extmem_free(buf5);
+  extmem_free(buf6);
+  extmem_free(buf7);
+  extmem_free(buf8);
+  extmem_free(buf9);
+  extmem_free(buf10);
+
+  //extmem_free();
 
   // restore message area
   tft.fillRect(WATERFALL_L, YPIXELS - 20 * 6, WATERFALL_W, 25 * 5 + 3, RA8875_BLACK);

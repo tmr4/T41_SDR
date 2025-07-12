@@ -71,4 +71,5 @@ void SetDitLength(int wpm);
 void ResetHistograms();
 void DoGapHistogram(long gapLen);
 
-void initCW(void);
+void InitCW(void);
+void ExitCW(void);

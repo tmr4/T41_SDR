@@ -41,20 +41,37 @@ int currentFilterLoCut, currentFilterHiCut;
 float32_t recEQ_LevelScale[14];
 
 // EQ Buffers
-float32_t DMAMEM EQ1_float_buffer_L[256];
-float32_t DMAMEM EQ2_float_buffer_L[256];
-float32_t DMAMEM EQ3_float_buffer_L[256];
-float32_t DMAMEM EQ4_float_buffer_L[256];
-float32_t DMAMEM EQ5_float_buffer_L[256];
-float32_t DMAMEM EQ6_float_buffer_L[256];
-float32_t DMAMEM EQ7_float_buffer_L[256];
-float32_t DMAMEM EQ8_float_buffer_L[256];
-float32_t DMAMEM EQ9_float_buffer_L[256];
-float32_t DMAMEM EQ10_float_buffer_L[256];
-float32_t DMAMEM EQ11_float_buffer_L[256];
-float32_t DMAMEM EQ12_float_buffer_L[256];
-float32_t DMAMEM EQ13_float_buffer_L[256];
-float32_t DMAMEM EQ14_float_buffer_L[256];
+//float32_t DMAMEM EQ1_float_buffer_L[256];
+//float32_t DMAMEM EQ2_float_buffer_L[256];
+//float32_t DMAMEM EQ3_float_buffer_L[256];
+//float32_t DMAMEM EQ4_float_buffer_L[256];
+//float32_t DMAMEM EQ5_float_buffer_L[256];
+//float32_t DMAMEM EQ6_float_buffer_L[256];
+//float32_t DMAMEM EQ7_float_buffer_L[256];
+//float32_t DMAMEM EQ8_float_buffer_L[256];
+//float32_t DMAMEM EQ9_float_buffer_L[256];
+//float32_t DMAMEM EQ10_float_buffer_L[256];
+//float32_t DMAMEM EQ11_float_buffer_L[256];
+//float32_t DMAMEM EQ12_float_buffer_L[256];
+//float32_t DMAMEM EQ13_float_buffer_L[256];
+//float32_t DMAMEM EQ14_float_buffer_L[256];
+
+// *** TODO: add an equalizer init function to allocated these when needed
+//           also make sure allocated memory is freed when not needed (like FT8) ***
+float32_t *EQ1_float_buffer_L;
+float32_t *EQ2_float_buffer_L;
+float32_t *EQ3_float_buffer_L;
+float32_t *EQ4_float_buffer_L;
+float32_t *EQ5_float_buffer_L;
+float32_t *EQ6_float_buffer_L;
+float32_t *EQ7_float_buffer_L;
+float32_t *EQ8_float_buffer_L;
+float32_t *EQ9_float_buffer_L;
+float32_t *EQ10_float_buffer_L;
+float32_t *EQ11_float_buffer_L;
+float32_t *EQ12_float_buffer_L;
+float32_t *EQ13_float_buffer_L;
+float32_t *EQ14_float_buffer_L;
 
 float32_t DMAMEM audioFIRFilterMask[1024] __attribute__((aligned(4)));
 

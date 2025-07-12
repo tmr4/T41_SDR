@@ -221,7 +221,7 @@ FLASHMEM void ChangeDemodMode(int mode) {
     switch(currentDataMode) {
       case DEMOD_PSK31:
         // try to set up FT8
-        if(setupFT8()) {
+        if(SetupFT8()) {
           // FT8 set up successful
           bands[currentBand].demod = DEMOD_FT8;
           currentDataMode = DEMOD_FT8;
@@ -230,7 +230,7 @@ FLASHMEM void ChangeDemodMode(int mode) {
         break;
 
       case DEMOD_FT8:
-        exitFT8();
+        ExitFT8();
         bands[currentBand].demod = DEMOD_PSK31;
         currentDataMode = DEMOD_PSK31;
         ShowOperatingStats();
@@ -314,7 +314,7 @@ FLASHMEM void ChangeMode(int mode) {
 
     case DATA_MODE:
       if(bands[currentBand].demod == DEMOD_FT8) {
-        exitFT8();
+        ExitFT8();
       } else {
         exitPSK31();
       }
@@ -348,7 +348,7 @@ FLASHMEM void ChangeMode(int mode) {
     case DATA_MODE:
       if(currentDataMode == DEMOD_FT8) {
         // try to set up FT8
-        if(setupFT8()) {
+        if(SetupFT8()) {
           // FT8 set up successful
           bands[currentBand].demod = DEMOD_FT8;
         } else {

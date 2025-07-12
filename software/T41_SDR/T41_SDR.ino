@@ -49,7 +49,7 @@
 #include "t41Beacon.h"
 #include "t41Control.h"
 #include "t41USBHost.h"
-//#include "wsjt.h"
+#include "wsjt.h"
 
 extern char myGrid[];
 
@@ -120,9 +120,6 @@ int bandswitchPins[] = {
   0,   // 12M  Note that 12M and 10M both use the 10M filter, which is always in (no relay).  KF5N September 27, 2023.
   0    // 10M
 };
-
-byte sharedRAM1[1024 * 8];
-byte DMAMEM sharedRAM2[2048 * 13] __attribute__ ((aligned (4)));
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -257,8 +254,6 @@ FLASHMEM void SoftReset() {
   menuEncoderMove = 0;
   fineTuneEncoderMove = 0L;
 
-  initCW();
-
   mainMenuIndex = 0;             // Changed from middle to first. Do Menu Down to get to Calibrate quickly
   secondaryMenuIndex = -1;       // -1 means haven't determined secondary menu
   menuStatus = NO_MENUS_ACTIVE;  // Blank menu field
@@ -365,6 +360,40 @@ FLASHMEM void setup() {
   TEMPMON_TEMPSENSE0 |= 0x2U;
 }
 
+void ConfigRadioState() {
+  switch(radioState) {
+    case SSB_RECEIVE_STATE:
+      break;
+
+    case SSB_TRANSMIT_STATE:
+#ifdef USE_MIC_COMPRESSION
+      if(compressorFlag == 1) {
+        SetupMicCompressors((float)currentMicThreshold, .1, 2.0);
+      } else if(compressorFlag == 0) {
+        SetupMicCompressors(0.0, 0.01, 0.01);
+      }
+#endif
+      break;
+
+    case CW_RECEIVE_STATE:
+      if((decoderFlag == ON) && (lastState != CW_RECEIVE_STATE)) {
+        InitCW();
+      }
+      break;
+
+    case CW_TRANSMIT_STRAIGHT_STATE:
+    case CW_TRANSMIT_KEYER_STATE:
+      break;
+
+    case DATA_RECEIVE_STATE:
+      // *** TODO: consider moving initialization stuff from ChangeDemodMode and ChangeMode here ***
+      break;
+
+    default:
+      break;
+  }
+}
+
 FASTRUN void loop() {
   int pushButtonSwitchIndex = -1;
   int valPin;
@@ -425,8 +454,26 @@ FASTRUN void loop() {
 
   if(lastState != radioState) {
     ConfigAudioState();
+    ConfigRadioState();
     SetFreq();  // Update frequencies if the radio state has changed
     ShowTransmitReceiveStatus();
+
+    // cleanup last state
+    switch(lastState) {
+      case CW_RECEIVE_STATE:
+        if((radioMode != CW_MODE) && (decoderFlag == ON)) {
+          // free up CW decoder memory
+          ExitCW();
+        }
+        break;
+
+      case DATA_RECEIVE_STATE:
+        // *** TODO: consider moving exit stuff from ChangeDemodMode and ChangeMode here ***
+        break;
+
+      default:
+        break;
+    }
   }
 
   // *** TODO: consider if a control update is proper here ***
@@ -452,13 +499,6 @@ FASTRUN void loop() {
       break;
 
     case SSB_TRANSMIT_STATE:
-#ifdef USE_MIC_COMPRESSION
-      if(compressorFlag == 1) {
-        SetupMicCompressors((float)currentMicThreshold, .1, 2.0);
-      } else if(compressorFlag == 0) {
-        SetupMicCompressors(0.0, 0.01, 0.01);
-      }
-#endif
       digitalWrite(RXTX, HIGH); // xmit on
 
       while(digitalRead(PTT) == LOW) {
@@ -590,7 +630,13 @@ FASTRUN void loop() {
   T41ControlLoop();
 #endif
 
-  #ifdef DEBUG_LOOP
+  // *** this allows setting clock with Set T41Clock app in addition to communication with WSJT-X app
+  //     this is also possible with T41ControlLoop if not being used for HOST_CAT_CONTROL_SUPPORT ***
+  if(bands[currentBand].demod == DEMOD_FT8) {
+    WSJTLoop();
+  }
+
+#ifdef DEBUG_LOOP
   ExitLoop();
 #endif
 

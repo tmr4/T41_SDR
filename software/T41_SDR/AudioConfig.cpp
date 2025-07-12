@@ -337,7 +337,8 @@ void ConfigAudioState() {
       Q_out_Start(); // sidetone
       break;
 
-    case CALIBRATE_STATE:
+    case CALIBRATE_RECEIVE_STATE:
+    case CALIBRATE_TRANSMIT_STATE:
       break;
 
     default:
