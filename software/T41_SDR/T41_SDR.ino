@@ -634,6 +634,8 @@ FASTRUN void loop() {
   //     this is also possible with T41ControlLoop if not being used for HOST_CAT_CONTROL_SUPPORT ***
   if(bands[currentBand].demod == DEMOD_FT8) {
     WSJTLoop();
+  } else {
+    T41ControlLoop();
   }
 
 #ifdef DEBUG_LOOP

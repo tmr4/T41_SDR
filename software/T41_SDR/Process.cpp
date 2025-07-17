@@ -55,13 +55,11 @@ uint8_t ANR_notchOn = 0;
 int8_t first_block = 1;
 int mute = 0; // 0 - normal volume, 1 - mute (*** this is never changed ***)
 
-float VolumeToAmplification(int volume);
-
 //-------------------------------------------------------------------------------------------------------------
 // Forwards
 //-------------------------------------------------------------------------------------------------------------
 
-void Codec_gain();
+float VolumeToAmplification(int volume);
 
 //-------------------------------------------------------------------------------------------------------------
 // Code
@@ -138,7 +136,7 @@ bool ProcessIQData(bool updateSpectrumData) {
   // number of packets is sufficient to process.  I wasn't able to use this though with an interval timer driven process
   // even with reenabling interrupts during the idle loop.  Perhaps the low priority of the update interrupt was affecting this.
   //
-  if( (uint32_t) Q_in_L.available() > 16 && (uint32_t) Q_in_R.available() > 16 ) {
+  if((uint32_t)Q_in_L.available() > 16 && (uint32_t)Q_in_R.available() > 16 ) {
     elapsedMicros usec = 0;
 
     // we allow input buffer availability to regulate FT8 wav file decoding
@@ -147,13 +145,14 @@ bool ProcessIQData(bool updateSpectrumData) {
     if(!((bands[currentBand].demod == DEMOD_FT8_WAV) || (bands[currentBand].demod == DEMOD_PSK31_WAV))) {
       // get audio samples from the audio buffers and convert them to float
       // read in 32 blocks á 128 samples in I and Q
-      for(unsigned i = 0; i < 16; i++) {
+      for(int i = 0; i < 16; i++) {
         /**********************************************************************************
             Using arm_Math library, convert to float one buffer_size.
             Float_buffer samples are now standardized from > -1.0 to < 1.0
         **********************************************************************************/
-        arm_q15_to_float (Q_in_R.readBuffer(), &float_buffer_L[128 * i], 128); // convert int_buffer to float 32bit
-        arm_q15_to_float (Q_in_L.readBuffer(), &float_buffer_R[128 * i], 128); // convert int_buffer to float 32bit
+        arm_q15_to_float(Q_in_R.readBuffer(), &float_buffer_L[128 * i], 128); // convert int_buffer to float 32bit
+        arm_q15_to_float(Q_in_L.readBuffer(), &float_buffer_R[128 * i], 128); // convert int_buffer to float 32bit
+
         Q_in_L.freeBuffer();
         Q_in_R.freeBuffer();
       }
@@ -954,7 +953,8 @@ bool ProcessIQData(bool updateSpectrumData) {
     if(mute == 1) {
       arm_scale_f32(float_buffer_L, 0.0, float_buffer_L, 2048);
     } else if(mute == 0) {
-      arm_scale_f32(float_buffer_L, 8.0 * VolumeToAmplification(audioVolume), float_buffer_L, 2048);
+      // this includes a factor of 8x to compensate for the interpolation
+      arm_scale_f32(float_buffer_L, 80.0 * VolumeToAmplification(audioVolume), float_buffer_L, 2048);
     }
 
     /**********************************************************************************
@@ -963,7 +963,15 @@ bool ProcessIQData(bool updateSpectrumData) {
     arm_float_to_q15(float_buffer_L, q15_buffer_LTemp, 2048);
     Q_out_L.play(q15_buffer_LTemp, 2048);
 
-    //Codec_gain();
+    float tmp;
+    static float max = 0;
+    uint32_t index;
+    arm_max_f32(float_buffer_L, 2048, &tmp, &index);
+    if(tmp > max) {
+      max = tmp;
+    }
+
+    Serial.print(tmp*32768.0);Serial.print(", "); Serial.println(max*32768.0);
 
     elapsed_micros_sum = elapsed_micros_sum + usec;
     elapsed_micros_idx_t++;
@@ -981,64 +989,10 @@ bool ProcessIQData(bool updateSpectrumData) {
     int volume        the current reading
 *****/
 float VolumeToAmplification(int volume) {
-  float x = volume / 100.0f;  //"volume" Range 0..100
-                              //#if 0
-                              //  float a = 3.1623e-4;
-                              //  float b = 8.059f;
-                              //  float ampl = a * expf( b * x );
-                              //  if(x < 0.1f) ampl *= x * 10.0f;
-                              //#else
-  //Approximation:
-  //float ampl = 5 * x * x * x * x * x;  //70dB
-  // adjust volume higher
-  // gives reasonable (but low) speaker volume at vol=60 for S-3 signal and at vol=30 for S-9 signal
-  // this is similar to v12 with earbud and the original 5x factor
-  // *** TODO: examine v11/v12 hardware differences; experiment with volume gain with earbud on v11; set v11/v12 to be similar ***
-  float ampl = 200 * x * x * x * x * x;
-                                       //#endif
+  float x = volume / 100.0f;  // range 0 to 100
+  float ampl = 5 * x * x;
+
   return ampl;
-}
-
-/*****
-  Purpose: To set the codec gain
-*****/
-void Codec_gain() {
-  static uint32_t timer = 0;
-  static uint8_t half_clip = 0;
-  static uint8_t quarter_clip = 0;
-
-  timer++;
-  if(timer > 10000) timer = 10000;
-  if(half_clip == 1)  // did clipping almost occur?
-  {
-    if(timer >= 20)  // 100  // has enough time passed since the last gain decrease?
-    {
-      if(bands[currentBand].RFgain != 0)  // yes - is this NOT zero?
-      {
-        bands[currentBand].RFgain -= 1;  // decrease gain one step, 1.5dB
-        if(bands[currentBand].RFgain < 0) {
-          bands[currentBand].RFgain = 0;
-        }
-        timer = 0;  // reset the adjustment timer
-        //AudioNoInterrupts();
-        //AudioInterrupts();
-      }
-    }
-  } else if(quarter_clip == 0)  // no clipping occurred
-  {
-    if(timer >= 50)  // 500   // has it been long enough since the last increase?
-    {
-      bands[currentBand].RFgain += 1;  // increase gain by one step, 1.5dB
-      timer = 0;                       // reset the timer to prevent this from executing too often
-      if(bands[currentBand].RFgain > 15) {
-        bands[currentBand].RFgain = 15;
-      }
-      //AudioNoInterrupts();
-      //AudioInterrupts();
-    }
-  }
-  half_clip = 0;     // clear "half clip" indicator that tells us that we should decrease gain
-  quarter_clip = 0;  // clear indicator that, if not triggered, indicates that we can increase gain
 }
 
 /*****

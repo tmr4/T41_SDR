@@ -200,7 +200,6 @@ float GetEncoderValueLive(float minValue, float maxValue, float startValue, floa
 // why not FASTRUN
 void EncoderVolumeISR() {
   char result;
-  int increment [[maybe_unused]] = 0;
   static float adjustVolEncoder = 1;
 
 
@@ -219,22 +218,11 @@ void EncoderVolumeISR() {
       break;
   }
   audioVolume += adjustVolEncoder;
-  // simulate log taper.  As we go higher in volume, the increment increases.
-
-  if(audioVolume < (MIN_AUDIO_VOLUME + 10)) increment = 2;
-  else if(audioVolume < (MIN_AUDIO_VOLUME + 20)) increment = 3;
-  else if(audioVolume < (MIN_AUDIO_VOLUME + 30)) increment = 4;
-  else if(audioVolume < (MIN_AUDIO_VOLUME + 40)) increment = 5;
-  else if(audioVolume < (MIN_AUDIO_VOLUME + 50)) increment = 6;
-  else if(audioVolume < (MIN_AUDIO_VOLUME + 60)) increment = 7;
-  else increment = 8;
-
 
   if(audioVolume > MAX_AUDIO_VOLUME) {
     audioVolume = MAX_AUDIO_VOLUME;
-  } else {
-    if(audioVolume < MIN_AUDIO_VOLUME)
-      audioVolume = MIN_AUDIO_VOLUME;
+  } else if(audioVolume < MIN_AUDIO_VOLUME) {
+    audioVolume = MIN_AUDIO_VOLUME;
   }
 
   volumeChangeFlag = true; // flag needed for display update
