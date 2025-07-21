@@ -1,5 +1,7 @@
 # T41_SDR
 
+***I've moved development of the v11 software over to my combined v11/v12 project [T41_Vxx](https://github.com/tmr4/T41_Vxx).***
+
 Initial "fork" from T41-EP software version SDTVer049.2K, based on the T41-EP developed by Albert Peter and Jack Purdum.
 
 Ultimately, it would be nice to be able to add or remove features from the T41 simply by adding or removing a file.  The software is far from that goal.  The structure of the original software also makes it difficult to collaborate.  Thus this version.
